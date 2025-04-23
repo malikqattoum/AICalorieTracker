@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    
+    /* Changed to match NutriScan green color */
+    --primary: 122 39% 49%;
+    --primary-foreground: 211 100% 99%;
+    
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --ring: 122 39% 49%;
+    --radius: 0.5rem;
+    
+    /* Chart colors */
+    --chart-1: 207 90% 54%;  /* Blue for protein */
+    --chart-2: 36 100% 50%;  /* Amber for carbs */
+    --chart-3: 0 90% 58%;    /* Red for fat */
+    --chart-4: 141 69% 58%;  /* Green for fiber */
+    --chart-5: 261 51% 51%;  /* Purple for other nutrients */
+  }
+ 
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    
+    /* Changed to match NutriScan green color */
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 98%;
+    
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 240 4.9% 83.9%;
+    
+    /* Chart colors in dark mode */
+    --chart-1: 207 90% 64%;  /* Blue for protein */
+    --chart-2: 36 100% 60%;  /* Amber for carbs */
+    --chart-3: 0 90% 68%;    /* Red for fat */
+    --chart-4: 141 69% 68%;  /* Green for fiber */
+    --chart-5: 261 51% 61%;  /* Purple for other nutrients */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  /* Typography classes */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+  
+  /* Specific NutriScan styles */
+  .nutrition-chart {
+    @apply h-2.5 rounded-full bg-neutral-200 overflow-hidden;
+  }
+  
+  .nutrition-fill {
+    @apply h-full rounded-full;
+  }
+  
+  .camera-overlay {
+    @apply absolute inset-0 flex flex-col justify-end items-center pb-8 bg-gradient-to-t from-black/70 via-transparent to-transparent;
+  }
+}
