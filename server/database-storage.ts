@@ -1,4 +1,4 @@
-import { IStorage } from './storage';
+import type { IStorage } from './storage';
 import type { 
   User, InsertUser, 
   MealAnalysis, InsertMealAnalysis,

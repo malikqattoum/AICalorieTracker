@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage-provider";
 import { setupAuth } from "./auth";
 import { analyzeFoodImage, getNutritionTips } from "./openai";
 import { insertMealAnalysisSchema } from "@shared/schema";
