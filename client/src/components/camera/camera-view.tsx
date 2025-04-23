@@ -2,7 +2,7 @@ import { useCamera } from "@/hooks/use-camera";
 import Webcam from "react-webcam";
 import { Eye, Camera, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface CameraViewProps {
   onCapture: () => void;
@@ -19,6 +19,9 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
     captureImage,
     resetImage
   } = useCamera();
+  
+  const [localIsCameraReady, setIsCameraReady] = useState(false);
+  const [localError, setError] = useState<string | null>(null);
 
   // Set width and height constraints for better performance
   const videoConstraints = {
@@ -50,14 +53,17 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
               screenshotFormat="image/jpeg"
               videoConstraints={videoConstraints}
               className="h-full w-full object-cover"
-              onUserMedia={() => {}}
-              onUserMediaError={() => {}}
+              onUserMedia={() => { setIsCameraReady(true); }}
+              onUserMediaError={(err) => { 
+                console.error("Camera error:", err);
+                setError(typeof err === 'string' ? err : 'Failed to access camera');
+              }}
             />
 
-            {error && (
+            {(error || localError) && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
                 <div className="text-white text-center p-4">
-                  <p className="mb-4">{error}</p>
+                  <p className="mb-4">{error || localError}</p>
                   <Button variant="default" onClick={onClose}>
                     Close
                   </Button>
