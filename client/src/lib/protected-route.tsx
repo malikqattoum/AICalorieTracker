@@ -7,7 +7,7 @@ export function ProtectedRoute({
   component: Component,
 }: {
   path: string;
-  component: () => React.ReactElement;
+  component: () => React.ReactElement | null;
 }) {
   const { user, isLoading } = useAuth();
 

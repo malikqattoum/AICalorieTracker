@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 export default function HomePage() {
   const { user } = useAuth();
 
-  if (!user) return null;
+  if (!user) return <div>Loading...</div>;
 
   return (
     <div className="flex flex-col min-h-screen">

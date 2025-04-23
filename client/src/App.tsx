@@ -8,6 +8,9 @@ import HistoryPage from "./pages/history-page";
 import LandingPage from "./pages/landing-page";
 import TryItPage from "./pages/try-it-page";
 import PricingPage from "./pages/pricing-page";
+import AboutPage from "./pages/about-page";
+import ContactPage from "./pages/contact-page";
+import TermsPage from "./pages/terms-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
@@ -20,6 +23,9 @@ function Router(): ReactElement {
       <ProtectedRoute path="/dashboard" component={HomePage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/contact" component={ContactPage} />
+      <Route path="/terms" component={TermsPage} />
       <Route component={NotFound} />
     </Switch>
   );
