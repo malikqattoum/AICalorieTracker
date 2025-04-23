@@ -31,9 +31,9 @@ export function MobileMenu({ user, currentPath, onLogout, onClose }: MobileMenuP
         </div>
       </div>
       <nav className="py-2 space-y-1">
-        <Link href="/" onClick={handleLinkClick}>
+        <Link href="/dashboard" onClick={handleLinkClick}>
           <a className={`block px-3 py-2 rounded-md text-base font-medium ${
-            currentPath === '/' 
+            currentPath === '/dashboard' 
               ? 'text-primary-700 bg-primary-50' 
               : 'text-neutral-700 hover:text-primary-600 hover:bg-primary-50'
           }`}>

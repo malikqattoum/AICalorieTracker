@@ -5,12 +5,19 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import HistoryPage from "@/pages/history-page";
+import LandingPage from "@/pages/landing-page";
+import TryItPage from "@/pages/try-it-page";
+import PricingPage from "@/pages/pricing-page";
 import { ProtectedRoute } from "./lib/protected-route";
+import { ReactElement } from "react";
 
-function Router() {
+function Router(): ReactElement {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={HomePage} />
+      <Route path="/" component={LandingPage} />
+      <Route path="/try-it" component={TryItPage} />
+      <Route path="/pricing" component={PricingPage} />
+      <ProtectedRoute path="/dashboard" component={HomePage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
@@ -18,7 +25,7 @@ function Router() {
   );
 }
 
-function App() {
+function App(): ReactElement {
   return (
     <ThemeProvider attribute="class" defaultTheme="light">
       <TooltipProvider>

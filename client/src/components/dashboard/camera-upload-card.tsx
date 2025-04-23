@@ -93,21 +93,29 @@ export function CameraUploadCard() {
                   alt="Uploaded meal" 
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
                   <div className="flex flex-col items-center p-4 space-y-4">
-                    <Button onClick={analyzeImage} disabled={isLoading} className="bg-primary-600 hover:bg-primary-700">
+                    <Button onClick={analyzeImage} disabled={isLoading} className="bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-2 h-12 text-base">
                       {isLoading ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                           Analyzing...
                         </>
                       ) : (
                         "Analyze Image"
                       )}
                     </Button>
-                    <Button variant="secondary" onClick={resetUpload} disabled={isLoading}>
+                    <Button variant="secondary" onClick={resetUpload} disabled={isLoading} className="font-medium">
                       Cancel
                     </Button>
+                    {isLoading && (
+                      <div className="mt-2 text-white text-center">
+                        <p className="mb-2">AI is analyzing your meal</p>
+                        <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden">
+                          <div className="h-full bg-primary-500 animate-pulse rounded-full"></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -33,8 +33,8 @@ export function Header() {
             </div>
             
             <nav className="hidden md:flex space-x-8 items-center">
-              <Link href="/">
-                <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/' ? 'text-primary-600' : ''}`}>
+              <Link href="/dashboard">
+                <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/dashboard' ? 'text-primary-600' : ''}`}>
                   Dashboard
                 </a>
               </Link>
