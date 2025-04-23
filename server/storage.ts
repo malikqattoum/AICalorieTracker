@@ -16,6 +16,14 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserStripeInfo(userId: number, stripeInfo: { 
+    stripeCustomerId?: string; 
+    stripeSubscriptionId?: string;
+    subscriptionType?: string;
+    subscriptionStatus?: string;
+    subscriptionEndDate?: Date;
+    isPremium?: boolean;
+  }): Promise<User>;
   
   // Meal analysis methods
   getMealAnalyses(userId: number): Promise<MealAnalysis[]>;
