@@ -209,8 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerId = customer.id;
           
           // Update the user with the customer ID
-          // This would require adding a method to update user's Stripe info
-          // await storage.updateUserStripeInfo(req.user!.id, { stripeCustomerId: customerId });
+          await storage.updateUserStripeInfo(req.user!.id, { stripeCustomerId: customerId });
         }
         
         // Create the subscription
@@ -222,9 +221,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           expand: ['latest_invoice.payment_intent'],
         });
         
-        // Return the client secret for the subscription's payment intent
-        const invoice = subscription.latest_invoice as Stripe.Invoice;
-        const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+        // Update user with subscription information
+        await storage.updateUserStripeInfo(req.user!.id, {
+          stripeSubscriptionId: subscription.id,
+          subscriptionType: billingInterval,
+          subscriptionStatus: subscription.status
+        });
+        
+        // Get payment intent for client
+        // @ts-ignore - Stripe types don't properly handle expanded fields
+        const invoice = subscription.latest_invoice;
+        // @ts-ignore - Stripe types don't properly handle expanded fields
+        const paymentIntent = invoice.payment_intent;
         
         res.json({
           subscriptionId: subscription.id,
@@ -247,10 +255,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
         
+        // Update local subscription status
+        await storage.updateUserStripeInfo(user.id, {
+          subscriptionStatus: subscription.status,
+          isPremium: subscription.status === 'active'
+        });
+        
         res.json({
           active: subscription.status === 'active',
           status: subscription.status,
+          // @ts-ignore - Stripe types don't properly handle these fields
           currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          // @ts-ignore - Stripe types don't properly handle these fields
           plan: subscription.items.data[0]?.plan.nickname || 'Unknown plan'
         });
       } catch (error: any) {
@@ -272,8 +288,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cancel_at_period_end: true
         });
         
+        // Update subscription status in our database
+        await storage.updateUserStripeInfo(user.id, {
+          subscriptionStatus: 'canceling'
+        });
+        
         res.json({
           message: "Subscription will be canceled at the end of the billing period",
+          // @ts-ignore - Stripe types don't properly handle these fields
           cancelAt: new Date(subscription.cancel_at! * 1000)
         });
       } catch (error: any) {

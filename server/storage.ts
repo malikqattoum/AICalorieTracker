@@ -72,9 +72,43 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
+    // Create user with default values for Stripe fields
+    const user: User = { 
+      ...insertUser, 
+      id,
+      email: insertUser.email || null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      subscriptionType: null,
+      subscriptionStatus: null,
+      subscriptionEndDate: null,
+      isPremium: false
+    };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUserStripeInfo(userId: number, stripeInfo: { 
+    stripeCustomerId?: string; 
+    stripeSubscriptionId?: string;
+    subscriptionType?: string;
+    subscriptionStatus?: string;
+    subscriptionEndDate?: Date;
+    isPremium?: boolean;
+  }): Promise<User> {
+    const user = await this.getUser(userId);
+    
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser = {
+      ...user,
+      ...stripeInfo
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   // Meal analysis methods
