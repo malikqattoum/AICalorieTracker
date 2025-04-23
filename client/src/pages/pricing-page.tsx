@@ -84,14 +84,14 @@ export default function PricingPage() {
             </div>
             
             <nav className="hidden md:flex space-x-8 items-center">
-              <Link href="/">
-                <a className="text-neutral-700 hover:text-primary-600 font-medium">Home</a>
+              <Link href="/" className="text-neutral-700 hover:text-primary-600 font-medium">
+                Home
               </Link>
-              <Link href="/try-it">
-                <a className="text-neutral-700 hover:text-primary-600 font-medium">Try It Free</a>
+              <Link href="/try-it" className="text-neutral-700 hover:text-primary-600 font-medium">
+                Try It Free
               </Link>
-              <Link href="/pricing">
-                <a className="text-primary-600 font-medium">Pricing</a>
+              <Link href="/pricing" className="text-primary-600 font-medium">
+                Pricing
               </Link>
             </nav>
             

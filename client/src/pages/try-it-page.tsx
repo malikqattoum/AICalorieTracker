@@ -82,14 +82,14 @@ export default function TryItPage() {
             </div>
             
             <nav className="hidden md:flex space-x-8 items-center">
-              <Link href="/">
-                <a className="text-neutral-700 hover:text-primary-600 font-medium">Home</a>
+              <Link href="/" className="text-neutral-700 hover:text-primary-600 font-medium">
+                Home
               </Link>
-              <Link href="/try-it">
-                <a className="text-primary-600 font-medium">Try It Free</a>
+              <Link href="/try-it" className="text-primary-600 font-medium">
+                Try It Free
               </Link>
-              <Link href="/pricing">
-                <a className="text-neutral-700 hover:text-primary-600 font-medium">Pricing</a>
+              <Link href="/pricing" className="text-neutral-700 hover:text-primary-600 font-medium">
+                Pricing
               </Link>
             </nav>
             
@@ -219,7 +219,7 @@ export default function TryItPage() {
                     <div className="mt-4 flex items-center p-3 bg-primary-50 rounded-lg">
                       <Info className="h-5 w-5 text-primary-600 mr-2 flex-shrink-0" />
                       <p className="text-sm text-neutral-700">
-                        This is a demo version with limited features. <Link href="/auth"><a className="text-primary-600 font-medium">Sign up</a></Link> for full access.
+                        This is a demo version with limited features. <Link href="/auth" className="text-primary-600 font-medium">Sign up</Link> for full access.
                       </p>
                     </div>
                   </div>
