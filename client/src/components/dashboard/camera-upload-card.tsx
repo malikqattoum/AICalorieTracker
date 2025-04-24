@@ -172,13 +172,3 @@ export function CameraUploadCard() {
     </>
   );
 }
-/* Add CSS for the new classes */
-.card-gradient {
-  background-image: linear-gradient(to right, #4CAF50, #8BC34A); /* Example gradient */
-}
-
-.hover-effect:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Example hover effect */
-  transition: all 0.2s ease-in-out;
-}

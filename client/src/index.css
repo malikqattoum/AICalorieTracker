@@ -20,6 +20,10 @@
   .hover-effect {
     @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.02];
   }
+
+  .card-gradient {
+    @apply bg-gradient-to-r from-[#4CAF50] to-[#8BC34A];
+  }
 }
 
 @layer base {
