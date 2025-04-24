@@ -41,7 +41,7 @@ export default function HistoryPage() {
               <p className="text-neutral-600">View your past meal analyses and nutrition data</p>
             </div>
             
-            <Link href="/">
+            <Link href="/dashboard">
               <Button variant="outline" className="flex items-center">
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
