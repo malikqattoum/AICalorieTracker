@@ -17,7 +17,7 @@ export default function LandingPage() {
               <Leaf className="h-8 w-8 text-primary" />
               <span className="ml-2 text-2xl font-bold text-neutral-800">NutriScan</span>
             </div>
-            
+
             <nav className="hidden md:flex space-x-8 items-center">
               <Link href="/" className="text-neutral-700 hover:text-primary-600 font-medium">
                 Home
@@ -29,7 +29,7 @@ export default function LandingPage() {
                 Pricing
               </Link>
             </nav>
-            
+
             <div className="flex items-center">
               {user ? (
                 <Link href="/dashboard">
@@ -48,7 +48,7 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
-      
+
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-primary-50 to-white py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -93,7 +93,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Features Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -103,7 +103,7 @@ export default function LandingPage() {
               Our AI-powered platform makes nutrition tracking simple, fast, and accurate
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="bg-primary-100 w-14 h-14 rounded-lg flex items-center justify-center mb-4">
@@ -114,7 +114,7 @@ export default function LandingPage() {
                 Simply take a picture of your meal using our app's camera or upload an existing image.
               </p>
             </div>
-            
+
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="bg-primary-100 w-14 h-14 rounded-lg flex items-center justify-center mb-4">
                 <Zap className="h-7 w-7 text-primary-600" />
@@ -124,7 +124,7 @@ export default function LandingPage() {
                 Our advanced AI identifies the food items and calculates nutrition data instantly.
               </p>
             </div>
-            
+
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="bg-primary-100 w-14 h-14 rounded-lg flex items-center justify-center mb-4">
                 <LineChart className="h-7 w-7 text-primary-600" />
@@ -137,7 +137,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Pricing CTA */}
       <section className="py-16 bg-neutral-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,7 +167,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Testimonials */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -177,12 +177,16 @@ export default function LandingPage() {
               Trusted by thousands of users worldwide to track their nutrition
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="flex items-center mb-4">
                 <div className="mr-4">
-                  <div className="bg-neutral-200 w-12 h-12 rounded-full"></div>
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    alt="Sarah M."
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                 </div>
                 <div>
                   <h4 className="font-semibold text-neutral-900">Sarah M.</h4>
@@ -193,11 +197,15 @@ export default function LandingPage() {
                 "NutriScan has completely changed how I track my clients' nutrition. The AI analysis is incredibly accurate and saves hours of manual logging."
               </p>
             </div>
-            
+
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="flex items-center mb-4">
                 <div className="mr-4">
-                  <div className="bg-neutral-200 w-12 h-12 rounded-full"></div>
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    alt="James K."
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                 </div>
                 <div>
                   <h4 className="font-semibold text-neutral-900">James K.</h4>
@@ -208,11 +216,15 @@ export default function LandingPage() {
                 "Being able to quickly snap a photo and get nutrition data has helped me optimize my training diet. The protein tracking feature is invaluable."
               </p>
             </div>
-            
+
             <div className="bg-neutral-50 p-6 rounded-xl">
               <div className="flex items-center mb-4">
                 <div className="mr-4">
-                  <div className="bg-neutral-200 w-12 h-12 rounded-full"></div>
+                  <img
+                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    alt="Emily R."
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                 </div>
                 <div>
                   <h4 className="font-semibold text-neutral-900">Emily R.</h4>
@@ -226,7 +238,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      
+
       {/* Feature List */}
       <section className="py-16 bg-neutral-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -236,7 +248,7 @@ export default function LandingPage() {
               <p className="text-lg text-neutral-600 mb-8">
                 Our platform offers advanced features for both casual users and nutrition professionals
               </p>
-              
+
               <div className="space-y-4">
                 <div className="flex">
                   <CheckCircle className="h-6 w-6 text-primary-600 mr-3 flex-shrink-0" />
@@ -245,7 +257,7 @@ export default function LandingPage() {
                     <p className="text-neutral-600">Accurately identifies food items from images</p>
                   </div>
                 </div>
-                
+
                 <div className="flex">
                   <CheckCircle className="h-6 w-6 text-primary-600 mr-3 flex-shrink-0" />
                   <div>
@@ -253,7 +265,7 @@ export default function LandingPage() {
                     <p className="text-neutral-600">Get calories, macros, vitamins, and minerals</p>
                   </div>
                 </div>
-                
+
                 <div className="flex">
                   <CheckCircle className="h-6 w-6 text-primary-600 mr-3 flex-shrink-0" />
                   <div>
@@ -261,7 +273,7 @@ export default function LandingPage() {
                     <p className="text-neutral-600">Receive custom recommendations based on your eating habits</p>
                   </div>
                 </div>
-                
+
                 <div className="flex">
                   <CheckCircle className="h-6 w-6 text-primary-600 mr-3 flex-shrink-0" />
                   <div>
@@ -271,20 +283,20 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="md:w-1/2 md:pl-12">
               <div className="bg-white p-1 rounded-xl shadow-lg">
                 <img 
-                  src="https://images.unsplash.com/photo-1553557202-65c1c250ce8a?w=800&auto=format&fit=crop&q=80"
-                  alt="Nutrition tracking app" 
-                  className="w-full h-auto rounded-lg"
+                  src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800&h=600&fit=crop"
+                  alt="AI-powered nutrition analysis" 
+                  className="w-full h-auto rounded-lg shadow-lg"
                 />
               </div>
             </div>
           </div>
         </div>
       </section>
-      
+
       {/* Final CTA */}
       <section className="py-16 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -299,7 +311,7 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
-      
+
       <Footer />
     </div>
   );
