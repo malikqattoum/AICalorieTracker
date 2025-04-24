@@ -20,7 +20,7 @@ export function NutritionTipsCard() {
     "Choose whole grains over refined carbohydrates when possible"
   ];
 
-  const tips = data?.tips || fallbackTips;
+  const tips = (data?.tips?.length > 0) ? data.tips : fallbackTips;
 
   return (
     <Card className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
