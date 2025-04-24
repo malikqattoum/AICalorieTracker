@@ -18,9 +18,7 @@ export function Header() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  if (!user) return null;
-
-  const userInitials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+  const userInitials = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` : null;
 
   return (
     <>
@@ -33,34 +31,60 @@ export function Header() {
             </div>
             
             <nav className="hidden md:flex space-x-8 items-center">
-              <Link href="/dashboard">
-                <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/dashboard' ? 'text-primary-600' : ''}`}>
-                  Dashboard
-                </a>
-              </Link>
-              <Link href="/history">
-                <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/history' ? 'text-primary-600' : ''}`}>
-                  History
-                </a>
-              </Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard">
+                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/dashboard' ? 'text-primary-600' : ''}`}>
+                      Dashboard
+                    </a>
+                  </Link>
+                  <Link href="/history">
+                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/history' ? 'text-primary-600' : ''}`}>
+                      History
+                    </a>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/try-it">
+                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/try-it' ? 'text-primary-600' : ''}`}>
+                      Try It
+                    </a>
+                  </Link>
+                  <Link href="/about">
+                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/about' ? 'text-primary-600' : ''}`}>
+                      About
+                    </a>
+                  </Link>
+                </>
+              )}
             </nav>
             
             <div className="flex items-center">
-              <div className="hidden md:flex items-center mr-4">
-                <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary-100">
-                  <span className="text-sm font-medium leading-none text-primary-700">{userInitials}</span>
-                </span>
-                <span className="ml-2 text-neutral-700 font-medium">{user.firstName} {user.lastName}</span>
-              </div>
-              
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="hidden md:flex"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
+              {user ? (
+                <>
+                  <div className="hidden md:flex items-center mr-4">
+                    <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary-100">
+                      <span className="text-sm font-medium leading-none text-primary-700">{userInitials}</span>
+                    </span>
+                    <span className="ml-2 text-neutral-700 font-medium">{user.firstName} {user.lastName}</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="hidden md:flex"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Link href="/auth">
+                  <Button variant="default" size="sm" className="hidden md:flex">
+                    Sign In
+                  </Button>
+                </Link>
+              )}
               
               <button 
                 type="button" 
