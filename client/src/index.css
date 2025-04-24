@@ -3,6 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  body {
+    @apply bg-gradient-to-br from-neutral-50 to-neutral-100 min-h-screen;
+  }
+  
+  .card-gradient {
+    @apply bg-gradient-to-br from-white to-neutral-50;
+  }
+}
+
+@layer components {
+  .glass-effect {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20;
+  }
+  
+  .hover-effect {
+    @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.02];
+  }
+}
+
+@layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;

@@ -11,12 +11,12 @@ export function StatsCard() {
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+    <Card className="card-gradient hover-effect rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
       <CardHeader className="px-6 py-5 border-b border-neutral-200">
         <CardTitle className="text-xl font-semibold text-neutral-800">Your Stats</CardTitle>
         <p className="text-neutral-600 text-sm mt-1">This week's summary</p>
       </CardHeader>
-      
+
       <CardContent className="p-6">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
@@ -73,7 +73,7 @@ export function StatsCard() {
                 <span className="text-2xl font-bold text-neutral-900">{stats.healthiestDay}</span>
               </div>
             </div>
-            
+
             <div className="mt-6">
               <h3 className="font-medium text-neutral-900 mb-3">Calorie Trend</h3>
               <div className="h-48 bg-neutral-100 rounded-lg flex items-end justify-between p-4">
@@ -81,12 +81,12 @@ export function StatsCard() {
                   const calories = stats.caloriesByDay[day] || 0;
                   const maxCalories = Math.max(...Object.values(stats.caloriesByDay));
                   const percentage = maxCalories > 0 ? (calories / maxCalories) * 100 : 0;
-                  
+
                   // Determine if this day is in the past/present or future
                   const today = new Date().getDay();
                   const dayIndex = daysOfWeek.indexOf(day);
                   const isPastOrToday = dayIndex <= today;
-                  
+
                   return (
                     <div key={day} className="w-1/7 flex flex-col items-center">
                       <div 

@@ -22,14 +22,14 @@ export function Header() {
 
   return (
     <>
-      <header className="bg-white shadow-sm">
+      <header className="glass-effect sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <Leaf className="h-8 w-8 text-primary" />
               <span className="ml-2 text-2xl font-bold text-neutral-800">NutriScan</span>
             </div>
-            
+
             <nav className="hidden md:flex space-x-8 items-center">
               {user ? (
                 <>
@@ -59,7 +59,7 @@ export function Header() {
                 </>
               )}
             </nav>
-            
+
             <div className="flex items-center">
               {user ? (
                 <>
@@ -85,7 +85,7 @@ export function Header() {
                   </Button>
                 </Link>
               )}
-              
+
               <button 
                 type="button" 
                 className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 focus:outline-none"
@@ -100,7 +100,7 @@ export function Header() {
           </div>
         </div>
       </header>
-      
+
       {isMobileMenuOpen && (
         <MobileMenu 
           user={user} 

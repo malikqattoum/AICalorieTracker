@@ -23,7 +23,7 @@ export function NutritionTipsCard() {
   const tips = (data?.tips?.length > 0) ? data.tips : fallbackTips;
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+    <Card className="card-gradient hover-effect rounded-xl overflow-hidden">
       <CardHeader className="px-6 py-5 border-b border-neutral-200">
         <CardTitle className="text-xl font-semibold text-neutral-800">Nutrition Tips</CardTitle>
       </CardHeader>

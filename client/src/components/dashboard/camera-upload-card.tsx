@@ -78,12 +78,12 @@ export function CameraUploadCard() {
 
   return (
     <>
-      <Card className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+      <Card className="card-gradient hover-effect rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
         <CardHeader className="px-6 py-5 border-b border-neutral-200">
           <CardTitle className="text-xl font-semibold text-neutral-800">Scan Your Meal</CardTitle>
           <p className="text-neutral-600 text-sm mt-1">Upload or take a photo of your meal to get instant calorie estimation</p>
         </CardHeader>
-        
+
         <CardContent className="p-6">
           <div className="relative bg-neutral-100 rounded-lg overflow-hidden" style={{ minHeight: "300px" }}>
             {uploadedImage ? (
@@ -129,7 +129,7 @@ export function CameraUploadCard() {
                 <p className="text-neutral-500 text-sm">Supported formats: JPG, PNG</p>
               </div>
             )}
-            
+
             <div className="absolute bottom-0 inset-x-0 p-6 flex justify-center space-x-4">
               <Button 
                 onClick={handleUploadClick} 
@@ -140,7 +140,7 @@ export function CameraUploadCard() {
                 <Upload className="h-5 w-5 mr-2 text-neutral-500" />
                 Upload Photo
               </Button>
-              
+
               <Button 
                 onClick={openCamera}
                 className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
@@ -149,7 +149,7 @@ export function CameraUploadCard() {
                 <Camera className="h-5 w-5 mr-2" />
                 Take Photo
               </Button>
-              
+
               <input
                 type="file"
                 ref={fileInputRef}
@@ -161,7 +161,7 @@ export function CameraUploadCard() {
           </div>
         </CardContent>
       </Card>
-      
+
       {isCameraOpen && (
         <CameraView 
           onCapture={analyzeImage} 
@@ -171,4 +171,14 @@ export function CameraUploadCard() {
       )}
     </>
   );
+}
+/* Add CSS for the new classes */
+.card-gradient {
+  background-image: linear-gradient(to right, #4CAF50, #8BC34A); /* Example gradient */
+}
+
+.hover-effect:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Example hover effect */
+  transition: all 0.2s ease-in-out;
 }
