@@ -108,7 +108,7 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
                 size="lg"
                 className="rounded-full bg-primary-600 shadow-lg h-16 w-16 flex items-center justify-center"
                 onClick={captureImage}
-                disabled={!isCameraReady || isAnalyzing}
+                disabled={!localIsCameraReady || isAnalyzing}
               >
                 <Camera className="h-8 w-8 text-white" />
               </Button>
