@@ -183,7 +183,7 @@ export default function LandingPage() {
               <div className="flex items-center mb-4">
                 <div className="mr-4">
                   <img
-                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop"
                     alt="Sarah M."
                     className="w-12 h-12 rounded-full object-cover"
                   />
@@ -202,7 +202,7 @@ export default function LandingPage() {
               <div className="flex items-center mb-4">
                 <div className="mr-4">
                   <img
-                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop"
                     alt="James K."
                     className="w-12 h-12 rounded-full object-cover"
                   />
@@ -221,7 +221,7 @@ export default function LandingPage() {
               <div className="flex items-center mb-4">
                 <div className="mr-4">
                   <img
-                    src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop"
+                    src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop"
                     alt="Emily R."
                     className="w-12 h-12 rounded-full object-cover"
                   />
@@ -287,7 +287,7 @@ export default function LandingPage() {
             <div className="md:w-1/2 md:pl-12">
               <div className="bg-white p-1 rounded-xl shadow-lg">
                 <img 
-                  src="https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=800&h=600&fit=crop"
+                  src="https://images.unsplash.com/photo-1616347038241-67e67588e3e5?w=800&h=600&fit=crop"
                   alt="AI-powered nutrition analysis" 
                   className="w-full h-auto rounded-lg shadow-lg"
                 />
