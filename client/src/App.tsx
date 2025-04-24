@@ -12,6 +12,7 @@ import AboutPage from "./pages/about-page";
 import ContactPage from "./pages/contact-page";
 import TermsPage from "./pages/terms-page";
 import PrivacyPage from "./pages/privacy-page";
+import MealPlanPage from "./pages/meal-plan-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
