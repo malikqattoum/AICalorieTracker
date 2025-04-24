@@ -11,6 +11,7 @@ import PricingPage from "./pages/pricing-page";
 import AboutPage from "./pages/about-page";
 import ContactPage from "./pages/contact-page";
 import TermsPage from "./pages/terms-page";
+import PrivacyPage from "./pages/privacy-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
@@ -26,6 +27,7 @@ function Router(): ReactElement {
       <Route path="/about" component={AboutPage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/terms" component={TermsPage} />
+      <Route path="/privacy" component={PrivacyPage} />
       <Route component={NotFound} />
     </Switch>
   );
