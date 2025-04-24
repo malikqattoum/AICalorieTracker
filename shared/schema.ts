@@ -71,3 +71,32 @@ export type InsertWeeklyStats = z.infer<typeof insertWeeklyStatsSchema>;
 export type User = typeof users.$inferSelect;
 export type MealAnalysis = typeof mealAnalyses.$inferSelect;
 export type WeeklyStats = typeof weeklyStats.$inferSelect;
+export interface MealPlan {
+  id: number;
+  userId: number;
+  goal: string;
+  weeklyCalories: number;
+  weeklyProtein: number;
+  weeklyCarbs: number;
+  weeklyFat: number;
+  meals: DailyMeals[];
+  createdAt: Date;
+}
+
+export interface DailyMeals {
+  day: string;
+  breakfast: MealInfo;
+  lunch: MealInfo;
+  dinner: MealInfo;
+  snacks: MealInfo[];
+}
+
+export interface MealInfo {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  ingredients: string[];
+  instructions: string[];
+}

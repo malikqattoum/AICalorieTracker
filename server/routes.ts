@@ -48,15 +48,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const analysis = await storage.getMealAnalysis(analysisId);
-      
+
       if (!analysis) {
         return res.status(404).json({ message: "Analysis not found" });
       }
-      
+
       if (analysis.userId !== req.user!.id) {
         return res.status(403).json({ message: "Access denied" });
       }
-      
+
       res.json(analysis);
     } catch (error) {
       console.error("Error fetching meal analysis:", error);
@@ -70,17 +70,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestSchema = z.object({
         imageData: z.string()
       });
-      
+
       const validatedData = requestSchema.parse(req.body);
-      
+
       // Remove data URL prefix if present
       const base64Data = validatedData.imageData.includes('base64,')
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
-      
+
       // Analyze the food image using OpenAI
       const analysis = await analyzeFoodImage(base64Data);
-      
+
       // Return the analysis but don't save it
       res.status(200).json(analysis);
     } catch (error) {
@@ -99,25 +99,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestSchema = z.object({
         imageData: z.string()
       });
-      
+
       const validatedData = requestSchema.parse(req.body);
       const userId = req.user!.id;
-      
+
       // Remove data URL prefix if present
       const base64Data = validatedData.imageData.includes('base64,')
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
-      
+
       // Analyze the food image using OpenAI
       const analysis = await analyzeFoodImage(base64Data);
-      
+
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
         userId,
         ...analysis,
         imageData: validatedData.imageData
       });
-      
+
       res.status(201).json(mealAnalysis);
     } catch (error) {
       console.error("Error analyzing food:", error);
@@ -134,11 +134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user!.id;
       const stats = await storage.getWeeklyStats(userId);
-      
+
       if (!stats) {
         return res.status(404).json({ message: "No weekly stats found" });
       }
-      
+
       res.json(stats);
     } catch (error) {
       console.error("Error fetching weekly stats:", error);
@@ -146,7 +146,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get nutrition tips
+  // Generate meal plan
+  app.post("/api/meal-plan", isAuthenticated, async (req, res) => {
+    try {
+      const { goal } = req.body;
+
+      if (!goal) {
+        return res.status(400).json({ message: "Goal is required" });
+      }
+
+      const mealPlan = await generateMealPlan(goal);
+      res.json(mealPlan);
+    } catch (error) {
+      console.error("Error generating meal plan:", error);
+      res.status(500).json({ message: "Failed to generate meal plan" });
+    }
+  });
+
+  // Get nutrition tips  
   app.get("/api/nutrition-tips", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -164,11 +181,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.post("/api/create-payment-intent", isAuthenticated, async (req, res) => {
       try {
         const { amount, currency = "usd" } = req.body;
-        
+
         if (!amount) {
           return res.status(400).json({ message: "Amount is required" });
         }
-        
+
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(amount * 100), // Convert to cents
           currency,
@@ -177,26 +194,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username: req.user!.username
           },
         });
-        
+
         res.json({ clientSecret: paymentIntent.client_secret });
       } catch (error: any) {
         console.error("Error creating payment intent:", error);
         res.status(500).json({ message: error.message || "Failed to create payment intent" });
       }
     });
-    
+
     // Create a subscription
     app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
       try {
         const { priceId, billingInterval = "monthly" } = req.body;
-        
+
         if (!priceId) {
           return res.status(400).json({ message: "Price ID is required" });
         }
-        
+
         // Get or create a Stripe customer
         let customerId = req.user!.stripeCustomerId;
-        
+
         if (!customerId) {
           const customer = await stripe.customers.create({
             email: req.user!.email || undefined,
@@ -205,13 +222,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId: req.user!.id.toString()
             }
           });
-          
+
           customerId = customer.id;
-          
+
           // Update the user with the customer ID
           await storage.updateUserStripeInfo(req.user!.id, { stripeCustomerId: customerId });
         }
-        
+
         // Create the subscription
         const subscription = await stripe.subscriptions.create({
           customer: customerId,
@@ -220,20 +237,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           payment_settings: { save_default_payment_method: 'on_subscription' },
           expand: ['latest_invoice.payment_intent'],
         });
-        
+
         // Update user with subscription information
         await storage.updateUserStripeInfo(req.user!.id, {
           stripeSubscriptionId: subscription.id,
           subscriptionType: billingInterval,
           subscriptionStatus: subscription.status
         });
-        
+
         // Get payment intent for client
         // @ts-ignore - Stripe types don't properly handle expanded fields
         const invoice = subscription.latest_invoice;
         // @ts-ignore - Stripe types don't properly handle expanded fields
         const paymentIntent = invoice.payment_intent;
-        
+
         res.json({
           subscriptionId: subscription.id,
           clientSecret: paymentIntent.client_secret
@@ -243,24 +260,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ message: error.message || "Failed to create subscription" });
       }
     });
-    
+
     // Get subscription status
     app.get("/api/subscription", isAuthenticated, async (req, res) => {
       try {
         const user = req.user!;
-        
+
         if (!user.stripeSubscriptionId) {
           return res.json({ active: false });
         }
-        
+
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        
+
         // Update local subscription status
         await storage.updateUserStripeInfo(user.id, {
           subscriptionStatus: subscription.status,
           isPremium: subscription.status === 'active'
         });
-        
+
         res.json({
           active: subscription.status === 'active',
           status: subscription.status,
@@ -274,25 +291,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ message: error.message || "Failed to fetch subscription" });
       }
     });
-    
+
     // Cancel subscription
     app.post("/api/cancel-subscription", isAuthenticated, async (req, res) => {
       try {
         const user = req.user!;
-        
+
         if (!user.stripeSubscriptionId) {
           return res.status(400).json({ message: "No active subscription" });
         }
-        
+
         const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
           cancel_at_period_end: true
         });
-        
+
         // Update subscription status in our database
         await storage.updateUserStripeInfo(user.id, {
           subscriptionStatus: 'canceling'
         });
-        
+
         res.json({
           message: "Subscription will be canceled at the end of the billing period",
           // @ts-ignore - Stripe types don't properly handle these fields
@@ -307,4 +324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+async function generateMealPlan(goal: string): Promise<any> {
+  //Implementation for generating meal plan based on goal.  This is a placeholder.
+  // Replace with actual AI call or database lookup.
+  return {
+    "plan": "Placeholder meal plan for " + goal
+  };
 }

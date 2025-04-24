@@ -28,6 +28,9 @@ function Router(): ReactElement {
       <Route path="/contact" component={ContactPage} />
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/meal-plan">
+        <ProtectedRoute component={MealPlanPage} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

@@ -92,3 +92,33 @@ export async function getNutritionTips(userId: number): Promise<string[]> {
     ];
   }
 }
+export async function generateMealPlan(goal: string): Promise<MealPlan> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        {
+          role: "system",
+          content: "You are a nutrition expert specializing in personalized meal planning."
+        },
+        {
+          role: "user",
+          content: `Generate a 7-day meal plan for ${goal} goal. Include breakfast, lunch, dinner, and snacks with nutrition info.`
+        }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 2000,
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    return {
+      ...result,
+      id: 0,
+      userId: 0,
+      createdAt: new Date(),
+    };
+  } catch (error) {
+    console.error("Error generating meal plan:", error);
+    throw new Error("Failed to generate meal plan");
+  }
+}
