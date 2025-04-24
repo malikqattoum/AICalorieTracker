@@ -8,7 +8,8 @@ interface TipsResponse {
 
 export function NutritionTipsCard() {
   const { data, isLoading, error } = useQuery<TipsResponse>({
-    queryKey: ["/api/nutrition-tips"],
+    queryKey: ["nutrition-tips"],
+    queryFn: () => fetch("/api/nutrition-tips").then(res => res.json())
   });
 
   // Fallback tips in case API fails

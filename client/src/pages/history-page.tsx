@@ -32,7 +32,7 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
+
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-8">
@@ -40,7 +40,7 @@ export default function HistoryPage() {
               <h1 className="text-3xl font-bold text-neutral-900 mb-2">Meal History</h1>
               <p className="text-neutral-600">View your past meal analyses and nutrition data</p>
             </div>
-            
+
             <Link href="/dashboard">
               <Button variant="outline" className="flex items-center">
                 <ChevronLeft className="h-4 w-4 mr-2" />
@@ -69,7 +69,7 @@ export default function HistoryPage() {
                       {format(new Date(date), 'EEEE, MMMM d, yyyy')}
                     </h2>
                   </div>
-                  
+
                   <div className="space-y-4">
                     {groupedAnalyses[date].map(analysis => (
                       <Card key={analysis.id} className="overflow-hidden">
@@ -82,7 +82,7 @@ export default function HistoryPage() {
                                 className="w-full h-full object-cover"
                               />
                             </div>
-                            
+
                             <div className="p-6 flex-grow">
                               <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4">
                                 <div>
@@ -95,7 +95,7 @@ export default function HistoryPage() {
                                   <span>{analysis.calories} calories</span>
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                                 <div>
                                   <div className="flex justify-between items-center mb-1">
@@ -165,7 +165,7 @@ export default function HistoryPage() {
           )}
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );
