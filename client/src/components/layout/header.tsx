@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "./mobile-menu";
 import { Leaf } from "lucide-react";
+import { LanguageSwitcher } from "./language-switcher"; // Added import
 
 export function Header() {
   const [location] = useLocation();
@@ -58,6 +59,7 @@ export function Header() {
                   </Link>
                 </>
               )}
+              <LanguageSwitcher /> {/* Added LanguageSwitcher */}
             </nav>
 
             <div className="flex items-center">
