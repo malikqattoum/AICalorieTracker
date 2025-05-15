@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-[#181c1f] via-[#23272b] to-[#1a232e] min-h-screen text-neutral-100;
+  }
+  .card-gradient {
+    @apply bg-gradient-to-br from-[#23272b] to-[#181c1f];
+  }
+}
+
+@layer components {
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/10;
+  }
+  .hover-effect {
+    @apply transition-all duration-300 hover:shadow-2xl hover:scale-[1.03];
+  }
+  .card-gradient {
+    @apply bg-gradient-to-br from-[#23272b] to-[#181c1f];
+  }
+  .button-dark {
+    @apply bg-neutral-900 text-neutral-100 hover:bg-neutral-800 shadow-md;
+  }
+  .button-accent {
+    @apply bg-gradient-to-r from-green-600 to-lime-500 text-white shadow-lg hover:from-green-700 hover:to-lime-600;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 220 16% 12%;
+    --foreground: 220 14% 96%;
+    --muted: 220 10% 18%;
+    --muted-foreground: 220 10% 60%;
+    --popover: 220 16% 12%;
+    --popover-foreground: 220 14% 96%;
+    --card: 220 16% 14%;
+    --card-foreground: 220 14% 96%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 100 80% 40%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --ring: 142 70% 45%;
+    --radius: 0.5rem;
+    --chart-1: 207 90% 54%;
+    --chart-2: 36 100% 50%;
+    --chart-3: 0 90% 58%;
+    --chart-4: 141 69% 58%;
+    --chart-5: 261 51% 51%;
+  }
+  .dark {
+    --background: 220 16% 12%;
+    --foreground: 220 14% 96%;
+    --muted: 220 10% 18%;
+    --muted-foreground: 220 10% 60%;
+    --popover: 220 16% 12%;
+    --popover-foreground: 220 14% 96%;
+    --card: 220 16% 14%;
+    --card-foreground: 220 14% 96%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 10% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 100 80% 40%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --ring: 142 70% 45%;
+    --chart-1: 207 90% 64%;
+    --chart-2: 36 100% 60%;
+    --chart-3: 0 90% 68%;
+    --chart-4: 141 69% 68%;
+    --chart-5: 261 51% 61%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  /* Typography classes */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+  
+  /* Specific NutriScan styles */
+  .nutrition-chart {
+    @apply h-2.5 rounded-full bg-neutral-200 overflow-hidden;
+  }
+  
+  .nutrition-fill {
+    @apply h-full rounded-full;
+  }
+  
+  .camera-overlay {
+    @apply absolute inset-0 flex flex-col justify-end items-center pb-8 bg-gradient-to-t from-black/70 via-transparent to-transparent;
+  }
+}

@@ -1,0 +1,13 @@
+
+{
+  "nav": {
+    "home": "Inicio",
+    "about": "Acerca",
+    "pricing": "Precios",
+    "contact": "Contacto"
+  },
+  "home": {
+    "title": "Bienvenido a NutriScan",
+    "subtitle": "Tu asistente de nutrición con IA"
+  }
+}
