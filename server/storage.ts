@@ -34,10 +34,13 @@ export interface IStorage {
   getWeeklyStats(userId: number): Promise<WeeklyStats | undefined>;
   createOrUpdateWeeklyStats(stats: InsertWeeklyStats): Promise<WeeklyStats>;
   
+<<<<<<< HEAD
   // Site content methods
   getSiteContent(key: string): Promise<string | null>;
   updateSiteContent(key: string, value: string): Promise<void>;
   
+=======
+>>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
   // Session store
   sessionStore: session.Store;
 }
@@ -49,14 +52,20 @@ export class MemStorage implements IStorage {
   private userIdCounter: number;
   private mealIdCounter: number;
   private statsIdCounter: number;
+<<<<<<< HEAD
   private siteContent: Map<string, string>;
+=======
+>>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
   sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.mealAnalyses = new Map();
     this.weeklyStats = new Map();
+<<<<<<< HEAD
     this.siteContent = new Map();
+=======
+>>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
     this.userIdCounter = 1;
     this.mealIdCounter = 1;
     this.statsIdCounter = 1;
@@ -236,6 +245,7 @@ export class MemStorage implements IStorage {
       return stats;
     }
   }
+<<<<<<< HEAD
 
   // Site content methods
   async getSiteContent(key: string): Promise<string | null> {
@@ -245,6 +255,8 @@ export class MemStorage implements IStorage {
   async updateSiteContent(key: string, value: string): Promise<void> {
     this.siteContent.set(key, value);
   }
+=======
+>>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
 }
 
 // Storage is now provided by storage-provider.ts
