@@ -25,7 +25,7 @@ export function NutritionTipsCard() {
   return (
     <Card className="card-gradient hover-effect rounded-xl overflow-hidden">
       <CardHeader className="px-6 py-5 border-b border-neutral-200">
-        <CardTitle className="text-xl font-semibold text-neutral-800">Nutrition Tips</CardTitle>
+        <CardTitle className="text-xl font-semibold text-neutral-900">Nutrition Tips</CardTitle>
       </CardHeader>
       
       <CardContent className="p-4">
@@ -41,7 +41,7 @@ export function NutritionTipsCard() {
                   <div className="flex-shrink-0">
                     <Check className="h-5 w-5 text-primary-500" />
                   </div>
-                  <p className="ml-3 text-sm text-neutral-700">{tip}</p>
+                  <p className="ml-3 text-sm text-neutral-800">{tip}</p>
                 </div>
               </li>
             ))}
@@ -54,7 +54,7 @@ export function NutritionTipsCard() {
                   <div className="flex-shrink-0">
                     <Check className="h-5 w-5 text-primary-500" />
                   </div>
-                  <p className="ml-3 text-sm text-neutral-700">{tip}</p>
+                  <p className="ml-3 text-sm text-neutral-800">{tip}</p>
                 </div>
               </li>
             ))}

@@ -24,6 +24,8 @@ export interface IStorage {
     subscriptionEndDate?: Date;
     isPremium?: boolean;
   }): Promise<User>;
+  getUserById(userId: number): Promise<any>;
+  updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void>;
   
   // Meal analysis methods
   getMealAnalyses(userId: number): Promise<MealAnalysis[]>;
@@ -34,13 +36,10 @@ export interface IStorage {
   getWeeklyStats(userId: number): Promise<WeeklyStats | undefined>;
   createOrUpdateWeeklyStats(stats: InsertWeeklyStats): Promise<WeeklyStats>;
   
-<<<<<<< HEAD
   // Site content methods
   getSiteContent(key: string): Promise<string | null>;
   updateSiteContent(key: string, value: string): Promise<void>;
   
-=======
->>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
   // Session store
   sessionStore: session.Store;
 }
@@ -52,20 +51,14 @@ export class MemStorage implements IStorage {
   private userIdCounter: number;
   private mealIdCounter: number;
   private statsIdCounter: number;
-<<<<<<< HEAD
   private siteContent: Map<string, string>;
-=======
->>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
   sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.mealAnalyses = new Map();
     this.weeklyStats = new Map();
-<<<<<<< HEAD
     this.siteContent = new Map();
-=======
->>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
     this.userIdCounter = 1;
     this.mealIdCounter = 1;
     this.statsIdCounter = 1;
@@ -97,7 +90,8 @@ export class MemStorage implements IStorage {
       subscriptionType: null,
       subscriptionStatus: null,
       subscriptionEndDate: null,
-      isPremium: false
+      isPremium: false,
+      nutritionGoals: null // Ensure nutritionGoals is always present
     };
     this.users.set(id, user);
     return user;
@@ -126,6 +120,26 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
+  async getUserById(userId: number): Promise<any> {
+    return this.users.get(userId);
+  }
+
+  async updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void> {
+    const user = await this.getUser(userId);
+    
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    // Update user's nutrition goals
+    user.nutritionGoals = {
+      calories: goals.calories,
+      protein: goals.protein,
+      carbs: goals.carbs,
+      fat: goals.fat
+    };
+  }
+
   // Meal analysis methods
   async getMealAnalyses(userId: number): Promise<MealAnalysis[]> {
     return Array.from(this.mealAnalyses.values())
@@ -152,100 +166,97 @@ export class MemStorage implements IStorage {
   // Helper method to update weekly stats based on meal analyses
   private async updateWeeklyStats(userId: number): Promise<void> {
     const userMeals = await this.getMealAnalyses(userId);
-    
     if (userMeals.length === 0) return;
-    
-    // Get meals from the current week
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
     startOfWeek.setHours(0, 0, 0, 0);
-    
-    const weekMeals = userMeals.filter(meal => 
-      new Date(meal.timestamp) >= startOfWeek
-    );
-    
+    const weekMeals = userMeals.filter(meal => new Date(meal.timestamp) >= startOfWeek);
     if (weekMeals.length === 0) return;
-    
-    // Calculate stats
     const totalCalories = weekMeals.reduce((sum, meal) => sum + meal.calories, 0);
     const totalProtein = weekMeals.reduce((sum, meal) => sum + meal.protein, 0);
     const averageCalories = Math.round(totalCalories / weekMeals.length);
     const averageProtein = Math.round(totalProtein / weekMeals.length);
-    
-    // Calculate calories by day
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const caloriesByDay: Record<string, number> = {};
-    
+    const macrosByDay: Record<string, { protein: number; carbs: number; fat: number }> = {};
     dayNames.forEach(day => {
       caloriesByDay[day] = 0;
+      macrosByDay[day] = { protein: 0, carbs: 0, fat: 0 };
     });
-    
     weekMeals.forEach(meal => {
       const mealDay = dayNames[new Date(meal.timestamp).getDay()];
       caloriesByDay[mealDay] = (caloriesByDay[mealDay] || 0) + meal.calories;
+      macrosByDay[mealDay].protein += meal.protein;
+      macrosByDay[mealDay].carbs += meal.carbs;
+      macrosByDay[mealDay].fat += meal.fat;
     });
-    
-    // Determine healthiest day (lowest calories with at least one meal)
     let healthiestDay = dayNames[0];
     let lowestCalories = Number.MAX_VALUE;
-    
     Object.entries(caloriesByDay).forEach(([day, calories]) => {
       if (calories > 0 && calories < lowestCalories) {
         healthiestDay = day;
         lowestCalories = calories;
       }
     });
-    
-    // Create or update weekly stats
     const existingStats = await this.getWeeklyStats(userId);
-    
-    const stats: InsertWeeklyStats = {
+    const stats: WeeklyStats = {
+      id: existingStats ? existingStats.id : this.statsIdCounter,
       userId,
       averageCalories,
       mealsTracked: weekMeals.length,
       averageProtein,
       healthiestDay,
       weekStarting: startOfWeek,
-      caloriesByDay
+      caloriesByDay,
+      macrosByDay
     };
-    
     if (existingStats) {
-      this.weeklyStats.set(existingStats.id, {
-        ...stats,
-        id: existingStats.id
-      });
+      this.weeklyStats.set(existingStats.id, stats);
     } else {
       const id = this.statsIdCounter++;
-      this.weeklyStats.set(id, {
-        ...stats,
-        id
-      });
+      this.weeklyStats.set(id, { ...stats, id });
     }
   }
 
   // Weekly stats methods
   async getWeeklyStats(userId: number): Promise<WeeklyStats | undefined> {
-    return Array.from(this.weeklyStats.values()).find(
+    const stats = Array.from(this.weeklyStats.values()).find(
       stats => stats.userId === userId
     );
+    if (!stats) return undefined;
+    // Ensure macrosByDay is always present and correct type
+    return {
+      ...stats,
+      macrosByDay: stats.macrosByDay || {
+        Sunday: { protein: 0, carbs: 0, fat: 0 },
+        Monday: { protein: 0, carbs: 0, fat: 0 },
+        Tuesday: { protein: 0, carbs: 0, fat: 0 },
+        Wednesday: { protein: 0, carbs: 0, fat: 0 },
+        Thursday: { protein: 0, carbs: 0, fat: 0 },
+        Friday: { protein: 0, carbs: 0, fat: 0 },
+        Saturday: { protein: 0, carbs: 0, fat: 0 }
+      }
+    };
   }
 
   async createOrUpdateWeeklyStats(insertStats: InsertWeeklyStats): Promise<WeeklyStats> {
     const existingStats = await this.getWeeklyStats(insertStats.userId);
-    
-    if (existingStats) {
-      const updatedStats: WeeklyStats = { ...insertStats, id: existingStats.id };
-      this.weeklyStats.set(existingStats.id, updatedStats);
-      return updatedStats;
-    } else {
-      const id = this.statsIdCounter++;
-      const stats: WeeklyStats = { ...insertStats, id };
-      this.weeklyStats.set(id, stats);
-      return stats;
-    }
+    const id = existingStats ? existingStats.id : this.statsIdCounter++;
+    // Ensure macrosByDay is always present
+    const macrosByDay = (insertStats as any).macrosByDay || {
+      Sunday: { protein: 0, carbs: 0, fat: 0 },
+      Monday: { protein: 0, carbs: 0, fat: 0 },
+      Tuesday: { protein: 0, carbs: 0, fat: 0 },
+      Wednesday: { protein: 0, carbs: 0, fat: 0 },
+      Thursday: { protein: 0, carbs: 0, fat: 0 },
+      Friday: { protein: 0, carbs: 0, fat: 0 },
+      Saturday: { protein: 0, carbs: 0, fat: 0 }
+    };
+    const stats: WeeklyStats = { ...insertStats, id, macrosByDay };
+    this.weeklyStats.set(id, stats);
+    return stats;
   }
-<<<<<<< HEAD
 
   // Site content methods
   async getSiteContent(key: string): Promise<string | null> {
@@ -255,8 +266,6 @@ export class MemStorage implements IStorage {
   async updateSiteContent(key: string, value: string): Promise<void> {
     this.siteContent.set(key, value);
   }
-=======
->>>>>>> db9e70035f39db7b7eeaaabe359d725529551547
 }
 
 // Storage is now provided by storage-provider.ts

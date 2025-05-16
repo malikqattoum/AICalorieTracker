@@ -23,7 +23,7 @@ export function Header() {
 
   return (
     <>
-      <header className="glass-effect sticky top-0 z-50 shadow-sm">
+      <header className="bg-white/95 border-b border-neutral-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
@@ -72,7 +72,6 @@ export function Header() {
                     <span className="ml-2 text-neutral-700 font-medium">{user.firstName} {user.lastName}</span>
                   </div>
                   <Button 
-                    variant="ghost" 
                     size="sm"
                     className="hidden md:flex"
                     onClick={handleLogout}

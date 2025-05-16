@@ -44,5 +44,6 @@ CREATE TABLE `weekly_stats` (
 	`healthiest_day` varchar(255) NOT NULL,
 	`week_starting` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`calories_by_day` json NOT NULL,
+	`macros_by_day` json,
 	CONSTRAINT `weekly_stats_id` PRIMARY KEY(`id`)
 );

@@ -1,23 +1,27 @@
-
 import { useTranslation } from 'react-i18next';
-import { Button } from "@/components/ui/button";
 import { useCallback } from 'react';
 
 export function LanguageSwitcher() {
   const { i18n } = useTranslation();
 
-  const changeLanguage = useCallback((lng: string) => {
+  const changeLanguage = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const lng = e.target.value;
     i18n.changeLanguage(lng);
     document.dir = lng === 'ar' ? 'rtl' : 'ltr';
   }, [i18n]);
 
   return (
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={() => changeLanguage('en')}>EN</Button>
-      <Button variant="outline" size="sm" onClick={() => changeLanguage('ar')}>عربي</Button>
-      <Button variant="outline" size="sm" onClick={() => changeLanguage('es')}>ES</Button>
-      <Button variant="outline" size="sm" onClick={() => changeLanguage('fr')}>FR</Button>
-      <Button variant="outline" size="sm" onClick={() => changeLanguage('pt')}>PT</Button>
-    </div>
+    <select
+      className="border border-neutral-300 rounded-md px-2 py-1 text-sm bg-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
+      value={i18n.language}
+      onChange={changeLanguage}
+      aria-label="Select language"
+    >
+      <option value="en">English</option>
+      <option value="ar">عربي</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="pt">Português</option>
+    </select>
   );
 }

@@ -19,7 +19,7 @@ export function RecentResultsCard() {
           <p className="text-neutral-600 text-sm mt-1">Your latest meal analysis</p>
         </div>
         <Link href="/history">
-          <a className="text-sm font-medium text-primary-600 hover:text-primary-700">View All</a>
+          <a className="text-sm font-medium text-primary hover:text-primary-700">View All</a>
         </Link>
       </CardHeader>
       

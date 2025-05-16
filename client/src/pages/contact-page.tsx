@@ -117,7 +117,7 @@ export default function ContactPage() {
                         <MapPin className="h-5 w-5 text-primary-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-lg mb-1">Visit Us</h3>
+                        <h3 className="font-semibold text-lg mb-1 text-primary">Visit Us</h3>
                         <p className="text-neutral-600 mb-1">Our headquarters:</p>
                         <address className="not-italic text-neutral-700">
                           123 Nutrition Street<br />

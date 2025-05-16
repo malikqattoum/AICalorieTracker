@@ -18,6 +18,7 @@ export const users = mysqlTable("users", {
   subscriptionStatus: varchar("subscription_status", { length: 255 }),
   subscriptionEndDate: datetime("subscription_end_date"),
   isPremium: boolean("is_premium").default(false),
+  nutritionGoals: json("nutrition_goals"),
 });
 
 // Meal analysis schema
@@ -31,7 +32,7 @@ export const mealAnalyses = mysqlTable("meal_analyses", {
   fat: int("fat").notNull(),
   fiber: int("fiber").notNull(),
   imageData: text("image_data").notNull(),
-  timestamp: datetime("timestamp").notNull().default(sql`CURRENT_TIMESTAMP`),
+  timestamp: datetime("timestamp").notNull(),
 });
 
 // Weekly stats schema
@@ -42,8 +43,9 @@ export const weeklyStats = mysqlTable("weekly_stats", {
   mealsTracked: int("meals_tracked").notNull(),
   averageProtein: int("average_protein").notNull(),
   healthiestDay: varchar("healthiest_day", { length: 255 }).notNull(),
-  weekStarting: datetime("week_starting").notNull().default(sql`CURRENT_TIMESTAMP`),
+  weekStarting: datetime("week_starting").notNull(),
   caloriesByDay: json("calories_by_day").notNull(),
+  macrosByDay: json("macros_by_day"), // NEW: per-day macro data
 });
 
 // Site content table for editable homepage, try-it, pricing content
@@ -77,33 +79,6 @@ export type InsertWeeklyStats = z.infer<typeof insertWeeklyStatsSchema>;
 
 export type User = typeof users.$inferSelect;
 export type MealAnalysis = typeof mealAnalyses.$inferSelect;
-export type WeeklyStats = typeof weeklyStats.$inferSelect;
-export interface MealPlan {
-  id: number;
-  userId: number;
-  goal: string;
-  weeklyCalories: number;
-  weeklyProtein: number;
-  weeklyCarbs: number;
-  weeklyFat: number;
-  meals: DailyMeals[];
-  createdAt: Date;
-}
-
-export interface DailyMeals {
-  day: string;
-  breakfast: MealInfo;
-  lunch: MealInfo;
-  dinner: MealInfo;
-  snacks: MealInfo[];
-}
-
-export interface MealInfo {
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  ingredients: string[];
-  instructions: string[];
-}
+export type WeeklyStats = typeof weeklyStats.$inferSelect & {
+  macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
+};

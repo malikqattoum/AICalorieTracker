@@ -175,7 +175,7 @@ export default function TryItPage() {
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
                             <div className="flex flex-col items-center p-4 space-y-4">
-                              <Button onClick={analyzeImage} disabled={isLoading} className="bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-2 h-12 text-base">
+                              <Button onClick={analyzeImage} disabled={isLoading} className="border border-neutral-100 bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-2 h-12 text-base">
                                 {isLoading ? (
                                   <>
                                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />

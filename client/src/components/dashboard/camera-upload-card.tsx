@@ -1,18 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, Loader2 } from "lucide-react";
-import { useState, useRef, ChangeEvent } from "react";
+import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { useCamera } from "@/hooks/use-camera";
 import { CameraView } from "@/components/camera/camera-view";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MealAnalysis } from "@shared/schema";
+import { Switch } from "@/components/ui/switch";
 
 export function CameraUploadCard() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [multiFoodMode, setMultiFoodMode] = useState(false);
+  const [multiFoodResult, setMultiFoodResult] = useState<any | null>(null);
   const {
     isOpen: isCameraOpen,
     capturedImage,
@@ -59,11 +62,31 @@ export function CameraUploadCard() {
   };
 
   const analyzeImage = () => {
-    if (uploadedImage) {
-      analyzeImageMutation.mutate(uploadedImage);
-    } else if (capturedImage) {
-      analyzeImageMutation.mutate(capturedImage);
-      closeCamera();
+    if (!uploadedImage && !capturedImage) return;
+    setMultiFoodResult(null);
+    if (multiFoodMode) {
+      analyzeMultiFood(uploadedImage || capturedImage!);
+    } else {
+      analyzeImageMutation.mutate(uploadedImage || capturedImage!);
+    }
+  };
+
+  const analyzeMultiFood = async (imageData: string) => {
+    try {
+      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData });
+      const data = await res.json();
+      setMultiFoodResult(data);
+      toast({
+        title: "Multi-Food Analysis complete!",
+        description: `Detected ${data.foods.length} foods in the image.`,
+      });
+      setUploadedImage(null);
+    } catch (error: any) {
+      toast({
+        title: "Multi-Food Analysis failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -76,14 +99,26 @@ export function CameraUploadCard() {
 
   const isLoading = analyzeImageMutation.isPending;
 
+  useEffect(() => {
+    if (isCameraOpen && capturedImage) {
+      setUploadedImage(capturedImage);
+    }
+    // If camera is closed, clear uploadedImage if it was set by camera
+    if (!isCameraOpen && uploadedImage === capturedImage) {
+      setUploadedImage(null);
+    }
+  }, [isCameraOpen, capturedImage]);
+
   return (
     <>
       <Card className="card-gradient hover-effect rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-        <CardHeader className="px-6 py-5 border-b border-neutral-200">
+        <CardHeader className="px-6 py-5 border-b border-neutral-200 flex flex-col gap-2">
           <CardTitle className="text-xl font-semibold text-neutral-800">Scan Your Meal</CardTitle>
-          <p className="text-neutral-600 text-sm mt-1">Upload or take a photo of your meal to get instant calorie estimation</p>
+          <div className="flex items-center gap-2">
+            <Switch checked={multiFoodMode} onCheckedChange={setMultiFoodMode} id="multi-food-switch" />
+            <label htmlFor="multi-food-switch" className="text-sm text-neutral-500 cursor-pointer">Multi-Food Recognition</label>
+          </div>
         </CardHeader>
-
         <CardContent className="p-6">
           <div className="relative bg-neutral-100 rounded-lg overflow-hidden" style={{ minHeight: "300px" }}>
             {uploadedImage ? (
@@ -95,7 +130,7 @@ export function CameraUploadCard() {
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
                   <div className="flex flex-col items-center p-4 space-y-4">
-                    <Button onClick={analyzeImage} disabled={isLoading} className="bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-2 h-12 text-base">
+                    <Button onClick={analyzeImage} disabled={isLoading} className="border border-neutral-100 bg-primary-600 hover:bg-primary-700 text-white font-medium px-6 py-2 h-12 text-base">
                       {isLoading ? (
                         <>
                           <Loader2 className="h-5 w-5 mr-2 animate-spin" />
@@ -143,7 +178,7 @@ export function CameraUploadCard() {
 
               <Button 
                 onClick={openCamera}
-                className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
+                className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md shadow-sm bg-primary hover:bg-primary-700"
                 disabled={isLoading}
               >
                 <Camera className="h-5 w-5 mr-2" />
@@ -159,12 +194,36 @@ export function CameraUploadCard() {
               />
             </div>
           </div>
+
+          {multiFoodResult && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">Detected Foods</h3>
+              <ul className="divide-y divide-neutral-200">
+                {multiFoodResult.foods.map((food: any, idx: number) => (
+                  <li key={idx} className="py-3">
+                    <div className="font-medium text-neutral-900">{food.foodName}</div>
+                    <div className="text-sm text-neutral-600 flex gap-4">
+                      <span>Calories: {food.calories}</span>
+                      <span>Protein: {food.protein}g</span>
+                      <span>Carbs: {food.carbs}g</span>
+                      <span>Fat: {food.fat}g</span>
+                      <span>Fiber: {food.fiber}g</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {isCameraOpen && (
         <CameraView 
-          onCapture={analyzeImage} 
+          onCapture={(imageData: string) => {
+            setUploadedImage(imageData);
+            analyzeImageMutation.mutate(imageData);
+            closeCamera();
+          }}
           onClose={closeCamera} 
           isAnalyzing={isLoading}
         />

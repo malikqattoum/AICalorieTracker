@@ -2,7 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage-provider";
 import { setupAuth } from "./auth";
-import { analyzeFoodImage, getNutritionTips } from "./openai";
+import { analyzeFoodImage, getNutritionTips, getSmartMealSuggestions } from "./openai";
+import { analyzeMultiFoodImage } from "./openai";
 import { insertMealAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -175,6 +176,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // --- Smart Meal Suggestions Endpoint ---
+  app.get("/api/smart-meal-suggestions", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      // Optionally, you could pass recent meal analyses for more context
+      const suggestions = await getSmartMealSuggestions(userId);
+      res.json({ suggestions });
+    } catch (error) {
+      console.error("Error getting smart meal suggestions:", error);
+      res.status(500).json({ message: "Failed to get meal suggestions" });
+    }
+  });
+
   // Stripe payment integration
   if (stripe) {
     // Create a payment intent
@@ -343,6 +357,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to update content" });
+    }
+  });
+
+  // --- Personalized Nutrition Goals Endpoints ---
+  app.get("/api/user/goals", isAuthenticated, async (req, res) => {
+    try {
+      const user = await storage.getUserById(req.user!.id);
+      res.json(user.nutritionGoals || {});
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch nutrition goals" });
+    }
+  });
+  app.post("/api/user/goals", isAuthenticated, async (req, res) => {
+    try {
+      const { calories, protein, carbs, fat } = req.body;
+      await storage.updateUserNutritionGoals(req.user!.id, { calories, protein, carbs, fat });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update nutrition goals" });
     }
   });
 

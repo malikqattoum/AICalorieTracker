@@ -7,21 +7,29 @@ import type {
 import { users, mealAnalyses, weeklyStats, siteContent } from '@shared/schema';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
-import connectPg from 'connect-pg-simple';
 import session from 'express-session';
 import { pool } from './db';
+import MySQLStoreImport from 'express-mysql-session';
 
 // Create PostgreSQL session store
-const PostgresSessionStore = connectPg(session);
+// const PostgresSessionStore = connectPg(session);
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
-    });
+    // Use express-mysql-session for MySQL/MariaDB
+    const options = {
+      host: 'localhost',
+      port: 3306,
+      user: 'root',
+      password: '',
+      database: 'calorie_tracker',
+    };
+    // For ESM: MySQLStore is a function, not a class, so call it with session to get the constructor
+    const MySQLStore = (MySQLStoreImport as any).default ? (MySQLStoreImport as any).default : MySQLStoreImport;
+    const MySQLStoreConstructor = MySQLStore(session);
+    this.sessionStore = new MySQLStoreConstructor(options);
   }
 
   // User methods
@@ -36,7 +44,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values({
+    // Insert user and get the insert id
+    const result = await db.insert(users).values({
       ...insertUser,
       email: insertUser.email || null,
       stripeCustomerId: null,
@@ -44,9 +53,14 @@ export class DatabaseStorage implements IStorage {
       subscriptionType: null,
       subscriptionStatus: null,
       subscriptionEndDate: null,
-      isPremium: false
-    }).returning();
-    
+      isPremium: false,
+      nutritionGoals: null // Ensure JSON column is set to null if not provided
+    });
+    // @ts-ignore drizzle-orm/mysql2 returns insertId
+    const insertId = result.insertId || result[0]?.insertId;
+    if (!insertId) throw new Error('Failed to get inserted user id');
+    const [user] = await db.select().from(users).where(eq(users.id, insertId));
+    if (!user) throw new Error('Failed to fetch inserted user');
     return user;
   }
 
@@ -58,16 +72,25 @@ export class DatabaseStorage implements IStorage {
     subscriptionEndDate?: Date;
     isPremium?: boolean;
   }): Promise<User> {
-    const [user] = await db.update(users)
+    await db.update(users)
       .set(stripeInfo)
-      .where(eq(users.id, userId))
-      .returning();
-    
+      .where(eq(users.id, userId));
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    
     return user;
+  }
+
+  async getUserById(userId: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user;
+  }
+
+  async updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void> {
+    await db.update(users)
+      .set({ nutritionGoals: goals })
+      .where(eq(users.id, userId));
   }
 
   // Meal analysis methods
@@ -89,13 +112,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMealAnalysis(insertAnalysis: InsertMealAnalysis): Promise<MealAnalysis> {
-    const [analysis] = await db.insert(mealAnalyses)
-      .values(insertAnalysis)
-      .returning();
-    
+    // Ensure timestamp is provided for MySQL (MariaDB) compatibility
+    const now = new Date();
+    const result = await db.insert(mealAnalyses)
+      .values({ ...insertAnalysis, timestamp: now });
+    // @ts-ignore drizzle-orm/mysql2 returns insertId
+    const insertId = result.insertId || result[0]?.insertId;
+    if (!insertId) throw new Error('Failed to get inserted meal analysis id');
+    const [analysis] = await db.select().from(mealAnalyses).where(eq(mealAnalyses.id, insertId));
     // Update weekly stats after adding a meal analysis
     await this.updateWeeklyStats(insertAnalysis.userId);
-    
     return analysis;
   }
 
@@ -126,15 +152,20 @@ export class DatabaseStorage implements IStorage {
     // Calculate calories by day
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const caloriesByDay: Record<string, number> = {};
+    const macrosByDay: Record<string, { protein: number; carbs: number; fat: number }> = {};
     
     dayNames.forEach(day => {
       caloriesByDay[day] = 0;
+      macrosByDay[day] = { protein: 0, carbs: 0, fat: 0 };
     });
     
     weekMeals.forEach(meal => {
       if (meal.timestamp) {
         const mealDay = dayNames[new Date(meal.timestamp).getDay()];
         caloriesByDay[mealDay] = (caloriesByDay[mealDay] || 0) + meal.calories;
+        macrosByDay[mealDay].protein += meal.protein;
+        macrosByDay[mealDay].carbs += meal.carbs;
+        macrosByDay[mealDay].fat += meal.fat;
       }
     });
     
@@ -160,6 +191,7 @@ export class DatabaseStorage implements IStorage {
           averageProtein,
           healthiestDay,
           caloriesByDay,
+          macrosByDay
         })
         .where(eq(weeklyStats.id, existingStats.id));
     } else {
@@ -172,6 +204,7 @@ export class DatabaseStorage implements IStorage {
           healthiestDay,
           weekStarting: startOfWeek,
           caloriesByDay,
+          macrosByDay
         });
     }
   }
@@ -181,26 +214,40 @@ export class DatabaseStorage implements IStorage {
     const [stats] = await db.select()
       .from(weeklyStats)
       .where(eq(weeklyStats.userId, userId));
-    
-    return stats;
+    if (!stats) return undefined;
+    // Parse JSON fields to correct types
+    return {
+      ...stats,
+      caloriesByDay: typeof stats.caloriesByDay === 'string' ? JSON.parse(stats.caloriesByDay) : stats.caloriesByDay,
+      macrosByDay: stats.macrosByDay ? (typeof stats.macrosByDay === 'string' ? JSON.parse(stats.macrosByDay) : stats.macrosByDay) : undefined
+    };
   }
 
+  // Ensure createOrUpdateWeeklyStats always returns a value
   async createOrUpdateWeeklyStats(insertStats: InsertWeeklyStats): Promise<WeeklyStats> {
     const existingStats = await this.getWeeklyStats(insertStats.userId);
-    
     if (existingStats) {
-      const [updatedStats] = await db.update(weeklyStats)
+      await db.update(weeklyStats)
         .set(insertStats)
-        .where(eq(weeklyStats.id, existingStats.id))
-        .returning();
-      
-      return updatedStats;
+        .where(eq(weeklyStats.id, existingStats.id));
+      const [updatedStats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, existingStats.id));
+      return {
+        ...updatedStats,
+        caloriesByDay: typeof updatedStats.caloriesByDay === 'string' ? JSON.parse(updatedStats.caloriesByDay) : updatedStats.caloriesByDay,
+        macrosByDay: updatedStats.macrosByDay ? (typeof updatedStats.macrosByDay === 'string' ? JSON.parse(updatedStats.macrosByDay) : updatedStats.macrosByDay) : undefined
+      };
     } else {
-      const [stats] = await db.insert(weeklyStats)
-        .values(insertStats)
-        .returning();
-      
-      return stats;
+      const result = await db.insert(weeklyStats)
+        .values(insertStats);
+      // @ts-ignore drizzle-orm/mysql2 returns insertId
+      const insertId = result.insertId || result[0]?.insertId;
+      if (!insertId) throw new Error('Failed to get inserted weekly stats id');
+      const [stats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, insertId));
+      return {
+        ...stats,
+        caloriesByDay: typeof stats.caloriesByDay === 'string' ? JSON.parse(stats.caloriesByDay) : stats.caloriesByDay,
+        macrosByDay: stats.macrosByDay ? (typeof stats.macrosByDay === 'string' ? JSON.parse(stats.macrosByDay) : stats.macrosByDay) : undefined
+      };
     }
   }
 
