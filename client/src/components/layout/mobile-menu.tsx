@@ -2,14 +2,14 @@ import { Link } from "wouter";
 import { User } from "@shared/schema";
 
 interface MobileMenuProps {
-  user: User;
+  user: User | null;
   currentPath: string;
   onLogout: () => void;
   onClose: () => void;
 }
 
 export function MobileMenu({ user, currentPath, onLogout, onClose }: MobileMenuProps) {
-  const userInitials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+  const userInitials = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` : null;
 
   const handleLinkClick = () => {
     onClose();
@@ -22,14 +22,16 @@ export function MobileMenu({ user, currentPath, onLogout, onClose }: MobileMenuP
 
   return (
     <div className="md:hidden bg-white border-b border-neutral-200 px-4 py-2">
-      <div className="flex items-center py-2">
-        <div className="flex items-center">
-          <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary-100">
-            <span className="text-sm font-medium leading-none text-primary-700">{userInitials}</span>
-          </span>
-          <span className="ml-2 text-neutral-700 font-medium">{user.firstName} {user.lastName}</span>
+      {user && (
+        <div className="flex items-center py-2">
+          <div className="flex items-center">
+            <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-primary-100">
+              <span className="text-sm font-medium leading-none text-primary-700">{userInitials}</span>
+            </span>
+            <span className="ml-2 text-neutral-700 font-medium">{user.firstName} {user.lastName}</span>
+          </div>
         </div>
-      </div>
+      )}
       <nav className="py-2 space-y-1">
         <Link href="/dashboard" onClick={handleLinkClick}>
           <a className={`block px-3 py-2 rounded-md text-base font-medium ${

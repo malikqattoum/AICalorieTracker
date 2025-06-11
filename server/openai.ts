@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/index.js";
 
 const apiKey = process.env.OPENAI_API_KEY || "";
 
@@ -199,4 +200,32 @@ export async function analyzeMultiFoodImage(base64Image: string): Promise<MultiF
     console.error("Error analyzing multi-food image:", error);
     throw new Error("Failed to analyze multi-food image");
   }
+}
+
+export async function getNutritionCoachReply(messages: {role: string, content: string}[], userId: number): Promise<string> {
+  // Compose system prompt
+  const systemPrompt =
+    "You are a friendly, expert nutrition coach. Answer user questions about their meals, nutrition, and healthy eating. " +
+    "If the user asks about a specific meal (e.g. 'Was my breakfast healthy?'), give a short, actionable analysis. " +
+    "If the user asks for a meal suggestion, provide a specific, practical answer with calories and macros if possible. " +
+    "Be concise, supportive, and evidence-based.";
+
+  // Compose OpenAI chat messages
+  const chatMessages: ChatCompletionMessageParam[] = [
+    { role: "system", content: systemPrompt },
+    ...messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
+  ];
+
+  const response = await openai.chat.completions.create({
+    model: MODEL,
+    messages: chatMessages,
+    max_tokens: 300,
+    temperature: 0.7,
+  });
+  return response.choices[0].message.content?.trim() || "Sorry, I couldn't process your request.";
+}
+
+// Export the OpenAI client for admin routes
+export function getOpenAIClient() {
+  return openai;
 }

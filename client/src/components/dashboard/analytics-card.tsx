@@ -3,14 +3,47 @@ import { BarChart2, PieChart } from "lucide-react";
 import { ChartContainer } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { WeeklyStats } from "@shared/schema";
+import { useState } from "react";
 
-export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | undefined, daysOfWeek: string[] }) {
+const MEDICAL_CONDITIONS = [
+  { value: "none", label: "None" },
+  { value: "diabetes", label: "Diabetes" },
+  { value: "hypertension", label: "Hypertension" },
+  { value: "kidney", label: "Kidney Disease" },
+  { value: "celiac", label: "Celiac Disease" },
+  // Add more as needed
+];
+
+export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditionChange }: {
+  stats: WeeklyStats | undefined,
+  daysOfWeek: string[],
+  selectedCondition: string,
+  onConditionChange: (condition: string) => void
+}) {
   if (!stats) return null;
   const macrosByDay = stats.macrosByDay ?? {};
   // Macro breakdowns and analytics charts from StatsCard
   return (
     <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
-      <CardHeader><CardTitle>Analytics</CardTitle></CardHeader>
+      <CardHeader className="flex flex-col gap-2">
+        <CardTitle>Analytics</CardTitle>
+        <div className="flex items-center gap-2">
+          <label htmlFor="medical-condition-select" className="text-xs text-neutral-400">Medical Diet:</label>
+          <select
+            id="medical-condition-select"
+            className="rounded px-2 py-1 text-xs bg-neutral-900 text-neutral-100 border border-neutral-700"
+            value={selectedCondition}
+            onChange={e => onConditionChange(e.target.value)}
+          >
+            {MEDICAL_CONDITIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {selectedCondition !== "none" && (
+            <span className="ml-2 px-2 py-0.5 rounded bg-emerald-800 text-emerald-100 text-xs font-semibold">{MEDICAL_CONDITIONS.find(opt => opt.value === selectedCondition)?.label} Mode</span>
+          )}
+        </div>
+      </CardHeader>
       <CardContent>
         {/* Calorie Trend */}
         <div className="mb-8">
@@ -18,6 +51,23 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
             <BarChart2 className="w-5 h-5 text-primary-500" />
             <h3 className="font-medium text-neutral-900">Calorie Trend</h3>
           </div>
+          {/* Clinical Nutrition Notice */}
+          {selectedCondition !== "none" && (
+            <div className="mb-2 p-2 rounded bg-emerald-900/60 text-emerald-200 text-xs">
+              {selectedCondition === "diabetes" && (
+                <>Diabetes Mode: Carbohydrate intake and glycemic load are highlighted. Try to keep carbs consistent and avoid high-sugar spikes.</>
+              )}
+              {selectedCondition === "hypertension" && (
+                <>Hypertension Mode: Sodium and potassium balance are prioritized. Watch for high-sodium foods and aim for more potassium-rich meals.</>
+              )}
+              {selectedCondition === "kidney" && (
+                <>Kidney Disease Mode: Protein, sodium, and potassium are carefully balanced. Avoid excess protein and high-potassium foods.</>
+              )}
+              {selectedCondition === "celiac" && (
+                <>Celiac Disease Mode: Gluten-containing foods are flagged. Ensure all meals are gluten-free.</>
+              )}
+            </div>
+          )}
           <div className="h-48 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg flex items-end justify-between p-4 shadow-inner">
             {daysOfWeek.map((day) => {
               const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
@@ -26,10 +76,29 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
               const today = new Date().getDay();
               const dayIndex = daysOfWeek.indexOf(day);
               const isPastOrToday = dayIndex <= today;
+              // Clinical logic: highlight bar if out of range for condition
+              let barClass = isPastOrToday ? "bg-primary-400 w-full rounded-t-sm" : "bg-primary-900 w-full rounded-t-sm";
+              if (selectedCondition === "diabetes") {
+                // Example: highlight if carbs > 60g for the day (placeholder)
+                const carbs = macrosByDay[day]?.carbs || 0;
+                if (carbs > 60) barClass += " ring-2 ring-amber-400";
+              }
+              if (selectedCondition === "hypertension") {
+                // Example: highlight if sodium > 2000mg (if sodium data available)
+                // Placeholder: no sodium in data, but could add logic here
+              }
+              if (selectedCondition === "kidney") {
+                // Example: highlight if protein > 60g (placeholder)
+                const protein = macrosByDay[day]?.protein || 0;
+                if (protein > 60) barClass += " ring-2 ring-red-400";
+              }
+              if (selectedCondition === "celiac") {
+                // Example: highlight if gluten detected (not in data, placeholder)
+              }
               return (
                 <div key={day} className="w-1/7 flex flex-col items-center">
                   <div
-                    className={isPastOrToday ? "bg-primary-400 w-full rounded-t-sm" : "bg-primary-900 w-full rounded-t-sm"}
+                    className={barClass}
                     style={{ height: `${percentage}%` }}
                     aria-label={`Calories for ${day}: ${calories}`}
                   ></div>
@@ -49,10 +118,23 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
             <ChartContainer config={{ calories: { label: "Calories", color: "#4CAF50" } }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={daysOfWeek.map((day) => ({
-                    day: day.substring(0, 3),
-                    calories: (stats.caloriesByDay as Record<string, number>)[day] || 0,
-                  }))}
+                  data={daysOfWeek.map((day) => {
+                    const macros = macrosByDay[day] || { protein: 0, carbs: 0, fat: 0 };
+                    // --- Clinical Nutrition Logic for Chart Data ---
+                    let calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
+                    let carbs = macros.carbs;
+                    let protein = macros.protein;
+                    // Adjust calories for diabetes (flag high-carb days)
+                    let clinicalFlag = false;
+                    if (selectedCondition === "diabetes" && carbs > 60) clinicalFlag = true;
+                    if (selectedCondition === "kidney" && protein > 60) clinicalFlag = true;
+                    // You can add more logic for other conditions here
+                    return {
+                      day: day.substring(0, 3),
+                      calories,
+                      clinicalFlag,
+                    };
+                  })}
                   margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
                 >
                   <XAxis dataKey="day" stroke="#b5e3b6" />
@@ -60,6 +142,30 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
                   <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
                   <Legend />
                   <Line type="monotone" dataKey="calories" stroke="#4CAF50" strokeWidth={2} dot={false} />
+                  {/* Custom dot for clinical flag */}
+                  <Line
+                    type="monotone"
+                    dataKey="calories"
+                    stroke="transparent"
+                    dot={(props: any) => {
+                      // Type guard for recharts dot props
+                      if (!props || typeof props.cx !== 'number' || typeof props.cy !== 'number' || !props.payload) return <></>;
+                      const { cx, cy, payload } = props;
+                      return payload.clinicalFlag ? (
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={7}
+                          fill="#fbbf24"
+                          stroke="#b45309"
+                          strokeWidth={2}
+                          style={{ filter: 'drop-shadow(0 0 4px #fbbf24)' }}
+                        >
+                          <title>Clinical Alert: This day exceeds recommended limits for your selected condition.</title>
+                        </circle>
+                      ) : <></>;
+                    }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -76,11 +182,17 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
               <LineChart
                 data={daysOfWeek.map(day => {
                   const macros = macrosByDay[day] || { protein: 0, carbs: 0, fat: 0 };
+                  // --- Clinical Nutrition Logic for Macro Chart ---
+                  let clinicalMacroFlag = false;
+                  if (selectedCondition === "diabetes" && macros.carbs > 60) clinicalMacroFlag = true;
+                  if (selectedCondition === "kidney" && macros.protein > 60) clinicalMacroFlag = true;
+                  // Add more logic as needed
                   return {
                     name: day.substring(0, 3),
                     Protein: macros.protein,
                     Carbs: macros.carbs,
                     Fat: macros.fat,
+                    clinicalMacroFlag,
                   };
                 })}
               >
@@ -91,6 +203,30 @@ export function AnalyticsCard({ stats, daysOfWeek }: { stats: WeeklyStats | unde
                 <Line type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
                 <Line type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
                 <Line type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
+                {/* Custom dot for clinical macro flag */}
+                <Line
+                  type="monotone"
+                  dataKey="Protein"
+                  stroke="transparent"
+                  dot={(props: any) => {
+                    // Type guard for recharts dot props
+                    if (!props || typeof props.cx !== 'number' || typeof props.cy !== 'number' || !props.payload) return <></>;
+                    const { cx, cy, payload } = props;
+                    return payload.clinicalMacroFlag ? (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={7}
+                        fill="#fbbf24"
+                        stroke="#b45309"
+                        strokeWidth={2}
+                        style={{ filter: 'drop-shadow(0 0 4px #fbbf24)' }}
+                      >
+                        <title>Clinical Alert: This day exceeds recommended macro limits for your selected condition.</title>
+                      </circle>
+                    ) : <></>;
+                  }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>

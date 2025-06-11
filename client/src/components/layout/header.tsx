@@ -104,9 +104,9 @@ export function Header() {
 
       {isMobileMenuOpen && (
         <MobileMenu 
-          user={user} 
-          currentPath={location} 
-          onLogout={handleLogout} 
+          user={user}
+          currentPath={location}
+          onLogout={handleLogout}
           onClose={() => setIsMobileMenuOpen(false)} 
         />
       )}

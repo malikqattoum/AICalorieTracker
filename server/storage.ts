@@ -33,7 +33,7 @@ export interface IStorage {
   createMealAnalysis(analysis: InsertMealAnalysis): Promise<MealAnalysis>;
   
   // Weekly stats methods
-  getWeeklyStats(userId: number): Promise<WeeklyStats | undefined>;
+  getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined>;
   createOrUpdateWeeklyStats(stats: InsertWeeklyStats): Promise<WeeklyStats>;
   
   // Site content methods
@@ -42,6 +42,9 @@ export interface IStorage {
   
   // Session store
   sessionStore: session.Store;
+  
+  // Database access (for admin routes)
+  db?: any;
 }
 
 export class MemStorage implements IStorage {
@@ -53,6 +56,7 @@ export class MemStorage implements IStorage {
   private statsIdCounter: number;
   private siteContent: Map<string, string>;
   sessionStore: session.Store;
+  db?: any;
 
   constructor() {
     this.users = new Map();
@@ -65,6 +69,7 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24h
     });
+    this.db = undefined; // Memory storage doesn't have direct DB access
   }
 
   // User methods
@@ -91,7 +96,8 @@ export class MemStorage implements IStorage {
       subscriptionStatus: null,
       subscriptionEndDate: null,
       isPremium: false,
-      nutritionGoals: null // Ensure nutritionGoals is always present
+      nutritionGoals: null, // Ensure nutritionGoals is always present
+      role: 'user' // Ensure role is always present for type safety
     };
     this.users.set(id, user);
     return user;
@@ -209,7 +215,8 @@ export class MemStorage implements IStorage {
       healthiestDay,
       weekStarting: startOfWeek,
       caloriesByDay,
-      macrosByDay
+      macrosByDay,
+      caloriesBurned: 0 // Add missing field
     };
     if (existingStats) {
       this.weeklyStats.set(existingStats.id, stats);
@@ -220,11 +227,23 @@ export class MemStorage implements IStorage {
   }
 
   // Weekly stats methods
-  async getWeeklyStats(userId: number): Promise<WeeklyStats | undefined> {
+  async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
+    // TODO: Filter or adjust stats based on medicalCondition
+    // For now, just return the stats as before
     const stats = Array.from(this.weeklyStats.values()).find(
       stats => stats.userId === userId
     );
     if (!stats) return undefined;
+    // If medicalCondition is set, adjust stats here (placeholder)
+    if (medicalCondition && medicalCondition !== 'none') {
+      // Example: add a note for demo (do not add unknown properties to WeeklyStats)
+      // You could adjust macros/calories here for real logic
+      return {
+        ...stats,
+        macrosByDay: stats.macrosByDay,
+        // NOTE: Do not add unknown properties to WeeklyStats type
+      };
+    }
     // Ensure macrosByDay is always present and correct type
     return {
       ...stats,
@@ -253,7 +272,12 @@ export class MemStorage implements IStorage {
       Friday: { protein: 0, carbs: 0, fat: 0 },
       Saturday: { protein: 0, carbs: 0, fat: 0 }
     };
-    const stats: WeeklyStats = { ...insertStats, id, macrosByDay };
+    const stats: WeeklyStats = { 
+      ...insertStats, 
+      id, 
+      macrosByDay,
+      caloriesBurned: (insertStats as any).caloriesBurned || 0 // Add missing field
+    };
     this.weeklyStats.set(id, stats);
     return stats;
   }

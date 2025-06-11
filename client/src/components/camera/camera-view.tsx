@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 interface CameraViewProps {
-  onCapture: () => void;
+  onCapture: (imageData: string) => void;
   onClose: () => void;
   isAnalyzing: boolean;
 }
@@ -38,8 +38,9 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
   }, [isAnalyzing, capturedImage, onClose]);
 
   const handleCapture = () => {
-    captureImage();
-    onCapture();
+    if (capturedImage) {
+      onCapture(capturedImage);
+    }
   };
 
   return (

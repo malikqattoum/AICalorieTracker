@@ -10,6 +10,7 @@ import { MealPlanCard } from "@/components/dashboard/meal-plan-card";
 import { NutritionTipsCard } from "@/components/dashboard/nutrition-tips-card";
 import { SmartMealSuggestionsCard } from "@/components/dashboard/smart-meal-suggestions-card";
 import { MealTrendsCard } from "@/components/dashboard/meal-trends-card";
+import { NutritionCoachChatbot } from "@/components/dashboard/nutrition-coach-chatbot";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -17,18 +18,8 @@ import { WeeklyStats } from "@shared/schema";
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { data: stats } = useQuery<WeeklyStats>({
-    queryKey: ["/api/weekly-stats"],
-  });
-  const daysOfWeek = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
+  // Medical Diet AI Assistant state
+  const [medicalCondition, setMedicalCondition] = useState<string>("none");
   // AI Meal Plan state (moved from StatsCard)
   const [mealPlan, setMealPlan] = useState<any | null>(null);
   const [isMealPlanLoading, setIsMealPlanLoading] = useState(false);
@@ -41,7 +32,7 @@ export default function HomePage() {
       const res = await fetch("/api/meal-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal }),
+        body: JSON.stringify({ goal, medicalCondition }),
       });
       if (!res.ok) throw new Error("Failed to generate meal plan");
       const data = await res.json();
@@ -52,6 +43,26 @@ export default function HomePage() {
       setIsMealPlanLoading(false);
     }
   };
+  // Updated stats query to include medicalCondition in the queryKey
+  const { data: stats } = useQuery<WeeklyStats>({
+    queryKey: ["/api/weekly-stats", medicalCondition],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/weekly-stats?medicalCondition=${medicalCondition}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+  });
+  const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
   useEffect(() => {
     fetchMealPlan();
     // eslint-disable-next-line
@@ -65,9 +76,12 @@ export default function HomePage() {
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-neutral-900 mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+              Dashboard
+            </h1>
             <p className="text-neutral-500">
-              Welcome back, {user.firstName}. Track your nutrition with AI-powered analysis.
+              Welcome back, {user.firstName}. Track your nutrition with
+              AI-powered analysis.
             </p>
           </div>
 
@@ -77,7 +91,12 @@ export default function HomePage() {
               <CameraUploadCard />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <OverviewCard stats={stats} daysOfWeek={daysOfWeek} />
-                <AnalyticsCard stats={stats} daysOfWeek={daysOfWeek} />
+                <AnalyticsCard
+                  stats={stats}
+                  daysOfWeek={daysOfWeek}
+                  selectedCondition={medicalCondition}
+                  onConditionChange={setMedicalCondition}
+                />
                 <AchievementsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <AiInsightsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <MealPlanCard
@@ -87,7 +106,9 @@ export default function HomePage() {
                   fetchMealPlan={fetchMealPlan}
                   goal={goal}
                   daysOfWeek={daysOfWeek}
+                  medicalCondition={medicalCondition}
                 />
+                <NutritionCoachChatbot userId={user?.id} />
               </div>
               <RecentResultsCard />
             </div>

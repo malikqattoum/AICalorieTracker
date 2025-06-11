@@ -69,7 +69,7 @@ export default function MealPlanPage() {
 
       {mealPlan && (
         <div className="grid gap-6">
-          {mealPlan.meals.map((daily, i) => (
+          {mealPlan.meals.map((daily: any, i: number) => (
             <Card key={i} className="p-6">
               <h2 className="text-xl font-semibold mb-4">{daily.day}</h2>
               
@@ -100,7 +100,7 @@ export default function MealPlanPage() {
 
                 <div>
                   <h3 className="font-medium mb-2">Snacks</h3>
-                  {daily.snacks.map((snack, j) => (
+                  {daily.snacks.map((snack: any, j: number) => (
                     <div key={j} className="mb-2">
                       <p>{snack.name}</p>
                       <p className="text-sm text-neutral-600">

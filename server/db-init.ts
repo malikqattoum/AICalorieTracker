@@ -14,7 +14,7 @@ async function main() {
       AND table_type = 'BASE TABLE'
     `);
     
-    const tableNames = tables.rows.map((row: any) => row.table_name);
+    const tableNames = (tables as any).map((row: any) => row.table_name || row.TABLE_NAME);
     console.log('Existing tables:', tableNames);
 
     // Create users table if it doesn't exist

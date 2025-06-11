@@ -1,0 +1,163 @@
+import type { Config } from "tailwindcss";
+
+const config = {
+  darkMode: ["class"],
+  content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+        xl: "1rem",
+        "2xl": "1.5rem",
+      },
+      colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          50: "hsl(246, 100%, 97%)",
+          100: "hsl(246, 100%, 94%)",
+          200: "hsl(246, 95%, 85%)",
+          300: "hsl(246, 90%, 76%)",
+          400: "hsl(246, 85%, 68%)",
+          500: "hsl(246, 80%, 60%)",
+          600: "hsl(246, 75%, 52%)",
+          700: "hsl(246, 70%, 44%)",
+          800: "hsl(246, 65%, 36%)",
+          900: "hsl(246, 60%, 28%)",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+          50: "hsl(262, 100%, 97%)",
+          100: "hsl(262, 100%, 94%)",
+          200: "hsl(262, 95%, 85%)",
+          300: "hsl(262, 90%, 76%)",
+          400: "hsl(262, 85%, 67%)",
+          500: "hsl(262, 83%, 58%)",
+          600: "hsl(262, 75%, 50%)",
+          700: "hsl(262, 70%, 42%)",
+          800: "hsl(262, 65%, 34%)",
+          900: "hsl(262, 60%, 26%)",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+          50: "hsl(199, 100%, 97%)",
+          100: "hsl(199, 100%, 94%)",
+          200: "hsl(199, 95%, 85%)",
+          300: "hsl(199, 90%, 76%)",
+          400: "hsl(199, 85%, 67%)",
+          500: "hsl(199, 89%, 48%)",
+          600: "hsl(199, 85%, 40%)",
+          700: "hsl(199, 80%, 32%)",
+          800: "hsl(199, 75%, 24%)",
+          900: "hsl(199, 70%, 16%)",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background))",
+          foreground: "hsl(var(--sidebar-foreground))",
+          primary: "hsl(var(--sidebar-primary))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          accent: "hsl(var(--sidebar-accent))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          ring: "hsl(var(--sidebar-ring))",
+        },
+        slate: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+          950: "#020617",
+        },
+      },
+      boxShadow: {
+        glow: "0 0 15px rgba(79, 70, 229, 0.3)",
+        "glow-lg": "0 0 25px rgba(79, 70, 229, 0.4)",
+        card:
+          "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "card-hover":
+          "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        pulse: {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.7 },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "gradient-x": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
+        float: "float 6s ease-in-out infinite",
+        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        shimmer: "shimmer 2s linear infinite",
+        "gradient-x": "gradient-x 15s ease infinite",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+        "gradient-shimmer":
+          "linear-gradient(to right, transparent 0%, rgba(79, 70, 229, 0.1) 20%, rgba(79, 70, 229, 0.2) 60%, transparent 100%)",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+};
+
+export default config;

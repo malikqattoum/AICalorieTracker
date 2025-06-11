@@ -19,7 +19,7 @@ export function SmartMealSuggestionsCard() {
     "Vegetarian stir-fry with tofu, bell peppers, and brown rice"
   ];
 
-  const suggestions = (data?.suggestions?.length > 0) ? data.suggestions : fallbackSuggestions;
+  const suggestions = (data?.suggestions && data.suggestions.length > 0) ? data.suggestions : fallbackSuggestions;
 
   return (
     <Card className="card-gradient hover-effect rounded-xl overflow-hidden">

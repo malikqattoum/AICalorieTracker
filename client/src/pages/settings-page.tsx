@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 export default function SettingsPage() {
   const { user } = useAuth();
   const [goals, setGoals] = useState({
-    calories: user?.nutritionGoals?.calories || 2000,
-    protein: user?.nutritionGoals?.protein || 100,
-    carbs: user?.nutritionGoals?.carbs || 250,
-    fat: user?.nutritionGoals?.fat || 70,
+    calories: (user?.nutritionGoals as any)?.calories || 2000,
+    protein: (user?.nutritionGoals as any)?.protein || 100,
+    carbs: (user?.nutritionGoals as any)?.carbs || 250,
+    fat: (user?.nutritionGoals as any)?.fat || 70,
   });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);

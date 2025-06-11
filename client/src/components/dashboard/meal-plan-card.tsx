@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetchMealPlan, goal, daysOfWeek }: {
+export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetchMealPlan, goal, daysOfWeek, medicalCondition }: {
   mealPlan: any;
   isMealPlanLoading: boolean;
   mealPlanError: string | null;
   fetchMealPlan: () => void;
   goal: string;
   daysOfWeek: string[];
+  medicalCondition?: string;
 }) {
   return (
     <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
@@ -15,6 +16,9 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
         <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div className="text-emerald-500 text-base font-semibold">
             Personalized for: <span className="font-bold">{goal.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+            {medicalCondition && medicalCondition !== "none" && (
+              <span className="ml-2 px-2 py-0.5 rounded bg-emerald-800 text-emerald-100 text-xs font-semibold">{medicalCondition.charAt(0).toUpperCase() + medicalCondition.slice(1)} Mode</span>
+            )}
           </div>
           <button
             className="ml-auto bg-emerald-700 hover:bg-emerald-600 text-emerald-50 font-semibold px-4 py-1.5 rounded shadow transition-colors duration-150 text-sm"

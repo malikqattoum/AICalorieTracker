@@ -218,13 +218,13 @@ export function CameraUploadCard() {
       </Card>
 
       {isCameraOpen && (
-        <CameraView 
-          onCapture={(imageData: string) => {
-            setUploadedImage(imageData);
-            analyzeImageMutation.mutate(imageData);
+        <CameraView
+          onCapture={() => {
+            // CameraView handles capture and sets capturedImage in useCamera
+            // The effect below will set uploadedImage when capturedImage is set
             closeCamera();
           }}
-          onClose={closeCamera} 
+          onClose={closeCamera}
           isAnalyzing={isLoading}
         />
       )}

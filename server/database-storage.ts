@@ -16,8 +16,11 @@ import MySQLStoreImport from 'express-mysql-session';
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
+  db: any;
 
   constructor() {
+    this.db = db; // Expose db instance for admin routes
+    
     // Use express-mysql-session for MySQL/MariaDB
     const options = {
       host: 'localhost',

@@ -7,12 +7,13 @@ import { analyzeMultiFoodImage } from "./openai";
 import { insertMealAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
+import { getNutritionCoachReply } from "./openai";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-03-31.basil" // The latest API version as of the current date
+    apiVersion: "2025-05-28.basil" // Use the version expected by the installed Stripe library
   });
 }
 
@@ -134,7 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/weekly-stats", isAuthenticated, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const stats = await storage.getWeeklyStats(userId);
+      const medicalCondition = req.query.medicalCondition as string | undefined;
+      const stats = await storage.getWeeklyStats(userId, medicalCondition);
 
       if (!stats) {
         return res.status(404).json({ message: "No weekly stats found" });
@@ -150,13 +152,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate meal plan
   app.post("/api/meal-plan", isAuthenticated, async (req, res) => {
     try {
-      const { goal } = req.body;
+      const { goal, medicalCondition } = req.body;
 
       if (!goal) {
         return res.status(400).json({ message: "Goal is required" });
       }
 
-      const mealPlan = await generateMealPlan(goal);
+      const mealPlan = await generateMealPlan(goal, medicalCondition);
       res.json(mealPlan);
     } catch (error) {
       console.error("Error generating meal plan:", error);
@@ -379,14 +381,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Nutrition Coach Chatbot endpoint
+  app.post("/api/nutrition-coach-chat", isAuthenticated, async (req, res) => {
+    try {
+      const { messages } = req.body;
+      // Use OpenAI-powered nutrition coach
+      const reply = await getNutritionCoachReply(messages, req.user!.id);
+      res.json({ reply });
+    } catch (error) {
+      console.error("Error in nutrition coach chat:", error);
+      res.status(500).json({ reply: "Sorry, I couldn't process your request." });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
 
-async function generateMealPlan(goal: string): Promise<any> {
-  //Implementation for generating meal plan based on goal.  This is a placeholder.
+async function generateMealPlan(goal: string, medicalCondition?: string): Promise<any> {
+  // Implementation for generating meal plan based on goal and medicalCondition.
   // Replace with actual AI call or database lookup.
   return {
-    "plan": "Placeholder meal plan for " + goal
+    plan: `Placeholder meal plan for ${goal} (${medicalCondition || 'no condition'})`
   };
 }
