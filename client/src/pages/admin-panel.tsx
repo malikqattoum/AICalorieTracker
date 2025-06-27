@@ -10,12 +10,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import AIConfigPanel from "@/components/admin/ai-config-panel";
+import EnhancedSystemMonitor from "@/components/admin/enhanced-system-monitor";
+import AdvancedUserManagement from "@/components/admin/advanced-user-management";
+import AnalyticsDashboard from "@/components/admin/analytics-dashboard";
+import PaymentManagement from "@/components/admin/payment-management";
+import SettingsPanel from "@/components/admin/settings-panel";
+import BackupSystem from "@/components/admin/backup-system";
+import SecurityCenter from "@/components/admin/security-center";
+import NotificationCenter from "@/components/admin/notification-center";
+import AdvancedDashboard from "@/components/admin/advanced-dashboard";
+import ActivityLogger from "@/components/admin/activity-logger";
+import ReportGenerator from "@/components/admin/report-generator";
 
 export default function AdminPanel() {
   const { user } = useAuth();
   const [_, navigate] = useLocation();
   const { toast } = useToast();
-  const [selectedTab, setSelectedTab] = useState("users");
+  const [selectedTab, setSelectedTab] = useState("dashboard");
   const [userSearch, setUserSearch] = useState("");
   const [mealSearch, setMealSearch] = useState("");
   const [statsSearch, setStatsSearch] = useState("");
@@ -23,15 +35,13 @@ export default function AdminPanel() {
   const [editUserData, setEditUserData] = useState<Partial<User>>({});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
-  const [appConfigs, setAppConfigs] = useState<AppConfig[]>([]);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<Partial<AppConfig> & { id?: number }>({});
   const [isEditingConfig, setIsEditingConfig] = useState(false);
 
-  // Protect route: only allow admin (add your own admin check logic)
+  // Protect route: only allow admin
   useEffect(() => {
-    // @ts-ignore
-    if (!user || user.role !== 'admin') {
+    if (!user || (user as any).role !== 'admin') {
       toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
       navigate("/auth");
     }
@@ -49,7 +59,6 @@ export default function AdminPanel() {
   });
   const { data: fetchedAppConfigs = [], refetch: refetchAppConfigs, isLoading: isLoadingAppConfigs } = useQuery<AppConfig[]>({ // Added isLoadingAppConfigs
     queryKey: ["/api/admin/config"],
-    initialData: appConfigs,
   });
 
   // Mutations
@@ -196,118 +205,85 @@ export default function AdminPanel() {
           </CardHeader>
           <CardContent>
             <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-              <TabsList className="mb-6">
+              <TabsList className="mb-6 flex flex-wrap justify-start w-full overflow-auto">
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
                 <TabsTrigger value="users">Users</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="payments">Payments</TabsTrigger>
+                <TabsTrigger value="system">System</TabsTrigger>
                 <TabsTrigger value="meals">Meals</TabsTrigger>
-                <TabsTrigger value="stats">Weekly Stats</TabsTrigger>
+                <TabsTrigger value="stats">Stats</TabsTrigger>
                 <TabsTrigger value="content">Content</TabsTrigger>
-                <TabsTrigger value="config">App Config</TabsTrigger>
+                <TabsTrigger value="config">Config</TabsTrigger>
+                <TabsTrigger value="ai-config">AI Config</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+                <TabsTrigger value="backup">Backup</TabsTrigger>
+                <TabsTrigger value="security">Security</TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
               </TabsList>
-              <TabsContent value="users">
-                <div className="flex items-center mb-4 gap-4">
-                  <Input placeholder="Search users..." value={userSearch} onChange={e => setUserSearch(e.target.value)} className="w-64" />
-                </div>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Username</TableCell>
-                      <TableCell>Email</TableCell>
-                      <TableCell>Role</TableCell>
-                      <TableCell>Premium</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.role}</TableCell>
-                        <TableCell>{user.isPremium ? "Yes" : "No"}</TableCell>
-                        <TableCell className="flex gap-2">
-                          <Button size="sm" variant="accent" onClick={() => { setEditUser(user); setEditUserData(user); }}>Edit</Button>
-                          <Button size="sm" variant="destructive" onClick={() => { setDeleteUserId(user.id); setShowDeleteDialog(true); }}>Delete</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {/* Edit User Dialog */}
-                <Dialog open={!!editUser} onOpenChange={v => { if (!v) setEditUser(null); }}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Edit User</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <label className="block text-sm font-medium text-primary-100 mb-1">Username</label>
-                      <Input value={editUserData.username || ""} onChange={e => setEditUserData(d => ({ ...d, username: e.target.value }))} />
-                      <label className="block text-sm font-medium text-primary-100 mb-1">Email</label>
-                      <Input value={editUserData.email || ""} onChange={e => setEditUserData(d => ({ ...d, email: e.target.value }))} />
-                      <label className="block text-sm font-medium text-primary-100 mb-1">Role (user, admin)</label>
-                      <Input value={editUserData.role || ""} onChange={e => setEditUserData(d => ({ ...d, role: e.target.value }))} />
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={!!editUserData.isPremium} onChange={e => setEditUserData(d => ({ ...d, isPremium: e.target.checked }))} />
-                        Premium
-                      </label>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="secondary" onClick={() => setEditUser(null)}>Cancel</Button>
-                      <Button variant="accent" onClick={() => updateUserMutation.mutate(editUserData as Partial<User> & { id: number })} disabled={updateUserMutation.isPending}>Save</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                {/* Delete User Dialog */}
-                <Dialog open={showDeleteDialog} onOpenChange={v => { if (!v) setShowDeleteDialog(false); }}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Delete User</DialogTitle>
-                    </DialogHeader>
-                    <p>Are you sure you want to delete this user?</p>
-                    <DialogFooter>
-                      <Button variant="secondary" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-                      <Button variant="destructive" onClick={() => { if (deleteUserId) deleteUserMutation.mutate(deleteUserId); }} disabled={deleteUserMutation.isPending}>Delete</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+              <TabsContent value="dashboard">
+                <AdvancedDashboard />
               </TabsContent>
+
+              <TabsContent value="users">
+                <AdvancedUserManagement />
+              </TabsContent>
+
+              <TabsContent value="analytics">
+                <AnalyticsDashboard />
+              </TabsContent>
+
+              <TabsContent value="payments">
+                <PaymentManagement />
+              </TabsContent>
+
+              <TabsContent value="system">
+                <EnhancedSystemMonitor />
+              </TabsContent>
+
               <TabsContent value="meals">
                 <div className="flex items-center mb-4 gap-4">
                   <Input placeholder="Search meals or user ID..." value={mealSearch} onChange={e => setMealSearch(e.target.value)} className="w-64" />
                 </div>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>User ID</TableCell>
-                      <TableCell>Food</TableCell>
-                      <TableCell>Calories</TableCell>
-                      <TableCell>Protein</TableCell>
-                      <TableCell>Carbs</TableCell>
-                      <TableCell>Fat</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredMeals.map((meal) => (
-                      <TableRow key={meal.id}>
-                        <TableCell>{meal.id}</TableCell>
-                        <TableCell>{meal.userId}</TableCell>
-                        <TableCell>{meal.foodName}</TableCell>
-                        <TableCell>{meal.calories}</TableCell>
-                        <TableCell>{meal.protein}</TableCell>
-                        <TableCell>{meal.carbs}</TableCell>
-                        <TableCell>{meal.fat}</TableCell>
+                {isLoadingMeals && <div className="text-primary-100">Loading meals...</div>}
+                {!isLoadingMeals && (
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>ID</TableCell>
+                        <TableCell>User ID</TableCell>
+                        <TableCell>Food</TableCell>
+                        <TableCell>Calories</TableCell>
+                        <TableCell>Protein</TableCell>
+                        <TableCell>Carbs</TableCell>
+                        <TableCell>Fat</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHead>
+                    <TableBody>
+                      {filteredMeals.map((meal) => (
+                        <TableRow key={meal.id}>
+                          <TableCell>{meal.id}</TableCell>
+                          <TableCell>{meal.userId}</TableCell>
+                          <TableCell>{meal.foodName}</TableCell>
+                          <TableCell>{meal.calories}</TableCell>
+                          <TableCell>{meal.protein}</TableCell>
+                          <TableCell>{meal.carbs}</TableCell>
+                          <TableCell>{meal.fat}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </TabsContent>
               <TabsContent value="stats">
                 <div className="flex items-center mb-4 gap-4">
                   <Input placeholder="Search by user ID..." value={statsSearch} onChange={e => setStatsSearch(e.target.value)} className="w-64" />
                 </div>
-                <Table>
+                {isLoadingStats && <div className="text-primary-100">Loading stats...</div>}
+                {!isLoadingStats && (
+                  <Table>
                   <TableHead>
                     <TableRow>
                       <TableCell>ID</TableCell>
@@ -331,6 +307,7 @@ export default function AdminPanel() {
                     ))}
                   </TableBody>
                 </Table>
+                )}
               </TabsContent>
               <TabsContent value="content">
                 <h2 className="text-xl font-semibold mb-4 text-primary-100">Edit Site Content</h2>
@@ -342,8 +319,8 @@ export default function AdminPanel() {
                   <Button variant="accent" onClick={openNewConfigDialog}>Add New Config</Button>
                 </div>
                 {isLoadingAppConfigs && <p>Loading configurations...</p>}
-                {!isLoadingAppConfigs && appConfigs.length === 0 && <p>No configurations found.</p>}
-                {!isLoadingAppConfigs && appConfigs.length > 0 && (
+                {!isLoadingAppConfigs && fetchedAppConfigs.length === 0 && <p>No configurations found.</p>}
+                {!isLoadingAppConfigs && fetchedAppConfigs.length > 0 && (
                   <Table>
                     <TableHead>
                       <TableRow>
@@ -356,7 +333,7 @@ export default function AdminPanel() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {appConfigs.map((config) => (
+                      {fetchedAppConfigs.map((config) => (
                         <TableRow key={config.id}>
                           <TableCell>{config.id}</TableCell>
                           <TableCell>{config.key}</TableCell>
@@ -404,6 +381,34 @@ export default function AdminPanel() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+              </TabsContent>
+              
+              <TabsContent value="ai-config">
+                <AIConfigPanel />
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <SettingsPanel />
+              </TabsContent>
+
+              <TabsContent value="backup">
+                <BackupSystem />
+              </TabsContent>
+
+              <TabsContent value="security">
+                <SecurityCenter />
+              </TabsContent>
+
+              <TabsContent value="notifications">
+                <NotificationCenter />
+              </TabsContent>
+
+              <TabsContent value="activity">
+                <ActivityLogger />
+              </TabsContent>
+
+              <TabsContent value="reports">
+                <ReportGenerator />
               </TabsContent>
             </Tabs>
           </CardContent>

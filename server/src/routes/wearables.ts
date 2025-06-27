@@ -10,6 +10,7 @@ const app = new Hono();
 // Schema for incoming wearable data
 const wearableDataSchema = z.object({
   userId: z.number(),
+  deviceType: z.string().optional(),
   steps: z.number().int().min(0),
   heartRate: z.number().int().min(0).optional(),
   caloriesBurned: z.number().min(0).optional(),
@@ -35,10 +36,12 @@ app.post(
       // Insert the wearable data into the new wearableData table
       await db.insert(wearableData).values({
         userId: data.userId,
+        deviceType: data.deviceType || 'Unknown',
         steps: data.steps,
         heartRate: data.heartRate,
         caloriesBurned: data.caloriesBurned,
         sleepHours: data.sleepHours,
+        date: new Date(),
       });
 
       return c.json({ message: 'Wearable data received and processed successfully', data });

@@ -26,6 +26,8 @@ export interface IStorage {
   }): Promise<User>;
   getUserById(userId: number): Promise<any>;
   updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void>;
+  updateUserOnboarding(userId: number, onboardingData: any): Promise<User>;
+  createNutritionGoals(userId: number, goals: any): Promise<void>;
   
   // Meal analysis methods
   getMealAnalyses(userId: number): Promise<MealAnalysis[]>;
@@ -39,6 +41,11 @@ export interface IStorage {
   // Site content methods
   getSiteContent(key: string): Promise<string | null>;
   updateSiteContent(key: string, value: string): Promise<void>;
+  
+  // AI config methods
+  getAIConfigs(): Promise<any[]>;
+  updateAIConfig(id: number, config: any): Promise<void>;
+  deactivateAllAIConfigs(): Promise<void>;
   
   // Session store
   sessionStore: session.Store;
@@ -85,7 +92,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    // Create user with default values for Stripe fields
+    // Create user with default values for all required fields
     const user: User = { 
       ...insertUser, 
       id,
@@ -96,8 +103,24 @@ export class MemStorage implements IStorage {
       subscriptionStatus: null,
       subscriptionEndDate: null,
       isPremium: false,
-      nutritionGoals: null, // Ensure nutritionGoals is always present
-      role: 'user' // Ensure role is always present for type safety
+      nutritionGoals: null,
+      role: 'user',
+      // Onboarding fields with defaults
+      age: null,
+      gender: null,
+      height: null,
+      weight: null,
+      activityLevel: null,
+      primaryGoal: null,
+      targetWeight: null,
+      timeline: null,
+      dietaryPreferences: null,
+      allergies: null,
+      aiMealSuggestions: true,
+      aiChatAssistantName: null,
+      notificationsEnabled: true,
+      onboardingCompleted: false,
+      onboardingCompletedAt: null,
     };
     this.users.set(id, user);
     return user;
@@ -289,6 +312,70 @@ export class MemStorage implements IStorage {
 
   async updateSiteContent(key: string, value: string): Promise<void> {
     this.siteContent.set(key, value);
+  }
+
+  // AI config methods (mock implementation for memory storage)
+  async getAIConfigs(): Promise<any[]> {
+    return [
+      {
+        id: 1,
+        provider: 'openai',
+        modelName: 'gpt-4-vision-preview',
+        temperature: 70,
+        maxTokens: 1000,
+        promptTemplate: 'Analyze this food image and provide detailed nutritional information including calories, protein, carbs, fat, and fiber. Also identify the food items present.',
+        isActive: true,
+        apiKeyEncrypted: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 2,
+        provider: 'gemini',
+        modelName: 'gemini-1.5-pro-vision-latest',
+        temperature: 70,
+        maxTokens: 1000,
+        promptTemplate: 'Analyze this food image and provide detailed nutritional information including calories, protein, carbs, fat, and fiber. Also identify the food items present.',
+        isActive: false,
+        apiKeyEncrypted: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+  }
+
+  async updateAIConfig(id: number, config: any): Promise<void> {
+    // Mock implementation - in real app this would update the config
+    console.log(`Updated AI config ${id}:`, config);
+  }
+
+  async deactivateAllAIConfigs(): Promise<void> {
+    // Mock implementation
+    console.log('Deactivated all AI configs');
+  }
+
+  async updateUserOnboarding(userId: number, onboardingData: any): Promise<User> {
+    const user = await this.getUser(userId);
+    
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser = {
+      ...user,
+      ...onboardingData
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async createNutritionGoals(userId: number, goals: any): Promise<void> {
+    // For memory storage, we'll store this in the user object
+    const user = await this.getUser(userId);
+    if (user) {
+      user.nutritionGoals = goals;
+    }
   }
 }
 

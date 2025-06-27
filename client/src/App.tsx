@@ -15,6 +15,8 @@ import PrivacyPage from "./pages/privacy-page";
 import MealPlanPage from "./pages/meal-plan-page";
 import MealCalendarPage from "./pages/meal-calendar-page";
 import RecipeImportPage from "./pages/recipe-import-page";
+import OnboardingPage from "./pages/onboarding-page";
+import AdminPanel from "./pages/admin-panel";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
@@ -34,6 +36,8 @@ function Router(): ReactElement {
       <ProtectedRoute path="/meal-plan" component={MealPlanPage} />
       <ProtectedRoute path="/meal-calendar" component={MealCalendarPage} />
       <ProtectedRoute path="/recipe-import" component={RecipeImportPage} />
+      <ProtectedRoute path="/onboarding" component={OnboardingPage} />
+      <ProtectedRoute path="/admin" component={AdminPanel} />
       <Route component={NotFound} />
     </Switch>
   );

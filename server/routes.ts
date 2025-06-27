@@ -4,6 +4,7 @@ import { storage } from "./storage-provider";
 import { setupAuth } from "./auth";
 import { analyzeFoodImage, getNutritionTips, getSmartMealSuggestions } from "./openai";
 import { analyzeMultiFoodImage } from "./openai";
+import { aiService } from "./ai-service";
 import { insertMealAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -80,8 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
 
-      // Analyze the food image using OpenAI
-      const analysis = await analyzeFoodImage(base64Data);
+      // Analyze the food image using configured AI service
+      const analysis = await aiService.analyzeFoodImage(base64Data);
 
       // Return the analysis but don't save it
       res.status(200).json(analysis);
@@ -110,8 +111,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
 
-      // Analyze the food image using OpenAI
-      const analysis = await analyzeFoodImage(base64Data);
+      // Analyze the food image using configured AI service
+      const analysis = await aiService.analyzeFoodImage(base64Data);
 
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
@@ -394,6 +395,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Onboarding completion endpoint
+  app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const onboardingData = req.body;
+
+      // Update user with onboarding data
+      await storage.updateUserOnboarding(userId, {
+        age: onboardingData.age,
+        gender: onboardingData.gender,
+        height: onboardingData.height,
+        weight: onboardingData.weight,
+        activityLevel: onboardingData.activityLevel,
+        primaryGoal: onboardingData.primaryGoal,
+        targetWeight: onboardingData.targetWeight,
+        timeline: onboardingData.timeline,
+        dietaryPreferences: JSON.stringify(onboardingData.dietaryPreferences || []),
+        allergies: JSON.stringify(onboardingData.allergies || []),
+        aiMealSuggestions: onboardingData.aiMealSuggestions !== undefined ? onboardingData.aiMealSuggestions : true,
+        aiChatAssistantName: onboardingData.aiChatAssistantName || 'NutriBot',
+        notificationsEnabled: onboardingData.notificationsEnabled !== undefined ? onboardingData.notificationsEnabled : true,
+        onboardingCompleted: true,
+        onboardingCompletedAt: new Date(),
+      });
+
+      // Calculate and create initial nutrition goals
+      const bmr = calculateBMR(onboardingData.weight, onboardingData.height, onboardingData.age, onboardingData.gender);
+      const activityMultiplier = getActivityMultiplier(onboardingData.activityLevel);
+      const tdee = bmr * activityMultiplier;
+      
+      let dailyCalories = tdee;
+      if (onboardingData.primaryGoal === 'lose-weight') {
+        dailyCalories = tdee - 500; // 500 calorie deficit for weight loss
+      } else if (onboardingData.primaryGoal === 'gain-muscle') {
+        dailyCalories = tdee + 300; // 300 calorie surplus for muscle gain
+      }
+
+      // Create nutrition goals
+      await storage.createNutritionGoals(userId, {
+        dailyCalories: Math.round(dailyCalories),
+        calories: Math.round(dailyCalories),
+        protein: Math.round(onboardingData.weight * 2.2), // 2.2g per kg body weight
+        carbs: Math.round((dailyCalories * 0.45) / 4), // 45% of calories from carbs
+        fat: Math.round((dailyCalories * 0.30) / 9), // 30% of calories from fat
+        weight: onboardingData.weight,
+        weeklyWorkouts: getWeeklyWorkoutsFromActivity(onboardingData.activityLevel),
+        waterIntake: 8, // 8 glasses per day default
+      });
+
+      res.json({ success: true, message: "Onboarding completed successfully" });
+    } catch (error) {
+      console.error("Error completing onboarding:", error);
+      res.status(500).json({ message: "Failed to complete onboarding" });
+    }
+  });
+
+  // AI Configuration Admin Routes
+  app.get("/api/admin/ai-config", isAuthenticated, async (req, res) => {
+    try {
+      if (req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const configs = await storage.getAIConfigs();
+      // Remove sensitive data before sending to client
+      const sanitizedConfigs = configs.map(config => ({
+        ...config,
+        apiKeyEncrypted: config.apiKeyEncrypted ? '***CONFIGURED***' : null,
+        hasApiKey: !!config.apiKeyEncrypted
+      }));
+      
+      res.json(sanitizedConfigs);
+    } catch (error) {
+      console.error("Error fetching AI configs:", error);
+      res.status(500).json({ message: "Failed to fetch AI configurations" });
+    }
+  });
+
+  app.put("/api/admin/ai-config/:id", isAuthenticated, async (req, res) => {
+    try {
+      if (req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const configId = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      await storage.updateAIConfig(configId, updateData);
+      res.json({ success: true, message: "AI configuration updated successfully" });
+    } catch (error) {
+      console.error("Error updating AI config:", error);
+      res.status(500).json({ message: "Failed to update AI configuration" });
+    }
+  });
+
+  app.post("/api/admin/ai-config/:id/activate", isAuthenticated, async (req, res) => {
+    try {
+      if (req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const configId = parseInt(req.params.id);
+      
+      // Deactivate all configs first
+      await storage.deactivateAllAIConfigs();
+      
+      // Activate the selected config
+      await storage.updateAIConfig(configId, { isActive: true });
+      
+      res.json({ success: true, message: "AI provider activated successfully" });
+    } catch (error) {
+      console.error("Error activating AI provider:", error);
+      res.status(500).json({ message: "Failed to activate AI provider" });
+    }
+  });
+
+  // Import and mount admin routes
+  try {
+    const adminDashboardRouter = require('./src/routes/admin/dashboard').default;
+    const adminUsersRouter = require('./src/routes/admin/users').default;
+    const adminSystemRouter = require('./src/routes/admin/system').default;
+    const adminAnalyticsRouter = require('./src/routes/admin/analytics').default;
+    const adminPaymentsRouter = require('./src/routes/admin/payments').default;
+    const adminSettingsRouter = require('./src/routes/admin/settings').default;
+    const adminBackupRouter = require('./src/routes/admin/backup').default;
+    const adminSecurityRouter = require('./src/routes/admin/security').default;
+    const adminNotificationsRouter = require('./src/routes/admin/notifications').default;
+    const adminActivityRouter = require('./src/routes/admin/activity').default;
+
+    app.use('/api/admin/dashboard', adminDashboardRouter);
+    app.use('/api/admin/users', adminUsersRouter);
+    app.use('/api/admin/system', adminSystemRouter);
+    app.use('/api/admin/analytics', adminAnalyticsRouter);
+    app.use('/api/admin/payments', adminPaymentsRouter);
+    app.use('/api/admin/settings', adminSettingsRouter);
+    app.use('/api/admin/backup', adminBackupRouter);
+    app.use('/api/admin/security', adminSecurityRouter);
+    app.use('/api/admin/notifications', adminNotificationsRouter);
+    app.use('/api/admin/activity', adminActivityRouter);
+  } catch (error) {
+    console.error('Error loading admin routes:', error);
+  }
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -404,4 +548,36 @@ async function generateMealPlan(goal: string, medicalCondition?: string): Promis
   return {
     plan: `Placeholder meal plan for ${goal} (${medicalCondition || 'no condition'})`
   };
+}
+
+// Helper functions for onboarding
+function calculateBMR(weight: number, height: number, age: number, gender: string): number {
+  // Mifflin-St Jeor Equation
+  if (gender === 'male') {
+    return (10 * weight) + (6.25 * height) - (5 * age) + 5;
+  } else {
+    return (10 * weight) + (6.25 * height) - (5 * age) - 161;
+  }
+}
+
+function getActivityMultiplier(activityLevel: string): number {
+  const multipliers = {
+    'sedentary': 1.2,
+    'light': 1.375,
+    'moderate': 1.55,
+    'active': 1.725,
+    'extra-active': 1.9
+  };
+  return multipliers[activityLevel as keyof typeof multipliers] || 1.2;
+}
+
+function getWeeklyWorkoutsFromActivity(activityLevel: string): number {
+  const workouts = {
+    'sedentary': 0,
+    'light': 1,
+    'moderate': 3,
+    'active': 5,
+    'extra-active': 7
+  };
+  return workouts[activityLevel as keyof typeof workouts] || 0;
 }

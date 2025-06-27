@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
     }
     // @ts-ignore
     if (error.errors) { // Zod validation error
-      return res.status(400).json({ message: 'Invalid data', errors: error.errors });
+      return res.status(400).json({ message: 'Invalid data', errors: (error as any).errors });
     }
     res.status(500).json({ message: 'Failed to create translation' });
   }

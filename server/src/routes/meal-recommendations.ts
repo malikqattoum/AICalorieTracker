@@ -69,7 +69,7 @@ router.post('/favorite-meals', isAuthenticated, async (req, res) => {
     const existingFavorite = await db.query.favoriteMeals.findFirst({
       where: and(
         eq(favoriteMeals.userId, userId),
-        eq(favoriteMeals.mealId, mealId)
+        eq(favoriteMeals.mealId, parseInt(mealId, 10))
       ),
     });
 
@@ -80,15 +80,16 @@ router.post('/favorite-meals', isAuthenticated, async (req, res) => {
     // Add meal to favorites
     await db.insert(favoriteMeals).values({
       userId,
-      mealId,
+      mealId: parseInt(mealId, 10),
       mealName,
       mealType,
-      calories,
-      protein,
-      carbs,
-      fat,
-      description,
-      tags,
+      nutrition: {
+        calories,
+        protein,
+        carbs,
+        fat,
+        description
+      },
     });
 
     res.json({ success: true, message: 'Meal saved to favorites' });
@@ -148,7 +149,7 @@ router.delete('/favorite-meals/:id', isAuthenticated, async (req, res) => {
     await db.delete(favoriteMeals).where(
       and(
         eq(favoriteMeals.userId, userId),
-        eq(favoriteMeals.mealId, mealId)
+        eq(favoriteMeals.mealId, parseInt(mealId, 10))
       )
     );
 

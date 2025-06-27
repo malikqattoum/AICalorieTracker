@@ -200,7 +200,7 @@ export default function LandingPage() {
                 </Link>
                 <Link href="/auth">
                   <Button size="lg" variant="outline" className="border-primary-200 text-primary-700 hover:bg-primary-50 transition-all duration-300">
-                    Sign Up <ArrowRight className="ml-2 h-4 w-4" />
+                    Get Started <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </div>

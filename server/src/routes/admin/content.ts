@@ -11,9 +11,7 @@ router.use(isAdmin);
 router.get('/:key', async (req, res) => {
   try {
     const key = req.params.key;
-    const contentEntry = await storage.getSiteContent(key);
-    // Ensure a consistent response format, even if content is null
-    const value = contentEntry ? contentEntry.value : null;
+    const value = await storage.getSiteContent(key);
     res.json({ key, value }); 
   } catch (error) {
     console.error(`Error fetching site content for key ${req.params.key}:`, error);

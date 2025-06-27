@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../db';
-import { authenticateToken } from '../../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 const router = Router();

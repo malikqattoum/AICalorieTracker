@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../../db';
-import { workouts, insertWorkoutSchema, weeklyStats } from '@shared/schema';
+import { workouts, insertWorkoutSchema, weeklyStats as weeklyStatsTable } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { isAuthenticated } from '../middleware/auth';
 
@@ -117,35 +117,32 @@ async function updateWeeklyStatsWithWorkout(userId: number, caloriesBurned: numb
     endOfWeek.setHours(23, 59, 59, 999);
 
     // Find or create weekly stats
-    let weeklyStats = await db.query.weeklyStats.findFirst({
+    let existingWeeklyStats = await db.query.weeklyStats.findFirst({
       where: (weeklyStats, { and }) => and(
         eq(weeklyStats.userId, userId),
         eq(weeklyStats.weekStarting, new Date(startOfWeek.toISOString().split('T')[0]))
       ),
     });
 
-    if (weeklyStats) {
+    if (existingWeeklyStats) {
       // Update existing weekly stats with workout calories
       await db
-        .update(weeklyStats)
+        .update(weeklyStatsTable)
         .set({
-          caloriesBurned: (weeklyStats.caloriesBurned || 0) + caloriesBurned,
-          updatedAt: new Date(),
+          caloriesBurned: (existingWeeklyStats.caloriesBurned || 0) + caloriesBurned,
         })
-        .where(eq(weeklyStats.id, weeklyStats.id));
+        .where(eq(weeklyStatsTable.id, existingWeeklyStats.id));
     } else {
       // Create new weekly stats with workout calories
-      await db.insert(weeklyStats).values({
+      await db.insert(weeklyStatsTable).values({
         userId,
-        weekStarting: startOfWeek.toISOString().split('T')[0],
+        weekStarting: startOfWeek,
         averageCalories: 0,
         mealsTracked: 0,
         averageProtein: 0,
         healthiestDay: 'Monday',
         caloriesByDay: {},
         caloriesBurned: caloriesBurned,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
     }
   } catch (error) {

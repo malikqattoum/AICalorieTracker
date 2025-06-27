@@ -63,10 +63,10 @@ router.put('/', isAuthenticated, async (req, res) => {
       await db
         .update(nutritionGoals)
         .set({
-          dailyCalories,
-          dailyProtein,
-          dailyCarbs,
-          dailyFat,
+          calories: dailyCalories,
+          protein: dailyProtein,
+          carbs: dailyCarbs,
+          fat: dailyFat,
           weeklyWorkouts: weeklyWorkouts || existingGoals.weeklyWorkouts,
           waterIntake: waterIntake || existingGoals.waterIntake,
           weight: weight || existingGoals.weight,
@@ -89,10 +89,10 @@ router.put('/', isAuthenticated, async (req, res) => {
         .insert(nutritionGoals)
         .values({
           userId,
-          dailyCalories,
-          dailyProtein,
-          dailyCarbs,
-          dailyFat,
+          calories: dailyCalories,
+          protein: dailyProtein,
+          carbs: dailyCarbs,
+          fat: dailyFat,
           weeklyWorkouts: weeklyWorkouts || 3,
           waterIntake: waterIntake || 2000,
           weight: weight || 70,

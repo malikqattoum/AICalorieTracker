@@ -7,6 +7,7 @@ import {
 import { insertUserSchema, User as SelectUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { z } from "zod";
 
 type AuthContextType = {
@@ -38,6 +39,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   
   const {
     data: user,
@@ -82,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Registration successful!",
         description: `Welcome to NutriScan, ${user.firstName}!`,
       });
+      // Redirect to onboarding for new users
+      navigate("/onboarding");
     },
     onError: (error: Error) => {
       toast({

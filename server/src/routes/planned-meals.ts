@@ -1,20 +1,20 @@
 import { Router } from 'express';
 import { db } from '../../db';
-import { plannedMeals, InsertPlannedMeal } from '@shared/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { plannedMeals, InsertPlannedMeal, insertPlannedMealSchema } from '@shared/schema';
+import { eq, and, gte, lte, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import ics from 'ics';
 import multer from 'multer';
 import { promisify } from 'util';
 import fs from 'fs';
 import ical from 'node-ical'; // Using node-ical for parsing
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 const upload = multer({ dest: 'uploads/' }); // Configure multer for file uploads
 
 // Middleware to check if user is authenticated (placeholder)
-const isAuthenticated = (req, res, next) => {
-  // @ts-ignore
+const isAuthenticated = (req: any, res: any, next: any) => {
   if (req.user && req.user.id) {
     return next();
   }
@@ -34,12 +34,18 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid input', details: parsedBody.error.errors });
     }
 
-    const newPlannedMeal = await db.insert(plannedMeals).values({
+    const result = await db.insert(plannedMeals).values({
       ...parsedBody.data,
       userId,
-    }).returning();
+    });
 
-    res.status(201).json(newPlannedMeal[0]);
+    // Get the inserted record by ID (MySQL doesn't support returning)
+    const insertedId = (result as any).insertId;
+    const newPlannedMeal = await db.query.plannedMeals.findFirst({
+      where: eq(plannedMeals.id, insertedId)
+    });
+
+    res.status(201).json(newPlannedMeal);
   } catch (error) {
     console.error('Error creating planned meal:', error);
     res.status(500).json({ error: 'Failed to create planned meal' });
@@ -93,16 +99,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid input', details: parsedBody.error.errors });
     }
 
-    const updatedMeal = await db.update(plannedMeals)
+    await db.update(plannedMeals)
       .set(parsedBody.data)
-      .where(and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId)))
-      .returning();
+      .where(and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId)));
 
-    if (updatedMeal.length === 0) {
+    // Get the updated record
+    const updatedMeal = await db.query.plannedMeals.findFirst({
+      where: and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId))
+    });
+
+    if (!updatedMeal) {
       return res.status(404).json({ error: 'Planned meal not found or user not authorized' });
     }
 
-    res.json(updatedMeal[0]);
+    res.json(updatedMeal);
   } catch (error) {
     console.error('Error updating planned meal:', error);
     res.status(500).json({ error: 'Failed to update planned meal' });
@@ -122,13 +132,18 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid planned meal ID' });
     }
 
-    const deletedMeal = await db.delete(plannedMeals)
-      .where(and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId)))
-      .returning();
+    // First check if the meal exists and belongs to user
+    const existingMeal = await db.query.plannedMeals.findFirst({
+      where: and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId))
+    });
 
-    if (deletedMeal.length === 0) {
+    if (!existingMeal) {
       return res.status(404).json({ error: 'Planned meal not found or user not authorized' });
     }
+
+    // Delete the meal
+    await db.delete(plannedMeals)
+      .where(and(eq(plannedMeals.id, plannedMealId), eq(plannedMeals.userId, userId)));
 
     res.status(204).send(); // No content
   } catch (error) {
@@ -180,9 +195,9 @@ router.post('/import/ical', isAuthenticated, upload.single('icalFile'), async (r
             if (fatMatch) fat = parseInt(fatMatch[1], 10);
           }
 
-          const plannedMeal: InsertPlannedMeal = {
+          const plannedMeal = {
             userId,
-            date: new Date(event.start).toISOString(),
+            date: new Date(event.start),
             mealType,
             mealName,
             calories,

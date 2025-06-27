@@ -4,7 +4,7 @@ import type {
   MealAnalysis, InsertMealAnalysis,
   WeeklyStats, InsertWeeklyStats
 } from '@shared/schema';
-import { users, mealAnalyses, weeklyStats, siteContent } from '@shared/schema';
+import { users, mealAnalyses, weeklyStats, siteContent, nutritionGoals, aiConfig } from '@shared/schema';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
 import session from 'express-session';
@@ -267,5 +267,38 @@ export class DatabaseStorage implements IStorage {
     } else {
       await db.insert(siteContent).values({ key, value });
     }
+  }
+
+  // --- Onboarding Methods ---
+  async updateUserOnboarding(userId: number, onboardingData: any): Promise<User> {
+    await db.update(users)
+      .set(onboardingData)
+      .where(eq(users.id, userId));
+    
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    return user;
+  }
+
+  async createNutritionGoals(userId: number, goals: any): Promise<void> {
+    await db.insert(nutritionGoals).values({
+      userId,
+      ...goals,
+    });
+  }
+
+  // --- AI Config Methods ---
+  async getAIConfigs(): Promise<any[]> {
+    return await db.select().from(aiConfig).orderBy(aiConfig.provider);
+  }
+
+  async updateAIConfig(id: number, config: any): Promise<void> {
+    await db.update(aiConfig)
+      .set({ ...config, updatedAt: new Date() })
+      .where(eq(aiConfig.id, id));
+  }
+
+  async deactivateAllAIConfigs(): Promise<void> {
+    await db.update(aiConfig)
+      .set({ isActive: false, updatedAt: new Date() });
   }
 }

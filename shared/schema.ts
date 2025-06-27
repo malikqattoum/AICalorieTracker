@@ -20,6 +20,22 @@ export const users = mysqlTable("users", {
   isPremium: boolean("is_premium").default(false),
   nutritionGoals: json("nutrition_goals"),
   role: text("role").notNull().default('user'), // Add role field
+  // Onboarding fields
+  age: int("age"),
+  gender: varchar("gender", { length: 20 }),
+  height: int("height"), // in cm
+  weight: int("weight"), // in kg
+  activityLevel: varchar("activity_level", { length: 50 }),
+  primaryGoal: varchar("primary_goal", { length: 100 }),
+  targetWeight: int("target_weight"), // in kg
+  timeline: varchar("timeline", { length: 50 }),
+  dietaryPreferences: json("dietary_preferences"),
+  allergies: json("allergies"),
+  aiMealSuggestions: boolean("ai_meal_suggestions").default(true),
+  aiChatAssistantName: varchar("ai_chat_assistant_name", { length: 100 }),
+  notificationsEnabled: boolean("notifications_enabled").default(true),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
+  onboardingCompletedAt: datetime("onboarding_completed_at"),
 });
 
 // Meal analysis schema
@@ -167,6 +183,19 @@ export const wearableData = mysqlTable("wearable_data", {
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const aiConfig = mysqlTable("ai_config", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 50 }).notNull().default('openai'),
+  apiKeyEncrypted: text("api_key_encrypted"),
+  modelName: varchar("model_name", { length: 100 }).default('gpt-4-vision-preview'),
+  temperature: int("temperature").default(70), // stored as int (70 = 0.7)
+  maxTokens: int("max_tokens").default(1000),
+  promptTemplate: text("prompt_template"),
+  isActive: boolean("is_active").default(true),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -217,6 +246,7 @@ export type Language = typeof languages.$inferSelect;
 export type Translation = typeof translations.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type WearableData = typeof wearableData.$inferSelect;
+export type AIConfig = typeof aiConfig.$inferSelect;
 
 // Meal Plan types for AI meal planning
 export interface MealPlan {

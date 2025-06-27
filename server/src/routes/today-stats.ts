@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db';
+import { db } from '../../db';
 import { mealAnalyses } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { authenticateToken } from '../middleware/auth';
@@ -23,14 +23,14 @@ router.get('/', authenticateToken, async (req, res) => {
     const todayMeals = await db.query.mealAnalyses.findMany({
       where: and(
         eq(mealAnalyses.userId, userId),
-        gte(mealAnalyses.timestamp, startOfDay.toISOString()),
-        lte(mealAnalyses.timestamp, endOfDay.toISOString())
+        gte(mealAnalyses.timestamp, startOfDay),
+        lte(mealAnalyses.timestamp, endOfDay)
       ),
     });
 
     // Calculate totals
     const totals = todayMeals.reduce(
-      (acc, meal) => {
+      (acc: {calories: number; protein: number; carbs: number; fat: number; water: number}, meal: any) => {
         acc.calories += meal.calories;
         acc.protein += meal.protein;
         acc.carbs += meal.carbs;
