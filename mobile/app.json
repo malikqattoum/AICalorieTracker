@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "AI Calorie Tracker",
+    "slug": "ai-calorie-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.svg",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.svg",
+      "resizeMode": "contain",
+      "backgroundColor": "#4F46E5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aicalorietracker.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.svg",
+        "backgroundColor": "#4F46E5"
+      },
+      "package": "com.aicalorietracker.mobile",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.svg"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow AI Calorie Tracker to access your camera to take photos of your meals for analysis."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow AI Calorie Tracker to access your photos to select meal images for analysis."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.svg",
+          "color": "#4F46E5"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ai-calorie-tracker-2024"
+      },
+      "apiUrl": "http://localhost:5001",
+      "enableLogging": true,
+      "useMockData": true,
+      "releaseChannel": "development",
+      "supportEmail": "support@aicalorietracker.com",
+      "appName": "AI Calorie Tracker",
+      "version": "1.0.0",
+      "environment": "development"
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { Footer } from "@/components/layout/footer";
 import { CameraUploadCard } from "@/components/dashboard/camera-upload-card";
 import { RecentResultsCard } from "@/components/dashboard/recent-results-card";
 import { OverviewCard } from "@/components/dashboard/overview-card";
+import { StatsCard } from "@/components/dashboard/stats-card";
 import { AnalyticsCard } from "@/components/dashboard/analytics-card";
 import { AiInsightsCard } from "@/components/dashboard/ai-insights-card";
 import { AchievementsCard } from "@/components/dashboard/achievements-card";
@@ -97,6 +98,7 @@ export default function HomePage() {
                   selectedCondition={medicalCondition}
                   onConditionChange={setMedicalCondition}
                 />
+                <StatsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <AchievementsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <AiInsightsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <MealPlanCard
@@ -117,6 +119,7 @@ export default function HomePage() {
               <NutritionTipsCard />
               <MealTrendsCard />
               <SmartMealSuggestionsCard />
+              <ReferralCommissionsCard />
             </div>
           </div>
         </div>

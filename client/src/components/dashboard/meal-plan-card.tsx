@@ -10,18 +10,18 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
   medicalCondition?: string;
 }) {
   return (
-    <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
+    <Card className="card-gradient glass-effect rounded-xl border border-border">
       <CardHeader><CardTitle>AI Meal Plan Generator</CardTitle></CardHeader>
       <CardContent>
         <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div className="text-emerald-500 text-base font-semibold">
+          <div className="text-primary-500 text-base font-semibold">
             Personalized for: <span className="font-bold">{goal.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
             {medicalCondition && medicalCondition !== "none" && (
-              <span className="ml-2 px-2 py-0.5 rounded bg-emerald-800 text-emerald-100 text-xs font-semibold">{medicalCondition.charAt(0).toUpperCase() + medicalCondition.slice(1)} Mode</span>
+              <span className="ml-2 px-2 py-0.5 rounded bg-primary-800 text-primary-100 text-xs font-semibold">{medicalCondition.charAt(0).toUpperCase() + medicalCondition.slice(1)} Mode</span>
             )}
           </div>
           <button
-            className="ml-auto bg-emerald-700 hover:bg-emerald-600 text-emerald-50 font-semibold px-4 py-1.5 rounded shadow transition-colors duration-150 text-sm"
+            className="ml-auto bg-primary-600 hover:bg-primary-500 text-primary-50 font-semibold px-4 py-1.5 rounded shadow transition-colors duration-150 text-sm"
             aria-label="Regenerate meal plan"
             onClick={fetchMealPlan}
             disabled={isMealPlanLoading}
@@ -29,25 +29,25 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
             {isMealPlanLoading ? "Generating..." : "Regenerate Plan"}
           </button>
         </div>
-        <div className="mb-4 text-xs text-emerald-600">
-          <span className="font-bold">How it works:</span> This plan adapts each week based on your tracked meals, calories, and goals. Over- or under-eating, skipped meals, and preferences are all factored in for next week’s plan. <span className="text-emerald-700">Give feedback to improve your plan!</span>
+        <div className="mb-4 text-xs text-primary-600">
+          <span className="font-bold">How it works:</span> This plan adapts each week based on your tracked meals, calories, and goals. Over- or under-eating, skipped meals, and preferences are all factored in for next week’s plan. <span className="text-primary-700">Give feedback to improve your plan!</span>
         </div>
         {mealPlanError && (
           <div className="text-red-400 mb-4">{mealPlanError}</div>
         )}
         {isMealPlanLoading ? (
-          <div className="text-emerald-500 py-8 text-center">Generating meal plan...</div>
+          <div className="text-primary-500 py-8 text-center">Generating meal plan...</div>
         ) : mealPlan && mealPlan.meals ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mealPlan.meals.map((dayPlan: any, i: number) => (
-              <div key={dayPlan.day || i} className="bg-emerald-800/40 rounded-lg p-4 flex flex-col gap-2">
+              <div key={dayPlan.day || i} className="bg-primary-800/40 rounded-lg p-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-emerald-200 font-bold">{dayPlan.day || daysOfWeek[i]}</span>
+                  <span className="text-primary-200 font-bold">{dayPlan.day || daysOfWeek[i]}</span>
                   {dayPlan.adaptation && (
-                    <span className="ml-2 text-xs text-amber-300 bg-amber-900/60 rounded px-2 py-0.5">{dayPlan.adaptation}</span>
+                    <span className="ml-2 text-xs text-accent-300 bg-accent-900/60 rounded px-2 py-0.5">{dayPlan.adaptation}</span>
                   )}
                 </div>
-                <ul className="list-none text-emerald-100 text-sm mb-2">
+                <ul className="list-none text-primary-100 text-sm mb-2">
                   {["breakfast", "lunch", "snack", "dinner", "snacks"].map(type => {
                     const meal = dayPlan[type] || (Array.isArray(dayPlan.snacks) && type === "snacks" ? null : undefined);
                     if (!meal) return null;
@@ -56,8 +56,8 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
                         <li key={`snack-${j}`} className="mb-1 flex flex-col md:flex-row md:items-center md:gap-2">
                           <span className="font-medium w-24 inline-block">Snack:</span>
                           <span>{snack.name}</span>
-                          <span className="ml-auto text-xs text-emerald-300">{snack.calories} kcal</span>
-                          <span className="ml-2 text-xs text-emerald-400">P:{snack.protein}g C:{snack.carbs}g F:{snack.fat}g</span>
+                          <span className="ml-auto text-xs text-primary-300">{snack.calories} kcal</span>
+                          <span className="ml-2 text-xs text-primary-400">P:{snack.protein}g C:{snack.carbs}g F:{snack.fat}g</span>
                         </li>
                       ));
                     }
@@ -65,13 +65,13 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
                       <li key={type} className="mb-1 flex flex-col md:flex-row md:items-center md:gap-2">
                         <span className="font-medium w-24 inline-block">{type.charAt(0).toUpperCase() + type.slice(1)}:</span>
                         <span>{meal.name}</span>
-                        <span className="ml-auto text-xs text-emerald-300">{meal.calories} kcal</span>
-                        <span className="ml-2 text-xs text-emerald-400">P:{meal.protein}g C:{meal.carbs}g F:{meal.fat}g</span>
+                        <span className="ml-auto text-xs text-primary-300">{meal.calories} kcal</span>
+                        <span className="ml-2 text-xs text-primary-400">P:{meal.protein}g C:{meal.carbs}g F:{meal.fat}g</span>
                       </li>
                     );
                   })}
                 </ul>
-                <div className="flex justify-between text-xs text-emerald-200 border-t border-emerald-700 pt-2 mt-2">
+                <div className="flex justify-between text-xs text-primary-200 border-t border-primary-700 pt-2 mt-2">
                   <span>Total: <span className="font-bold">{dayPlan.totalCalories || ''} kcal</span></span>
                   <span>P:{dayPlan.totalProtein || ''}g C:{dayPlan.totalCarbs || ''}g F:{dayPlan.totalFat || ''}g</span>
                 </div>
@@ -79,7 +79,7 @@ export function MealPlanCard({ mealPlan, isMealPlanLoading, mealPlanError, fetch
             ))}
           </div>
         ) : (
-          <div className="text-emerald-600 py-8 text-center">No meal plan available.</div>
+          <div className="text-primary-600 py-8 text-center">No meal plan available.</div>
         )}
       </CardContent>
     </Card>

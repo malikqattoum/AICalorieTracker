@@ -649,6 +649,43 @@ export default function PaymentManagement() {
                     </div>
                   </div>
                 </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Referral Program</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Commission Percentage</Label>
+                      <Input
+                        type="number"
+                        value={referralSettings.commission_percent}
+                        onChange={(e) => setReferralSettings({
+                          ...referralSettings,
+                          commission_percent: parseFloat(e.target.value)
+                        })}
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="recurring-commissions"
+                        checked={referralSettings.is_recurring}
+                        onCheckedChange={(checked) => setReferralSettings({
+                          ...referralSettings,
+                          is_recurring: checked
+                        })}
+                      />
+                      <Label htmlFor="recurring-commissions">Recurring Commissions</Label>
+                    </div>
+                    <Button
+                      onClick={() => updateReferralSettings.mutate(referralSettings)}
+                      disabled={updateReferralSettings.isPending}
+                    >
+                      Save Referral Settings
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -722,7 +759,7 @@ export default function PaymentManagement() {
                 id="refund-amount"
                 type="number"
                 value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRefundAmount(e.target.value)}
                 placeholder="0.00"
               />
             </div>

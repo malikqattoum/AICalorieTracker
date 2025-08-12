@@ -1,11 +1,13 @@
-import { useCamera } from "@/hooks/use-camera";
+import { useCamera } from "../../../hooks/use-camera.tsx";
+// @ts-ignore - Temporary workaround for module resolution
 import Webcam from "react-webcam";
 import { Eye, Camera, ArrowLeft, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../ui/button";
 import { useEffect, useState } from "react";
 
+
 interface CameraViewProps {
-  onCapture: (imageData: string) => void;
+  onCapture: (imageData: string | string[]) => void;
   onClose: () => void;
   isAnalyzing: boolean;
 }
@@ -22,25 +24,38 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
   
   const [localIsCameraReady, setIsCameraReady] = useState(false);
   const [localError, setError] = useState<string | null>(null);
+  const [multiMode, setMultiMode] = useState(false);
+  const [capturedFoods, setCapturedFoods] = useState<string[]>([]);
 
-  // Set width and height constraints for better performance
   const videoConstraints = {
     width: 1280,
     height: 720,
     facingMode: "environment"
   };
 
-  // Auto-close the camera view when isAnalyzing changes from true to false (analysis completed)
   useEffect(() => {
     if (!isAnalyzing && capturedImage) {
-      onClose();
+      if (multiMode) {
+        setCapturedFoods([...capturedFoods, capturedImage]);
+        resetImage();
+      } else {
+        onClose();
+      }
     }
   }, [isAnalyzing, capturedImage, onClose]);
 
-  const handleCapture = () => {
-    if (capturedImage) {
-      onCapture(capturedImage);
+  const handleFinalCapture = () => {
+    if ((multiMode && capturedFoods.length > 0) || (!multiMode && capturedImage)) {
+      onCapture(multiMode ? capturedFoods : capturedImage as string);
     }
+  };
+
+  const toggleMultiMode = () => {
+    if (!multiMode) {
+      setCapturedFoods([]);
+    }
+    setMultiMode(!multiMode);
+    resetImage();
   };
 
   return (
@@ -114,11 +129,11 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
                 <Camera className="h-8 w-8 text-white" />
               </Button>
             ) : (
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 size="lg"
                 className="rounded-full bg-primary-600 shadow-lg h-16 w-16 flex items-center justify-center"
-                onClick={handleCapture}
+                onClick={handleFinalCapture}
                 disabled={isAnalyzing}
               >
                 {isAnalyzing ? (
@@ -128,10 +143,23 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
                 )}
               </Button>
             )}
-            <div className="w-14"></div> {/* Empty div for flex spacing */}
+            <Button
+              variant={multiMode ? "default" : "secondary"}
+              size="lg"
+              className="rounded-full bg-white shadow-lg h-14 w-14 flex items-center justify-center"
+              onClick={toggleMultiMode}
+              disabled={isAnalyzing}
+            >
+              {multiMode ? (
+                <span className="text-lg font-bold">+</span>
+              ) : (
+                <span className="text-lg font-bold">1</span>
+              )}
+            </Button>
           </div>
           <div className="text-center text-white text-base font-medium mb-4 px-6 py-2 bg-black bg-opacity-40 rounded-full">
-            {isAnalyzing ? "Analyzing your meal..." : "Position your meal in the frame"}
+            {isAnalyzing ? "Analyzing your meal..." :
+              multiMode ? `Captured ${capturedFoods.length} items. Add more or finish.` : "Position your meal in the frame"}
           </div>
         </div>
       </div>

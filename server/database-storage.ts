@@ -1,15 +1,18 @@
 import type { IStorage } from './storage';
-import type { 
-  User, InsertUser, 
+import type {
+  User, InsertUser,
   MealAnalysis, InsertMealAnalysis,
-  WeeklyStats, InsertWeeklyStats
+  WeeklyStats, InsertWeeklyStats,
+  NutritionGoals
 } from '@shared/schema';
 import { users, mealAnalyses, weeklyStats, siteContent, nutritionGoals, aiConfig } from '@shared/schema';
 import { db } from './db';
+import { encryptPHI, decryptPHI } from './security';
 import { eq, and } from 'drizzle-orm';
 import session from 'express-session';
 import { pool } from './db';
 import MySQLStoreImport from 'express-mysql-session';
+import { HIPAA_COMPLIANCE_ENABLED } from './config';
 
 // Create PostgreSQL session store
 // const PostgresSessionStore = connectPg(session);
@@ -96,6 +99,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
+  async getNutritionGoals(userId: number): Promise<NutritionGoals | null> {
+    const [user] = await db.select({ nutritionGoals: users.nutritionGoals })
+      .from(users)
+      .where(eq(users.id, userId));
+    if (!user?.nutritionGoals) return null;
+    return typeof user.nutritionGoals === 'string'
+      ? JSON.parse(user.nutritionGoals) as NutritionGoals
+      : user.nutritionGoals as NutritionGoals;
+  }
+
   // Meal analysis methods
   async getMealAnalyses(userId: number): Promise<MealAnalysis[]> {
     const analyses = await db.select()
@@ -106,26 +119,46 @@ export class DatabaseStorage implements IStorage {
     return analyses;
   }
 
-  async getMealAnalysis(id: number): Promise<MealAnalysis | undefined> {
-    const [analysis] = await db.select()
-      .from(mealAnalyses)
-      .where(eq(mealAnalyses.id, id));
-    
-    return analysis;
-  }
 
-  async createMealAnalysis(insertAnalysis: InsertMealAnalysis): Promise<MealAnalysis> {
+  async createMealAnalysis(insertAnalysis: InsertMealAnalysis & { metadata?: string }): Promise<MealAnalysis> {
+    // Encrypt PHI fields if HIPAA compliance is enabled
+    const encryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
+      ...insertAnalysis,
+      foodName: encryptPHI(insertAnalysis.foodName),
+      imageData: encryptPHI(insertAnalysis.imageData),
+      metadata: insertAnalysis.metadata ? encryptPHI(insertAnalysis.metadata) : undefined
+    } : insertAnalysis;
+
     // Ensure timestamp is provided for MySQL (MariaDB) compatibility
     const now = new Date();
     const result = await db.insert(mealAnalyses)
-      .values({ ...insertAnalysis, timestamp: now });
+      .values({ ...encryptedAnalysis, timestamp: now });
     // @ts-ignore drizzle-orm/mysql2 returns insertId
     const insertId = result.insertId || result[0]?.insertId;
     if (!insertId) throw new Error('Failed to get inserted meal analysis id');
     const [analysis] = await db.select().from(mealAnalyses).where(eq(mealAnalyses.id, insertId));
     // Update weekly stats after adding a meal analysis
     await this.updateWeeklyStats(insertAnalysis.userId);
+    
     return analysis;
+  }
+
+  async getMealAnalysis(id: number): Promise<MealAnalysis | undefined> {
+    const [analysis] = await db.select()
+      .from(mealAnalyses)
+      .where(eq(mealAnalyses.id, id));
+    
+    if (!analysis) return undefined;
+    
+    // Decrypt PHI fields if HIPAA compliance is enabled and they exist
+    const decryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
+      ...analysis,
+      foodName: decryptPHI(analysis.foodName),
+      imageData: decryptPHI(analysis.imageData),
+      metadata: analysis.metadata ? decryptPHI(analysis.metadata) : undefined
+    } : analysis;
+    
+    return decryptedAnalysis as MealAnalysis;
   }
 
   // Helper method to update weekly stats based on meal analyses

@@ -67,6 +67,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analyze complex meal with multiple food items
+  app.post("/api/analyze-complex-meal", isAuthenticated, async (req, res) => {
+    try {
+      const requestSchema = z.object({
+        images: z.array(z.string()).min(1).max(10)
+      });
+
+      const validatedData = requestSchema.parse(req.body);
+      const userId = req.user!.id;
+
+      // Process each image
+      const analysisResults = [];
+      
+      for (const imageData of validatedData.images) {
+        // Remove data URL prefix if present
+        const base64Data = imageData.includes('base64,')
+          ? imageData.split('base64,')[1]
+          : imageData;
+
+        // Analyze the food image using configured AI service
+        const analysis = await aiService.analyzeMultiFoodImage(base64Data);
+        analysisResults.push(analysis);
+      }
+
+      // Combine results
+      const combinedAnalysis = {
+        totalCalories: analysisResults.reduce((sum, item) => sum + item.calories, 0),
+        totalProtein: analysisResults.reduce((sum, item) => sum + item.protein, 0),
+        totalCarbs: analysisResults.reduce((sum, item) => sum + item.carbs, 0),
+        totalFat: analysisResults.reduce((sum, item) => sum + item.fat, 0),
+        foods: analysisResults,
+        mealScore: calculateMealScore(analysisResults),
+        nutritionalBalance: calculateNutritionalBalance(analysisResults)
+      };
+
+      // Create a meal analysis record
+      const mealAnalysis = await storage.createMealAnalysis({
+        userId,
+        foodName: `Complex Meal (${analysisResults.length} items)`,
+        calories: combinedAnalysis.totalCalories,
+        protein: combinedAnalysis.totalProtein,
+        carbs: combinedAnalysis.totalCarbs,
+        fat: combinedAnalysis.totalFat,
+        fiber: analysisResults.reduce((sum, item) => sum + (item.fiber || 0), 0),
+        imageData: validatedData.images[0], // Store first image only
+        // Store complex meal metadata
+        metadata: JSON.stringify({
+          mealScore: combinedAnalysis.mealScore,
+          nutritionalBalance: combinedAnalysis.nutritionalBalance,
+          foodItems: analysisResults.length,
+          isComplexMeal: true,
+          referenceObject: analysisResults[0]?.referenceObject
+        })
+      });
+
+      res.status(201).json(mealAnalysis);
+    } catch (error) {
+      console.error("Error analyzing complex meal:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to analyze complex meal" });
+      }
+    }
+  });
+
   // Demo route - Analyze food image without authentication
   app.post("/api/demo-analyze", async (req, res) => {
     try {
@@ -523,6 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const adminSecurityRouter = require('./src/routes/admin/security').default;
     const adminNotificationsRouter = require('./src/routes/admin/notifications').default;
     const adminActivityRouter = require('./src/routes/admin/activity').default;
+    const adminRouter = require('./src/routes/admin/index').default;
 
     app.use('/api/admin/dashboard', adminDashboardRouter);
     app.use('/api/admin/users', adminUsersRouter);
@@ -534,12 +601,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.use('/api/admin/security', adminSecurityRouter);
     app.use('/api/admin/notifications', adminNotificationsRouter);
     app.use('/api/admin/activity', adminActivityRouter);
+    app.use('/api/admin', adminRouter);
   } catch (error) {
     console.error('Error loading admin routes:', error);
   }
 
+  // Import and mount user routes
+  try {
+    const userRouter = require('./src/routes/user/index').default;
+    app.use('/api/user', userRouter);
+  } catch (error) {
+    console.error('Error loading user routes:', error);
+  }
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+function calculateMealScore(foods: any[]): number {
+  const avgDensity = foods.reduce((sum, food) => sum + (food.densityScore || 50), 0) / foods.length;
+  const varietyScore = Math.min(foods.length * 10, 50);
+  return Math.round(avgDensity + varietyScore);
+}
+
+function calculateNutritionalBalance(foods: any[]): {protein: number, carbs: number, fat: number} {
+  const total = foods.reduce((sum, food) => ({
+    protein: sum.protein + food.protein,
+    carbs: sum.carbs + food.carbs,
+    fat: sum.fat + food.fat
+  }), {protein: 0, carbs: 0, fat: 0});
+
+  const totalGrams = total.protein + total.carbs + total.fat;
+  return {
+    protein: Math.round((total.protein / totalGrams) * 100),
+    carbs: Math.round((total.carbs / totalGrams) * 100),
+    fat: Math.round((total.fat / totalGrams) * 100)
+  };
 }
 
 async function generateMealPlan(goal: string, medicalCondition?: string): Promise<any> {

@@ -1,7 +1,20 @@
-import { mysqlTable, varchar, int, boolean, datetime, text, json } from "drizzle-orm/mysql-core";
+import { mysqlTable, varchar, int, boolean, datetime, text, json, decimal } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export interface MealAnalysisInput {
+  userId: number;
+  foodName: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+  imageData: string;
+  metadata?: string;
+}
+
 
 // Users table schema
 export const users = mysqlTable("users", {
@@ -11,6 +24,8 @@ export const users = mysqlTable("users", {
   firstName: varchar("first_name", { length: 255 }).notNull(),
   lastName: varchar("last_name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
+  referredBy: int("referred_by"),
+  referralCode: varchar("referral_code", { length: 255 }).unique(),
   // Stripe related fields
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
   stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
@@ -50,6 +65,7 @@ export const mealAnalyses = mysqlTable("meal_analyses", {
   fiber: int("fiber").notNull(),
   imageData: text("image_data").notNull(),
   timestamp: datetime("timestamp").notNull(),
+  metadata: text("metadata"),
 });
 
 // Weekly stats schema
@@ -141,6 +157,26 @@ export const importedRecipes = mysqlTable("imported_recipes", {
   updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const referralSettings = mysqlTable("referral_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }).notNull().default(sql`10.00`),
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const referralCommissions = mysqlTable("referral_commissions", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrer_id").notNull().references(() => users.id),
+  refereeId: int("referee_id").notNull().references(() => users.id),
+  subscriptionId: varchar("subscription_id", { length: 255 }).notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull().default(sql`0.00`),
+  status: varchar("status", { length: 20 }).notNull().default('pending'),
+  isRecurring: boolean("is_recurring").notNull(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  paidAt: datetime("paid_at"),
+});
+
 export const languages = mysqlTable("languages", {
   id: int("id").autoincrement().primaryKey(),
   code: varchar("code", { length: 10 }).notNull().unique(),
@@ -230,7 +266,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertMealAnalysis = z.infer<typeof insertMealAnalysisSchema>;
 export type InsertWeeklyStats = z.infer<typeof insertWeeklyStatsSchema>;
 export type InsertAppConfig = z.infer<typeof insertAppConfigSchema>;
-export type User = typeof users.$inferSelect & { role: string };
+export type User = typeof users.$inferSelect & { role?: string };
 export type MealAnalysis = typeof mealAnalyses.$inferSelect;
 export type WeeklyStats = typeof weeklyStats.$inferSelect & {
   macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
@@ -248,28 +284,35 @@ export type Workout = typeof workouts.$inferSelect;
 export type WearableData = typeof wearableData.$inferSelect;
 export type AIConfig = typeof aiConfig.$inferSelect;
 
-// Meal Plan types for AI meal planning
-export interface MealPlan {
-  meals: DailyMeal[];
-}
-
-export interface DailyMeal {
-  day: string;
-  breakfast: Meal;
-  lunch: Meal;
-  dinner: Meal;
-  snacks: Meal[];
-}
-
-export interface Meal {
-  name: string;
+// Nutrition Analysis Types
+export interface NutritionData {
+  foodName: string;
   calories: number;
   protein: number;
-  carbs?: number;
-  fat?: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  portionSize?: {
+    estimatedWeight: number;
+    referenceObject: string;
+  };
+  densityScore?: number;
 }
 
-// Imported Recipe types
+export interface MultiFoodAnalysis {
+  foods: NutritionData[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+  totalFiber: number;
+  densityAnalysis?: {
+    caloriesPerGram: number;
+    nutrientDensityScore: number;
+  };
+}
+
+// Meal Plan types for AI meal planning
 export interface ImportedRecipe {
   id: number;
   userId: number;

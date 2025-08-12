@@ -246,9 +246,23 @@ export default function AccountCreationStep({
                   )}
                 />
                 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
+                <FormField
+                  control={form.control}
+                  name="referralCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referral Code (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter referral code if you have one" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button
+                  type="submit"
+                  className="w-full"
                   disabled={registerMutation.isPending}
                 >
                   {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}

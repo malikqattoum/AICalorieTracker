@@ -115,7 +115,19 @@ export class AIService {
       throw new Error('No AI provider configured. Please configure an AI provider in the admin panel.');
     }
 
-    const finalPrompt = prompt || this.currentConfig.promptTemplate || 'Analyze this food image and identify all food items with their nutritional information.';
+    const finalPrompt = prompt || this.currentConfig.promptTemplate || `
+      Analyze this food image and identify all food items with their nutritional information.
+      For each food item, provide:
+      - Name
+      - Estimated portion size in grams
+      - Reference object for size comparison (e.g., "similar to a baseball")
+      - Calories
+      - Macronutrients (protein, carbs, fat)
+      - Micronutrients (vitamins, minerals)
+      - Density score (1-100) based on nutrient density
+      - Allergens present
+      - Health impact rating (1-5)
+    `;
 
     try {
       if (this.currentConfig.provider === 'gemini') {
@@ -176,3 +188,17 @@ export const AIConfigService = {
 };
 
 export const aiService = AIService.getInstance();
+
+interface FoodAnalysis {
+  foods: Array<{
+    name: string;
+    boundingBox: [number, number, number, number];
+    dimensions?: { width: number; height: number; depth?: number };
+    estimatedWeight?: number;
+  }>;
+  referenceObject?: {
+    type: string;
+    confidence: number;
+    dimensions: { width: number; height: number };
+  };
+}

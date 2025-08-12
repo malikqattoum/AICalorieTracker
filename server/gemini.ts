@@ -110,7 +110,7 @@ export async function analyzeMultiFoodWithGemini(
 
     const fullPrompt = `${prompt}
 
-Please analyze this food image and identify all individual food items. Respond with ONLY a JSON object in this exact format:
+Please analyze this food image and identify all individual food items with portion sizes. Respond with ONLY a JSON object in this exact format:
 {
   "foods": [
     {
@@ -119,17 +119,30 @@ Please analyze this food image and identify all individual food items. Respond w
       "protein": number,
       "carbs": number,
       "fat": number,
-      "fiber": number
+      "fiber": number,
+      "portionSize": {
+        "estimatedWeight": number,
+        "referenceObject": "credit card|banana|hand|none"
+      },
+      "densityScore": number
     }
   ],
   "totalCalories": sum_of_all_calories,
   "totalProtein": sum_of_all_protein,
   "totalCarbs": sum_of_all_carbs,
   "totalFat": sum_of_all_fat,
-  "totalFiber": sum_of_all_fiber
+  "totalFiber": sum_of_all_fiber,
+  "densityAnalysis": {
+    "caloriesPerGram": number,
+    "nutrientDensityScore": number
+  }
 }
 
-Include each distinct food item as a separate object in the foods array. Calculate realistic nutrition values for each portion size visible.`;
+INSTRUCTIONS:
+1. Include each distinct food item as separate objects
+2. Estimate portion sizes using visible reference objects
+3. Calculate density scores (1-100) based on nutrient quality
+4. Provide weight estimates in grams`;
 
     const result = await model.generateContent([fullPrompt, ...imageParts]);
     const response = await result.response;

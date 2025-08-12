@@ -93,10 +93,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
     // Create user with default values for all required fields
-    const user: User = { 
-      ...insertUser, 
+    const user: User = {
+      ...insertUser,
       id,
       email: insertUser.email || null,
+      referredBy: null,
+      referralCode: null,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       subscriptionType: null,
@@ -183,7 +185,7 @@ export class MemStorage implements IStorage {
   async createMealAnalysis(insertAnalysis: InsertMealAnalysis): Promise<MealAnalysis> {
     const id = this.mealIdCounter++;
     const timestamp = new Date();
-    const analysis: MealAnalysis = { ...insertAnalysis, id, timestamp };
+    const analysis: MealAnalysis = { ...insertAnalysis, id, timestamp, metadata: insertAnalysis.metadata || null };
     this.mealAnalyses.set(id, analysis);
     
     // Update weekly stats after adding a meal analysis
