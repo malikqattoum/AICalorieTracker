@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from '../config';
+import cacheService from './cacheService';
 
 // Types
 export type ApiResponse<T> = {
@@ -20,7 +21,7 @@ const apiInstance: AxiosInstance = axios.create({
 
 // Request interceptor to add auth token
 apiInstance.interceptors.request.use(
-  async (config: AxiosRequestConfig) => {
+  async (config: any) => {
     try {
       const token = await SecureStore.getItemAsync('token');
       if (token && config.headers) {
@@ -36,12 +37,28 @@ apiInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle common errors
+// Response interceptor to handle common errors and JSON parsing
 apiInstance.interceptors.response.use(
   (response: AxiosResponse) => {
+    // Handle empty or invalid JSON responses
+    if (response.data === null || response.data === undefined) {
+      response.data = {};
+    } else if (typeof response.data === 'string' && response.data.trim() === '') {
+      response.data = {};
+    } else if (typeof response.data === 'string') {
+      try {
+        // Try to parse string responses
+        response.data = JSON.parse(response.data);
+      } catch (parseError) {
+        // If parsing fails, use empty object as fallback
+        console.warn('JSON Parse Error in response:', parseError);
+        response.data = {};
+      }
+    }
+    
     return response;
   },
-  async (error) => {
+  async (error: any) => {
     const originalRequest = error.config;
     
     // Handle token expiration (401 Unauthorized)
@@ -208,6 +225,363 @@ const api = {
     getCalendarData: async (month?: string) => {
       const params = month ? { month } : undefined;
       const response = await apiInstance.get('/api/meal-calendar', { params });
+      return response.data;
+    },
+  },
+  
+  // Wearable endpoints
+  wearable: {
+    // Device Management
+    getDevices: async () => {
+      const response = await apiInstance.get('/api/wearable/devices');
+      return response.data;
+    },
+    connectDevice: async (deviceData: any) => {
+      const response = await apiInstance.post('/api/wearable/devices/connect', deviceData);
+      return response.data;
+    },
+    disconnectDevice: async (deviceId: string) => {
+      const response = await apiInstance.post(`/api/wearable/devices/${deviceId}/disconnect`);
+      return response.data;
+    },
+    getDeviceStatus: async (deviceId: string) => {
+      const response = await apiInstance.get(`/api/wearable/devices/${deviceId}/status`);
+      return response.data;
+    },
+    
+    // Data Sync
+    syncDevice: async (deviceId: string, syncType: string) => {
+      const response = await apiInstance.post(`/api/wearable/devices/${deviceId}/sync`, { syncType });
+      return response.data;
+    },
+    getSyncLogs: async (deviceId: string) => {
+      const response = await apiInstance.get(`/api/wearable/devices/${deviceId}/sync-logs`);
+      return response.data;
+    },
+    
+    // Health Data
+    getHealthData: async (query: any) => {
+      const response = await apiInstance.post('/api/wearable/health-data', query);
+      return response.data;
+    },
+    saveHealthData: async (metrics: any[]) => {
+      const response = await apiInstance.post('/api/wearable/health-data/save', metrics);
+      return response.data;
+    },
+    
+    // Analytics
+    getCorrelationAnalysis: async (query: any) => {
+      const response = await apiInstance.post('/api/wearable/correlation-analysis', query);
+      return response.data;
+    },
+    
+    // Settings
+    getDeviceSettings: async (deviceId: string) => {
+      const response = await apiInstance.get(`/api/wearable/devices/${deviceId}/settings`);
+      return response.data;
+    },
+    updateDeviceSettings: async (deviceId: string, settings: any) => {
+      const response = await apiInstance.put(`/api/wearable/devices/${deviceId}/settings`, settings);
+      return response.data;
+    },
+    
+    // User Settings
+    getWearableUserSettings: async (userId: string) => {
+      const response = await apiInstance.get(`/api/wearable/user-settings/${userId}`);
+      return response.data;
+    },
+    updateWearableUserSettings: async (settings: any) => {
+      const response = await apiInstance.put('/api/wearable/user-settings', settings);
+      return response.data;
+    },
+    
+    // Export/Import
+    exportData: async (exportData: any) => {
+      const response = await apiInstance.post('/api/wearable/export', exportData, {
+        responseType: 'blob'
+      });
+      return response.data;
+    },
+    importData: async (formData: FormData) => {
+      const response = await apiInstance.post('/api/wearable/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    },
+    
+    // Aggregated Data
+    getAggregatedHealthData: async (query: any) => {
+      const response = await apiInstance.post('/api/wearable/health-data/aggregated', query);
+      return response.data;
+    },
+    
+    // Insights
+    getHealthInsights: async (insightsData: any) => {
+      const response = await apiInstance.post('/api/wearable/health-insights', insightsData);
+      return response.data;
+    },
+    
+    // Recommendations
+    getDeviceRecommendations: async (userId: string) => {
+      const response = await apiInstance.get(`/api/wearable/recommendations/${userId}`);
+      return response.data;
+    },
+  },
+
+  // Premium analytics endpoints
+  premium: {
+    getDashboard: async () => {
+      // Try to get cached data first
+      const cachedData = await cacheService.getCachedPremiumData();
+      if (cachedData) {
+        return cachedData;
+      }
+
+      const response = await apiInstance.get('/api/premium/dashboard');
+      const data = response.data;
+      
+      // Cache the response
+      await cacheService.cachePremiumData(data);
+      
+      return data;
+    },
+    getHealthScore: async () => {
+      // Try to get cached data first
+      const cachedData = await cacheService.getCachedHealthData();
+      if (cachedData) {
+        return cachedData;
+      }
+
+      const response = await apiInstance.get('/api/premium/health-score');
+      const data = response.data;
+      
+      // Cache the response
+      await cacheService.cacheHealthData(data);
+      
+      return data;
+    },
+    getPremiumStatus: async () => {
+      const response = await apiInstance.get('/api/premium/status');
+      return response.data;
+    },
+    getRealTimeMetrics: async () => {
+      // Try to get cached data first
+      const cachedData = await cacheService.getCachedRealTimeData();
+      if (cachedData) {
+        return cachedData;
+      }
+
+      const response = await apiInstance.get('/api/premium/real-time-metrics');
+      const data = response.data;
+      
+      // Cache the response with short TTL
+      await cacheService.cacheRealTimeData(data);
+      
+      return data;
+    },
+    getHealthScores: async () => {
+      const response = await apiInstance.get('/api/premium/health-scores');
+      return response.data;
+    },
+    getHealthPredictions: async () => {
+      const response = await apiInstance.get('/api/premium/health-predictions');
+      return response.data;
+    },
+    getAlerts: async () => {
+      const response = await apiInstance.get('/api/premium/alerts');
+      return response.data;
+    },
+    getPredictiveAnalytics: async () => {
+      const response = await apiInstance.get('/api/premium/predictive-analytics');
+      return response.data;
+    },
+    generatePredictions: async () => {
+      const response = await apiInstance.post('/api/premium/generate-predictions');
+      return response.data;
+    },
+    getProfessionalReports: async () => {
+      const response = await apiInstance.get('/api/premium/reports');
+      return response.data;
+    },
+    generateReport: async (reportData: any) => {
+      const response = await apiInstance.post('/api/premium/generate-report', reportData);
+      return response.data;
+    },
+    getReportTemplates: async () => {
+      const response = await apiInstance.get('/api/premium/report-templates');
+      return response.data;
+    },
+    getAdvancedAnalytics: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/advanced-analytics', { params });
+      return response.data;
+    },
+    
+    getTrendAnalysis: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/trend-analysis', { params });
+      return response.data;
+    },
+    
+    getHealthInsights: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/health-insights', { params });
+      return response.data;
+    },
+    
+    getCorrelationMatrix: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/correlation-matrix', { params });
+      return response.data;
+    },
+    
+    getAnomalyDetection: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/anomaly-detection', { params });
+      return response.data;
+    },
+    
+    getPersonalizedRecommendations: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/recommendations', { params });
+      return response.data;
+    },
+    
+    getGoalProgress: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/goal-progress', { params });
+      return response.data;
+    },
+    
+    getPerformanceMetrics: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/performance-metrics', { params });
+      return response.data;
+    },
+    
+    getRiskAssessment: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/risk-assessment', { params });
+      return response.data;
+    },
+    
+    getCustomMetrics: async () => {
+      const response = await apiInstance.get('/api/premium/custom-metrics');
+      return response.data;
+    },
+    
+    createCustomMetric: async (metricData: any) => {
+      const response = await apiInstance.post('/api/premium/custom-metrics', metricData);
+      return response.data;
+    },
+    
+    updateCustomMetric: async (metricId: string, metricData: any) => {
+      const response = await apiInstance.put(`/api/premium/custom-metrics/${metricId}`, metricData);
+      return response.data;
+    },
+    
+    deleteCustomMetric: async (metricId: string) => {
+      const response = await apiInstance.delete(`/api/premium/custom-metrics/${metricId}`);
+      return response.data;
+    },
+    
+    getPremiumFeatures: async () => {
+      const response = await apiInstance.get('/api/premium/features');
+      return response.data;
+    },
+    
+    getUsageAnalytics: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/usage-analytics', { params });
+      return response.data;
+    },
+    
+    getPersonalizedInsights: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/personalized-insights', { params });
+      return response.data;
+    },
+    
+    getHealthTrends: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/health-trends', { params });
+      return response.data;
+    },
+    
+    getWellnessScore: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/wellness-score', { params });
+      return response.data;
+    },
+    
+    getNutritionAnalysis: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/nutrition-analysis', { params });
+      return response.data;
+    },
+    
+    getFitnessProgress: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/fitness-progress', { params });
+      return response.data;
+    },
+    
+    getSleepAnalysis: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/sleep-analysis', { params });
+      return response.data;
+    },
+    
+    getStressAnalysis: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/stress-analysis', { params });
+      return response.data;
+    },
+    
+    getMentalHealthMetrics: async (params: any) => {
+      const response = await apiInstance.get('/api/premium/mental-health', { params });
+      return response.data;
+    },
+    
+    exportPremiumData: async (exportParams: any) => {
+      const response = await apiInstance.post('/api/premium/export', exportParams, {
+        responseType: 'blob'
+      });
+      return response.data;
+    },
+    
+    getPremiumNotifications: async () => {
+      const response = await apiInstance.get('/api/premium/notifications');
+      return response.data;
+    },
+    
+    markNotificationAsRead: async (notificationId: string) => {
+      const response = await apiInstance.put(`/api/premium/notifications/${notificationId}/read`);
+      return response.data;
+    },
+    
+    getPremiumSettings: async () => {
+      const response = await apiInstance.get('/api/premium/settings');
+      return response.data;
+    },
+    
+    updatePremiumSettings: async (settings: any) => {
+      const response = await apiInstance.put('/api/premium/settings', settings);
+      return response.data;
+    },
+  },
+
+  // Healthcare provider endpoints
+  healthcare: {
+    connectProvider: async (providerData: any) => {
+      const response = await apiInstance.post('/api/healthcare/connect', providerData);
+      return response.data;
+    },
+    disconnectProvider: async (providerData: any) => {
+      const response = await apiInstance.post('/api/healthcare/disconnect', providerData);
+      return response.data;
+    },
+    getProviders: async () => {
+      const response = await apiInstance.get('/api/healthcare/providers');
+      return response.data;
+    },
+    shareData: async (shareData: any) => {
+      const response = await apiInstance.post('/api/healthcare/share', shareData);
+      return response.data;
+    },
+    generateReport: async (reportData: any) => {
+      const response = await apiInstance.post('/api/healthcare/generate-report', reportData, {
+        responseType: 'blob'
+      });
+      return response.data;
+    },
+    getInsights: async (insightsData: any) => {
+      const response = await apiInstance.post('/api/healthcare/insights', insightsData);
       return response.data;
     },
   },

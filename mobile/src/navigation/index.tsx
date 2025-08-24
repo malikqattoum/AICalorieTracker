@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,16 @@ import PersonalInfoScreen from '../screens/PersonalInfoScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 import AboutScreen from '../screens/AboutScreen';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
+import WearableScreen from '../screens/WearableScreen';
+import WearableIntegrationScreen from '../screens/WearableIntegrationScreen';
+import HealthcareScreen from '../screens/HealthcareScreen';
+import RealTimeMonitoringScreen from '../screens/RealTimeMonitoringScreen';
+import AdvancedAIScreen from '../screens/AdvancedAIScreen';
+import SocialFeedScreen from '../screens/SocialFeedScreen';
+import ReportingScreen from '../screens/ReportingScreen';
+import PremiumScreen from '../screens/PremiumScreen';
+import { PremiumDashboardScreen } from '../screens/PremiumDashboardScreen';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -40,7 +51,17 @@ export type RootStackParamList = {
   PersonalInfo: undefined;
   ChangePassword: undefined;
   NotificationSettings: undefined;
+  Analytics: undefined;
   About: undefined;
+  Wearable: undefined;
+  WearableIntegration: undefined;
+  Healthcare: undefined;
+  RealTimeMonitoring: undefined;
+  AdvancedAI: undefined;
+  SocialFeed: undefined;
+  Reporting: undefined;
+  Premium: undefined;
+  PremiumDashboard: undefined;
 };
 
 export type AuthStackParamList = {
@@ -54,6 +75,7 @@ export type MainTabParamList = {
   Home: undefined;
   MealHistory: undefined;
   MealPlan: undefined;
+  Analytics: undefined;
   Profile: undefined;
 };
 
@@ -90,6 +112,8 @@ function MainTabNavigator() {
             iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'MealPlan') {
             iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'Analytics') {
+            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -113,24 +137,29 @@ function MainTabNavigator() {
         },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
         options={{ title: 'Dashboard' }}
       />
-      <Tab.Screen 
-        name="MealHistory" 
-        component={MealHistoryScreen} 
+      <Tab.Screen
+        name="MealHistory"
+        component={MealHistoryScreen}
         options={{ title: 'History' }}
       />
-      <Tab.Screen 
-        name="MealPlan" 
-        component={MealPlanScreen} 
+      <Tab.Screen
+        name="MealPlan"
+        component={MealPlanScreen}
         options={{ title: 'Meal Plan' }}
       />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen} 
+      <Tab.Screen
+        name="Analytics"
+        component={AnalyticsScreen}
+        options={{ title: 'Analytics' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
@@ -142,7 +171,11 @@ export default function Navigation() {
   const { user, isLoading } = useAuth();
   
   if (isLoading) {
-    return null; // Or a loading screen
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
+    );
   }
   
   return (
@@ -235,6 +268,87 @@ export default function Navigation() {
             component={AboutScreen} 
             options={{ 
               headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="Wearable"
+            component={WearableScreen}
+            options={{
+              headerShown: true,
+              title: 'Wearable Devices',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="WearableIntegration"
+            component={WearableIntegrationScreen}
+            options={{
+              headerShown: true,
+              title: 'Wearable Integration',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="Healthcare"
+            component={HealthcareScreen}
+            options={{
+              headerShown: true,
+              title: 'Healthcare',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="RealTimeMonitoring"
+            component={RealTimeMonitoringScreen}
+            options={{
+              headerShown: true,
+              title: 'Real-time Monitoring',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="AdvancedAI"
+            component={AdvancedAIScreen}
+            options={{
+              headerShown: true,
+              title: 'Advanced AI',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="SocialFeed"
+            component={SocialFeedScreen}
+            options={{
+              headerShown: true,
+              title: 'Social Feed',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="Reporting"
+            component={ReportingScreen}
+            options={{
+              headerShown: true,
+              title: 'Reporting',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="Premium"
+            component={PremiumScreen}
+            options={{
+              headerShown: true,
+              title: 'Premium',
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="PremiumDashboard"
+            component={PremiumDashboardScreen}
+            options={{
+              headerShown: true,
+              title: 'Premium Dashboard',
               animation: 'slide_from_right',
             }}
           />

@@ -47,6 +47,24 @@
     "version": "20240429100000",
     "tag": "0006_add_wearable_data_table",
     "breakpoints": true
+  },
+  {
+    "idx": 7,
+    "version": "20240429100000",
+    "tag": "0007_portion_size_estimation",
+    "breakpoints": true
+  },
+  {
+    "idx": 8,
+    "version": "20240429100000",
+    "tag": "0008_referral_program",
+    "breakpoints": true
+  },
+  {
+    "idx": 9,
+    "version": "20240429100000",
+    "tag": "0009_performance_indexes",
+    "breakpoints": true
   }
 ]
 }

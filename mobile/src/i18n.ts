@@ -323,7 +323,7 @@ export const setupI18n = async () => {
   try {
     userLanguage = await AsyncStorage.getItem('userLanguage');
   } catch (error) {
-    console.log('Error getting language from storage:', error);
+    // Silently ignore storage errors
   }
 
   // If no stored preference, use device locale
@@ -356,7 +356,7 @@ export const changeLanguage = async (language: string) => {
   try {
     await AsyncStorage.setItem('userLanguage', language);
   } catch (error) {
-    console.log('Error saving language to storage:', error);
+    // Silently ignore storage errors
   }
 };
 

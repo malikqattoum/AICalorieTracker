@@ -19,6 +19,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 // Components
 import NutritionSummaryCard from '../components/home/NutritionSummaryCard';
@@ -26,6 +27,7 @@ import RecentMealsCard from '../components/home/RecentMealsCard';
 import AiInsightsCard from '../components/home/AiInsightsCard';
 import MealPlanCard from '../components/home/MealPlanCard';
 import NutritionTipsCard from '../components/home/NutritionTipsCard';
+import AnalyticsScreen from './AnalyticsScreen';
 import AchievementsCard from '../components/home/AchievementsCard';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -40,11 +42,11 @@ export default function HomeScreen() {
   const { data: stats, isLoading, refetch } = useQuery({
     queryKey: ['dailyStats'],
     queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/daily-stats`);
-      if (!response.ok) {
+      const result = await safeFetchJson(`${API_URL}/api/daily-stats`);
+      if (result === null) {
         throw new Error('Failed to fetch daily stats');
       }
-      return response.json();
+      return result;
     },
   });
 
@@ -178,11 +180,66 @@ export default function HomeScreen() {
               
               <TouchableOpacity
                 style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('Profile')}
+                onPress={() => navigation.navigate('Settings')}
               >
                 <Ionicons name="person-outline" size={24} color={colors.primary} />
                 <Text style={[styles.quickActionText, { color: colors.text }]}>Profile</Text>
               </TouchableOpacity>
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('Analytics')}
+>
+  <Ionicons name="analytics-outline" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Analytics</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('Healthcare')}
+>
+  <Ionicons name="medical-outline" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Healthcare</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('RealTimeMonitoring')}
+>
+  <Ionicons name="pulse" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Monitor</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('AdvancedAI')}
+>
+  <Ionicons name="bulb" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>AI</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('SocialFeed')}
+>
+  <Ionicons name="people" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Social</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('Reporting')}
+>
+  <Ionicons name="document-text" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Reports</Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  style={[styles.quickActionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+  onPress={() => navigation.navigate('Wearable')}
+>
+  <Ionicons name="watch-outline" size={24} color={colors.primary} />
+  <Text style={[styles.quickActionText, { color: colors.text }]}>Devices</Text>
+</TouchableOpacity>
             </View>
           </View>
         </View>

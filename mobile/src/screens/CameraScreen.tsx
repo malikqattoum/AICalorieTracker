@@ -20,13 +20,14 @@ import Toast from 'react-native-toast-message';
 import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 export default function CameraScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [cameraType, setCameraType] = useState(CameraType.back);
-  const [flash, setFlash] = useState(Camera.Constants.FlashMode.off);
+  const [flash, setFlash] = useState(0); // 0 for off, 1 for on
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [multiFoodMode, setMultiFoodMode] = useState(false);
   const [multiFoodResult, setMultiFoodResult] = useState<any | null>(null);
@@ -60,22 +61,32 @@ export default function CameraScreen() {
       
       const imageData = `data:image/jpeg;base64,${manipResult.base64}`;
       
-      // Call API based on mode
-      const endpoint = multiFoodMode ? '/api/analyze-multi-food' : '/api/analyze-food';
+      // Call enhanced API based on mode
+      const endpoint = multiFoodMode
+        ? '/api/user/enhanced-food-recognition/analyze-multi'
+        : '/api/user/enhanced-food-recognition/analyze-single';
       
-      const response = await fetch(`${API_URL}${endpoint}`, {
+      const options = {
+        enablePortionEstimation: true,
+        enable3DEstimation: false,
+        confidenceThreshold: 0.7,
+        referenceObjects: ['hand', 'credit_card', 'smartphone'],
+        restaurantMode: false
+      };
+      
+      const data = await safeFetchJson(`${API_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ imageData }),
+        body: JSON.stringify({ imageData, options }),
       });
       
-      if (!response.ok) {
+      if (data === null) {
         throw new Error('Failed to analyze image');
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: (data) => {
       if (multiFoodMode) {
@@ -83,16 +94,17 @@ export default function CameraScreen() {
         Toast.show({
           type: 'success',
           text1: i18n.t('common.success'),
-          text2: `Detected ${data.foods.length} foods in the image`,
+          text2: `Detected ${data.foods?.length || 0} foods in the image`,
         });
       } else {
         // Invalidate queries to refresh meal history
         // queryClient.invalidateQueries({ queryKey: ['mealHistory'] });
         
+        const foodData = data.data || data;
         Toast.show({
           type: 'success',
           text1: i18n.t('common.success'),
-          text2: `Detected ${data.foodName} with ${data.calories} calories`,
+          text2: `Detected ${foodData.foodName} with ${foodData.nutritionalInfo?.calories || 0} calories`,
         });
         
         // Navigate back
@@ -115,7 +127,6 @@ export default function CameraScreen() {
         const photo = await cameraRef.current.takePictureAsync();
         setCapturedImage(photo.uri);
       } catch (error) {
-        console.log('Error taking picture:', error);
         Toast.show({
           type: 'error',
           text1: i18n.t('common.error'),
@@ -150,7 +161,6 @@ export default function CameraScreen() {
         setCapturedImage(result.assets[0].uri);
       }
     } catch (error) {
-      console.log('Error picking image:', error);
       Toast.show({
         type: 'error',
         text1: i18n.t('common.error'),
@@ -182,9 +192,7 @@ export default function CameraScreen() {
   // Toggle flash
   const toggleFlash = () => {
     setFlash(current => (
-      current === Camera.Constants.FlashMode.off
-        ? Camera.Constants.FlashMode.on
-        : Camera.Constants.FlashMode.off
+      current === 0 ? 1 : 0
     ));
   };
 
@@ -288,7 +296,7 @@ export default function CameraScreen() {
               onPress={toggleFlash}
             >
               <Ionicons
-                name={flash === Camera.Constants.FlashMode.on ? 'flash' : 'flash-off'}
+                name={flash === 1 ? 'flash' : 'flash-off'}
                 size={24}
                 color="white"
               />
@@ -332,14 +340,24 @@ export default function CameraScreen() {
             {i18n.t('camera.detectedFoods')}
           </Text>
           
-          {multiFoodResult.foods.map((food: any, index: number) => (
+          {(multiFoodResult.foods || []).map((food: any, index: number) => (
             <View key={index} style={styles.foodItem}>
               <Text style={[styles.foodName, { color: colors.text }]}>
                 {food.foodName}
               </Text>
               <Text style={[styles.foodCalories, { color: colors.gray }]}>
-                {food.calories} cal | P: {food.protein}g | C: {food.carbs}g | F: {food.fat}g
+                {food.nutritionalInfo?.calories || 0} cal | P: {food.nutritionalInfo?.protein || 0}g | C: {food.nutritionalInfo?.carbs || 0}g | F: {food.nutritionalInfo?.fat || 0}g
               </Text>
+              {food.portionSize && (
+                <Text style={[styles.portionInfo, { color: colors.gray }]}>
+                  Portion: {food.portionSize.estimatedWeight}g ({food.portionSize.referenceObject})
+                </Text>
+              )}
+              {food.healthScore && (
+                <Text style={[styles.healthScore, { color: colors.gray }]}>
+                  Health Score: {food.healthScore}/100
+                </Text>
+              )}
             </View>
           ))}
           
@@ -574,5 +592,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
+  },
+  portionInfo: {
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: 'Inter-Regular',
+  },
+  healthScore: {
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: 'Inter-Regular',
   },
 });

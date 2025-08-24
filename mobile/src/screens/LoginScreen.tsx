@@ -21,8 +21,14 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type LoginScreenNavigationProp = NativeStackNavigationProp<{
+  Login: undefined;
+  Register: undefined;
+  Onboarding: undefined;
+  ForgotPassword: undefined;
+}>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
@@ -37,7 +43,7 @@ export default function LoginScreen() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const data = await safeFetchJson(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,12 +51,16 @@ export default function LoginScreen() {
         body: JSON.stringify({ email, password }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || i18n.t('auth.loginError'));
+      if (data === null) {
+        throw new Error(i18n.t('auth.loginError'));
       }
       
-      return response.json();
+      // Check if data has an error message
+      if (data && typeof data === 'object' && 'message' in data) {
+        throw new Error((data as any).message || i18n.t('auth.loginError'));
+      }
+      
+      return data;
     },
     onSuccess: (data) => {
       // Call login function from AuthContext
@@ -206,7 +216,7 @@ export default function LoginScreen() {
           
           <TouchableOpacity
             style={styles.forgotPasswordButton}
-            onPress={() => navigation.navigate('ForgotPassword')}
+            onPress={() => navigation.navigate('ForgotPassword' as never)}
           >
             <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
               {i18n.t('auth.forgotPassword')}
@@ -232,7 +242,7 @@ export default function LoginScreen() {
               {i18n.t('auth.noAccount')}
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Register')}
+              onPress={() => navigation.navigate('Register' as never)}
             >
               <Text style={[styles.registerLink, { color: colors.primary }]}>
                 {i18n.t('auth.createAccount')}

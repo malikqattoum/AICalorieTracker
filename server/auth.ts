@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage-provider";
 import { User as SelectUser } from "@shared/schema";
+import { authRateLimiter, registerRateLimiter } from "./rate-limiter";
 
 declare global {
   namespace Express {
@@ -36,6 +37,9 @@ export function setupAuth(app: Express) {
     store: storage.sessionStore,
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      httpOnly: true, // Prevent client-side access to cookie
+      secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS in production
+      sameSite: 'strict' // Prevent CSRF attacks
     }
   };
 
@@ -69,7 +73,8 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  // Apply rate limiting to authentication endpoints
+  app.post("/api/register", registerRateLimiter, async (req, res, next) => {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
@@ -90,7 +95,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  app.post("/api/login", authRateLimiter, (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: "Invalid username or password" });

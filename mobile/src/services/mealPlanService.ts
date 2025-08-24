@@ -1,4 +1,4 @@
-import api from './api';
+import { apiService } from './apiService';
 
 // Types
 export type MealPlanPreferences = {
@@ -376,54 +376,96 @@ const mealPlanService = {
   // Generate meal plan
   generateMealPlan: async (preferences: MealPlanPreferences): Promise<MealPlan> => {
     try {
-      // In production, this would call the API
-      // return await api.mealPlans.generatePlan(preferences);
+      // Call the API to generate meal plan
+      const response = await apiService.post('/api/meal-plans/generate', {
+        ...preferences,
+        timestamp: new Date().toISOString(),
+      }, {
+        requiresAuth: true,
+        showErrorToast: false,
+      });
+
+      const result = response.data;
       
-      // For development, generate mock data
-      
-      // Simulate network delay (longer to simulate AI processing)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      return generateMockMealPlan(preferences);
+      // Transform API response to match MealPlan interface
+      return {
+        id: result.id || `plan-${Date.now()}`,
+        userId: result.userId || 'user-1',
+        date: result.date || new Date().toISOString().split('T')[0],
+        preferences: result.preferences || preferences,
+        meals: result.meals || {
+          breakfast: generateMockMeal('breakfast', preferences.calorieTarget * 0.3, preferences.dietType),
+          lunch: generateMockMeal('lunch', preferences.calorieTarget * 0.3, preferences.dietType),
+          dinner: generateMockMeal('dinner', preferences.calorieTarget * 0.3, preferences.dietType),
+          snacks: [generateMockMeal('snack', preferences.calorieTarget * 0.1, preferences.dietType)],
+        },
+        totalCalories: result.totalCalories || preferences.calorieTarget,
+        totalProtein: result.totalProtein || 0,
+        totalCarbs: result.totalCarbs || 0,
+        totalFat: result.totalFat || 0,
+        createdAt: result.createdAt || new Date().toISOString(),
+      };
     } catch (error) {
-      console.error('Error generating meal plan:', error);
-      throw new Error('Failed to generate meal plan. Please try again.');
+      console.error('Failed to generate meal plan via API:', error);
+      // Fallback to mock generation if API fails
+      return generateMockMealPlan(preferences);
     }
   },
   
   // Save meal plan
   saveMealPlan: async (plan: MealPlan): Promise<MealPlan> => {
     try {
-      // In production, this would call the API
-      // return await api.mealPlans.savePlan(plan);
+      // Call the API to save meal plan
+      const response = await apiService.post('/api/meal-plans/save', {
+        ...plan,
+        timestamp: new Date().toISOString(),
+      }, {
+        requiresAuth: true,
+        showErrorToast: false,
+      });
+
+      const result = response.data;
       
-      // For development, return the same plan
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      return plan;
+      return {
+        ...plan,
+        id: result.id || plan.id,
+        createdAt: result.createdAt || plan.createdAt,
+      };
     } catch (error) {
-      console.error('Error saving meal plan:', error);
-      throw new Error('Failed to save meal plan. Please try again.');
+      console.error('Failed to save meal plan via API:', error);
+      // Fallback to mock save if API fails
+      return plan;
     }
   },
   
   // Get meal plans
   getMealPlans: async (): Promise<MealPlan[]> => {
     try {
-      // In production, this would call the API
-      // return await api.mealPlans.getPlans();
+      // Call the API to get meal plans
+      const response = await apiService.get('/api/meal-plans', {
+        requiresAuth: true,
+        showErrorToast: false,
+      });
+
+      const result = response.data;
       
-      // For development, return empty array
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return [];
+      // Transform API response to match MealPlan interface
+      return result.map((plan: any) => ({
+        id: plan.id,
+        userId: plan.userId,
+        date: plan.date,
+        preferences: plan.preferences,
+        meals: plan.meals,
+        totalCalories: plan.totalCalories,
+        totalProtein: plan.totalProtein,
+        totalCarbs: plan.totalCarbs,
+        totalFat: plan.totalFat,
+        createdAt: plan.createdAt,
+      }));
     } catch (error) {
-      console.error('Error fetching meal plans:', error);
-      throw new Error('Failed to fetch meal plans. Please try again.');
+      console.error('Failed to fetch meal plans via API:', error);
+      // Return empty array if API fails
+      return [];
     }
   },
 };

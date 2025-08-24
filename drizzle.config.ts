@@ -1,14 +1,16 @@
-import { defineConfig } from "drizzle-kit";
+import type { Config } from 'drizzle-kit';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
-
-export default defineConfig({
-  out: "./migrations",
-  schema: "./shared/schema.ts",
-  dialect: "mysql", // changed from postgresql to mysql
+export default {
+  schema: './shared/schema.ts',
+  out: './migrations',
+  dialect: 'mysql',
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: '',
+    database: 'calorie_tracker',
   },
-});
+  verbose: true,
+  strict: true,
+} satisfies Config;

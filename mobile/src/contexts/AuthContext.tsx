@@ -72,7 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(response.data);
         }
       } catch (err) {
-        console.log('Failed to load user:', err);
         await SecureStore.deleteItemAsync('token');
       } finally {
         setIsLoading(false);
@@ -159,7 +158,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear user from state
       setUser(null);
     } catch (err) {
-      console.log('Logout error:', err);
       // Still remove token and user even if API call fails
       await SecureStore.deleteItemAsync('token');
       setUser(null);

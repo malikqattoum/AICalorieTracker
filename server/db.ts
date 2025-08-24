@@ -1,16 +1,19 @@
 import { drizzle } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as sharedSchema from '@shared/schema';
+import { DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT } from './config';
 export const schema = sharedSchema;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
 
 // Create a MySQL connection pool
 export const pool = mysql.createPool({
-  uri: process.env.DATABASE_URL,
-  // You can add more options here if needed (e.g., connectionLimit)
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // Create a drizzle ORM instance

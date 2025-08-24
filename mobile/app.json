@@ -59,14 +59,19 @@
       "eas": {
         "projectId": "ai-calorie-tracker-2024"
       },
-      "apiUrl": "http://localhost:5001",
-      "enableLogging": true,
-      "useMockData": true,
-      "releaseChannel": "development",
+      "apiUrl": "https://api.aicalorietracker.com",
+      "enableLogging": false,
+      "useMockData": false,
+      "releaseChannel": "production",
       "supportEmail": "support@aicalorietracker.com",
       "appName": "AI Calorie Tracker",
       "version": "1.0.0",
-      "environment": "development"
+      "environment": "production",
+      "sentryDsn": "https://your-sentry-dsn-here",
+      "analyticsEnabled": true,
+      "stripePublishableKey": "pk_test_your-stripe-key-here",
+      "openaiApiKey": "your-openai-api-key-here",
+      "googleApiKey": "your-google-api-key-here"
     }
   }
 }

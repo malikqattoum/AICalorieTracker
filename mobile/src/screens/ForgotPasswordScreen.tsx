@@ -19,6 +19,7 @@ import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { RootStackParamList } from '../navigation';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,7 +33,7 @@ export default function ForgotPasswordScreen() {
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+      const data = await safeFetchJson(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,12 +41,11 @@ export default function ForgotPasswordScreen() {
         body: JSON.stringify({ email }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reset password');
+      if (data === null) {
+        throw new Error('Failed to reset password');
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       setIsSubmitted(true);
@@ -127,7 +127,7 @@ export default function ForgotPasswordScreen() {
             
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}
-              onPress={() => navigation.navigate('Login')}
+              onPress={() => navigation.navigate('Auth')}
             >
               <Text style={styles.loginButtonText}>
                 {i18n.t('auth.loginInstead')}
@@ -187,7 +187,7 @@ export default function ForgotPasswordScreen() {
             
             <TouchableOpacity
               style={styles.loginContainer}
-              onPress={() => navigation.navigate('Login')}
+              onPress={() => navigation.navigate('Auth')}
             >
               <Ionicons name="arrow-back" size={16} color={colors.primary} />
               <Text style={[styles.loginText, { color: colors.primary }]}>

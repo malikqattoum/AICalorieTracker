@@ -1,577 +1,491 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
   Switch,
   TextInput,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL, DEFAULT_SETTINGS, NUTRITION_PRESETS } from '../config';
-import { changeLanguage } from '../i18n';
-import DataManager from '../utils/dataManager';
+import { RootStackParamList } from '../navigation';
+import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
+import { DEFAULT_SETTINGS } from '../config';
+
+type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface AppSettings {
+  notifications: {
+    mealReminders: boolean;
+    weeklyReports: boolean;
+    tips: boolean;
+    pushEnabled: boolean;
+  };
+  privacy: {
+    shareAnalytics: boolean;
+    storeImages: boolean;
+    allowCrashReporting: boolean;
+  };
+  goals: {
+    calorieGoal: number;
+    proteinGoal: number;
+    carbsGoal: number;
+    fatGoal: number;
+    fiberGoal: number;
+    sugarGoal: number;
+    sodiumGoal: number;
+  };
+  units: {
+    weight: string;
+    height: string;
+    temperature: string;
+  };
+  theme: {
+    mode: string;
+    primaryColor: string;
+  };
+}
 
 export default function SettingsScreen() {
-  const navigation = useNavigation();
-  const { colors, isDark, setTheme } = useTheme();
+  const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const { colors } = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  
-  // State for settings
-  const [settings, setSettings] = useState({
-    notifications: {
-      mealReminders: DEFAULT_SETTINGS.notifications.mealReminders,
-      weeklyReports: DEFAULT_SETTINGS.notifications.weeklyReports,
-      tips: DEFAULT_SETTINGS.notifications.tips,
-    },
-    privacy: {
-      shareAnalytics: DEFAULT_SETTINGS.privacy.shareAnalytics,
-      storeImages: DEFAULT_SETTINGS.privacy.storeImages,
-    },
-    goals: {
-      calorieGoal: DEFAULT_SETTINGS.goals.calorieGoal,
-      proteinGoal: DEFAULT_SETTINGS.goals.proteinGoal,
-      carbsGoal: DEFAULT_SETTINGS.goals.carbsGoal,
-      fatGoal: DEFAULT_SETTINGS.goals.fatGoal,
-    },
-    language: 'english',
-  });
+
+  const [settings, setSettings] = useState<AppSettings>(() => DEFAULT_SETTINGS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch user settings
-  const { isLoading } = useQuery({
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['userSettings'],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/user/settings`);
-      if (!response.ok) {
+    queryFn: async (): Promise<AppSettings> => {
+      const result = await safeFetchJson(`${API_URL}/api/user/settings`);
+      if (result === null) {
         throw new Error('Failed to fetch user settings');
       }
-      const data = await response.json();
-      setSettings(data);
-      return data;
+      return result;
     },
   });
 
-  // Update settings mutation
-  const updateSettingsMutation = useMutation({
-    mutationFn: async (updatedSettings: any) => {
+  // Handle settings change
+  const handleSettingChange = (section: keyof AppSettings, field: string, value: any) => {
+    setSettings(prev => {
+      const newSettings = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value,
+        },
+      };
+      setHasChanges(JSON.stringify(newSettings) !== JSON.stringify(settings));
+      return newSettings;
+    });
+  };
+
+  // Save settings
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (newSettings: AppSettings) => {
       const response = await fetch(`${API_URL}/api/user/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedSettings),
+        body: JSON.stringify(newSettings),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to update settings');
+        throw new Error('Failed to save settings');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
+      setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ['userSettings'] });
-      queryClient.invalidateQueries({ queryKey: ['dailyStats'] });
-      
-      Toast.show({
-        type: 'success',
-        text1: i18n.t('common.success'),
-        text2: 'Settings updated successfully',
-      });
+      Alert.alert(
+        'Success',
+        'Settings saved successfully!',
+        [{ text: 'OK', style: 'default' }]
+      );
     },
-    onError: (error: Error) => {
-      Toast.show({
-        type: 'error',
-        text1: i18n.t('common.error'),
-        text2: error.message,
-      });
+    onError: (error) => {
+      Alert.alert(
+        'Error',
+        'Failed to save settings. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
     },
   });
 
-  // Handle toggle switch
-  const handleToggle = (section: string, setting: string) => {
-    const updatedSettings = { ...settings };
-    // @ts-ignore
-    updatedSettings[section][setting] = !updatedSettings[section][setting];
-    setSettings(updatedSettings);
-    updateSettingsMutation.mutate(updatedSettings);
+  const handleSaveSettings = () => {
+    setIsLoading(true);
+    saveSettingsMutation.mutate(settings);
+    setIsLoading(false);
   };
 
-  // Handle theme toggle
-  const handleThemeToggle = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
-
-  // Handle language change
-  const handleLanguageChange = (language: string) => {
-    const updatedSettings = { ...settings, language };
-    setSettings(updatedSettings);
-    updateSettingsMutation.mutate(updatedSettings);
-    
-    // Change app language
-    const locale = language === 'english' ? 'en' : language === 'spanish' ? 'es' : 'fr';
-    changeLanguage(locale);
-  };
-
-  // Handle data export
-  const handleDataExport = async () => {
+  const handleResetSettings = () => {
     Alert.alert(
-      'Export Data',
-      'This will create a file containing all your meals, settings, and progress data. You can use this for backup or to transfer to another device.',
+      'Reset Settings',
+      'Are you sure you want to reset all settings to default?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Export', 
-          onPress: async () => {
-            const success = await DataManager.exportUserData();
-            if (success) {
-              console.log('Data exported successfully');
-            }
-          }
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            setSettings(() => DEFAULT_SETTINGS);
+            setHasChanges(true);
+          },
         },
       ]
     );
   };
 
-  // Handle data deletion
-  const handleDataDelete = async () => {
-    const success = await DataManager.deleteUserData();
-    if (success) {
-      // Data deletion successful - app would restart or logout
-      console.log('Data deleted successfully');
-    }
-  };
-
-  // Handle legal document links
-  const handleTermsOfService = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Terms of Service',
-      text2: 'Opening terms document...',
-    });
-    // In production, this would open a web view or external link
-  };
-
-  const handlePrivacyPolicy = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Privacy Policy',
-      text2: 'Opening privacy policy...',
-    });
-    // In production, this would open a web view or external link
-  };
-
-  const handleLicenses = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Open Source Licenses',
-      text2: 'Opening licenses information...',
-    });
-    // In production, this would show third-party licenses
-  };
-
-  // Handle goal change
-  const handleGoalChange = (goal: string, value: string) => {
-    const numValue = parseInt(value) || 0;
-    const updatedSettings = { 
-      ...settings,
-      goals: {
-        ...settings.goals,
-        [goal]: numValue,
-      }
-    };
-    setSettings(updatedSettings);
-  };
-
-  // Save goals
-  const saveGoals = () => {
-    updateSettingsMutation.mutate(settings);
-  };
-
-  // Apply preset
-  const applyPreset = (preset: 'weightLoss' | 'maintenance' | 'muscleGain') => {
-    Alert.alert(
-      'Apply Preset',
-      'This will replace your current nutrition goals. Continue?',
-      [
-        {
-          text: i18n.t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: i18n.t('common.confirm'),
-          onPress: () => {
-            const updatedSettings = {
-              ...settings,
-              goals: NUTRITION_PRESETS[preset],
-            };
-            setSettings(updatedSettings);
-            updateSettingsMutation.mutate(updatedSettings);
-          },
-        },
-      ],
-    );
-  };
-
-  // Render section header
-  const renderSectionHeader = (title: string) => (
-    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-      {title}
-    </Text>
-  );
-
-  // Render toggle item
-  const renderToggleItem = (
-    section: string,
-    setting: string,
-    label: string,
-    value: boolean
-  ) => (
-    <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-      <Text style={[styles.settingLabel, { color: colors.text }]}>
-        {label}
-      </Text>
-      <Switch
-        value={value}
-        onValueChange={() => handleToggle(section, setting)}
-        trackColor={{ false: '#767577', true: colors.primary }}
-        thumbColor="white"
-      />
-    </View>
-  );
-
-  if (isLoading) {
+  if (isLoadingSettings) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading settings...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.card }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {i18n.t('settings.title')}
-        </Text>
-      </View>
-
-      {/* Appearance Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.appearance.title'))}
-        
-        <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.settingLabel, { color: colors.text }]}>
-            {i18n.t('settings.appearance.theme')}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {i18n.t('settings.title')}
           </Text>
-          <Switch
-            value={isDark}
-            onValueChange={handleThemeToggle}
-            trackColor={{ false: '#767577', true: colors.primary }}
-            thumbColor="white"
-          />
+          <View style={styles.headerSpacer} />
         </View>
-      </View>
 
-      {/* Notifications Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.notifications.title'))}
-        
-        {renderToggleItem(
-          'notifications',
-          'mealReminders',
-          i18n.t('settings.notifications.mealReminders'),
-          settings.notifications.mealReminders
-        )}
-        
-        {renderToggleItem(
-          'notifications',
-          'weeklyReports',
-          i18n.t('settings.notifications.weeklyReports'),
-          settings.notifications.weeklyReports
-        )}
-        
-        {renderToggleItem(
-          'notifications',
-          'tips',
-          i18n.t('settings.notifications.tips'),
-          settings.notifications.tips
-        )}
-      </View>
-
-      {/* Privacy Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.privacy.title'))}
-        
-        {renderToggleItem(
-          'privacy',
-          'shareAnalytics',
-          i18n.t('settings.privacy.shareAnalytics'),
-          settings.privacy.shareAnalytics
-        )}
-        
-        {renderToggleItem(
-          'privacy',
-          'storeImages',
-          i18n.t('settings.privacy.storeImages'),
-          settings.privacy.storeImages
-        )}
-        
-        <TouchableOpacity
-          style={[styles.actionButton, { borderColor: colors.border }]}
-          onPress={handleDataExport}
-        >
-          <Text style={[styles.actionButtonText, { color: colors.text }]}>
-            {i18n.t('settings.privacy.dataExport')}
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('settings.notifications')}
           </Text>
-          <Ionicons name="download-outline" size={20} color={colors.text} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.actionButton, { borderColor: colors.error, marginBottom: 0 }]}
-          onPress={handleDataDelete}
-        >
-          <Text style={[styles.actionButtonText, { color: colors.error }]}>
-            {i18n.t('settings.privacy.dataDelete')}
-          </Text>
-          <Ionicons name="trash-outline" size={20} color={colors.error} />
-        </TouchableOpacity>
-      </View>
+          
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.mealReminders')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('settings.mealRemindersDesc')}
+                </Text>
+              </View>
+              <Switch
+                value={settings.notifications.mealReminders}
+                onValueChange={(value) => handleSettingChange('notifications', 'mealReminders', value)}
+                trackColor={{ false: '#767577', true: colors.primary }}
+                thumbColor={settings.notifications.mealReminders ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
+          </View>
 
-      {/* Nutrition Goals Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.goals.title'))}
-        
-        <View style={styles.goalsContainer}>
-          <View style={styles.goalInputRow}>
-            <Text style={[styles.goalLabel, { color: colors.text }]}>
-              {i18n.t('settings.goals.calorieGoal')}
-            </Text>
-            <TextInput
-              style={[
-                styles.goalInput,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
-              ]}
-              value={settings.goals.calorieGoal.toString()}
-              onChangeText={(value) => handleGoalChange('calorieGoal', value)}
-              keyboardType="numeric"
-              maxLength={4}
-            />
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.weeklyReports')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('settings.weeklyReportsDesc')}
+                </Text>
+              </View>
+              <Switch
+                value={settings.notifications.weeklyReports}
+                onValueChange={(value) => handleSettingChange('notifications', 'weeklyReports', value)}
+                trackColor={{ false: '#767577', true: colors.primary }}
+                thumbColor={settings.notifications.weeklyReports ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
           </View>
+
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.tips')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('settings.tipsDesc')}
+                </Text>
+              </View>
+              <Switch
+                value={settings.notifications.tips}
+                onValueChange={(value) => handleSettingChange('notifications', 'tips', value)}
+                trackColor={{ false: '#767577', true: colors.primary }}
+                thumbColor={settings.notifications.tips ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Goals Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('settings.nutritionGoals')}
+          </Text>
           
-          <View style={styles.goalInputRow}>
-            <Text style={[styles.goalLabel, { color: colors.text }]}>
-              {i18n.t('settings.goals.proteinGoal')}
-            </Text>
-            <TextInput
-              style={[
-                styles.goalInput,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
-              ]}
-              value={settings.goals.proteinGoal.toString()}
-              onChangeText={(value) => handleGoalChange('proteinGoal', value)}
-              keyboardType="numeric"
-              maxLength={3}
-            />
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.calorieGoal')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Daily calorie target
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                value={settings.goals.calorieGoal.toString()}
+                onChangeText={(text) => handleSettingChange('goals', 'calorieGoal', parseInt(text) || 0)}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+            </View>
           </View>
+
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.proteinGoal')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Daily protein target (grams)
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                value={settings.goals.proteinGoal.toString()}
+                onChangeText={(text) => handleSettingChange('goals', 'proteinGoal', parseInt(text) || 0)}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+            </View>
+          </View>
+
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.carbsGoal')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Daily carbs target (grams)
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                value={settings.goals.carbsGoal.toString()}
+                onChangeText={(text) => handleSettingChange('goals', 'carbsGoal', parseInt(text) || 0)}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+            </View>
+          </View>
+
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.fatGoal')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Daily fat target (grams)
+                </Text>
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, color: colors.text, borderColor: colors.border }]}
+                value={settings.goals.fatGoal.toString()}
+                onChangeText={(text) => handleSettingChange('goals', 'fatGoal', parseInt(text) || 0)}
+                keyboardType="numeric"
+                maxLength={3}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Units Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('settings.units')}
+          </Text>
           
-          <View style={styles.goalInputRow}>
-            <Text style={[styles.goalLabel, { color: colors.text }]}>
-              {i18n.t('settings.goals.carbsGoal')}
-            </Text>
-            <TextInput
-              style={[
-                styles.goalInput,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
-              ]}
-              value={settings.goals.carbsGoal.toString()}
-              onChangeText={(value) => handleGoalChange('carbsGoal', value)}
-              keyboardType="numeric"
-              maxLength={3}
-            />
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.weightUnit')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Unit for weight measurement
+                </Text>
+              </View>
+              <View style={styles.unitButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.unitButton,
+                    settings.units.weight === 'kg' && [styles.unitButtonActive, { backgroundColor: colors.primary }]
+                  ]}
+                  onPress={() => handleSettingChange('units', 'weight', 'kg')}
+                >
+                  <Text style={[
+                    styles.unitButtonText,
+                    settings.units.weight === 'kg' && { color: 'white' }
+                  ]}>
+                    kg
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.unitButton,
+                    settings.units.weight === 'lbs' && [styles.unitButtonActive, { backgroundColor: colors.primary }]
+                  ]}
+                  onPress={() => handleSettingChange('units', 'weight', 'lbs')}
+                >
+                  <Text style={[
+                    styles.unitButtonText,
+                    settings.units.weight === 'lbs' && { color: 'white' }
+                  ]}>
+                    lbs
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
+        </View>
+
+        {/* Privacy Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('settings.privacy')}
+          </Text>
           
-          <View style={styles.goalInputRow}>
-            <Text style={[styles.goalLabel, { color: colors.text }]}>
-              {i18n.t('settings.goals.fatGoal')}
-            </Text>
-            <TextInput
-              style={[
-                styles.goalInput,
-                { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }
-              ]}
-              value={settings.goals.fatGoal.toString()}
-              onChangeText={(value) => handleGoalChange('fatGoal', value)}
-              keyboardType="numeric"
-              maxLength={3}
-            />
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.shareAnalytics')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Help improve the app by sharing anonymous usage data
+                </Text>
+              </View>
+              <Switch
+                value={settings.privacy.shareAnalytics}
+                onValueChange={(value) => handleSettingChange('privacy', 'shareAnalytics', value)}
+                trackColor={{ false: '#767577', true: colors.primary }}
+                thumbColor={settings.privacy.shareAnalytics ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
           </View>
+
+          <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  {i18n.t('settings.storeImages')}
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Store meal images locally for faster loading
+                </Text>
+              </View>
+              <Switch
+                value={settings.privacy.storeImages}
+                onValueChange={(value) => handleSettingChange('privacy', 'storeImages', value)}
+                trackColor={{ false: '#767577', true: colors.primary }}
+                thumbColor={settings.privacy.storeImages ? '#f4f3f4' : '#f4f3f4'}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Connected Devices Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Connected Devices
+          </Text>
           
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.primary }]}
-            onPress={saveGoals}
+            style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('WearableIntegration')}
           >
-            <Text style={styles.saveButtonText}>
-              {i18n.t('common.save')}
-            </Text>
+            <View style={styles.settingItemContent}>
+              <View style={styles.settingItemInfo}>
+                <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                  Wearable Integration
+                </Text>
+                <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                  Connect and manage your wearable devices
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
           </TouchableOpacity>
         </View>
-        
-        <Text style={[styles.presetsTitle, { color: colors.text }]}>
-          {i18n.t('settings.goals.presets')}
-        </Text>
-        
-        <View style={styles.presetsContainer}>
-          <TouchableOpacity
-            style={[styles.presetButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => applyPreset('weightLoss')}
-          >
-            <Text style={[styles.presetButtonText, { color: colors.text }]}>
-              {i18n.t('mealPlan.weightLoss')}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.presetButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => applyPreset('maintenance')}
-          >
-            <Text style={[styles.presetButtonText, { color: colors.text }]}>
-              {i18n.t('mealPlan.maintenance')}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.presetButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => applyPreset('muscleGain')}
-          >
-            <Text style={[styles.presetButtonText, { color: colors.text }]}>
-              {i18n.t('mealPlan.muscleGain')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {/* Language Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.language.title'))}
-        
-        <TouchableOpacity
-          style={[
-            styles.languageOption, 
-            { 
-              borderBottomColor: colors.border,
-              backgroundColor: settings.language === 'english' ? colors.primary + '20' : 'transparent',
-            }
-          ]}
-          onPress={() => handleLanguageChange('english')}
-        >
-          <Text style={[styles.languageText, { color: colors.text }]}>
-            {i18n.t('settings.language.english')}
-          </Text>
-          {settings.language === 'english' && (
-            <Ionicons name="checkmark" size={20} color={colors.primary} />
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          {hasChanges && (
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+              onPress={handleSaveSettings}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="save" size={20} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {i18n.t('settings.saveChanges')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.languageOption, 
-            { 
-              borderBottomColor: colors.border,
-              backgroundColor: settings.language === 'spanish' ? colors.primary + '20' : 'transparent',
-            }
-          ]}
-          onPress={() => handleLanguageChange('spanish')}
-        >
-          <Text style={[styles.languageText, { color: colors.text }]}>
-            {i18n.t('settings.language.spanish')}
-          </Text>
-          {settings.language === 'spanish' && (
-            <Ionicons name="checkmark" size={20} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.languageOption, 
-            { 
-              borderBottomColor: colors.border,
-              backgroundColor: settings.language === 'french' ? colors.primary + '20' : 'transparent',
-            }
-          ]}
-          onPress={() => handleLanguageChange('french')}
-        >
-          <Text style={[styles.languageText, { color: colors.text }]}>
-            {i18n.t('settings.language.french')}
-          </Text>
-          {settings.language === 'french' && (
-            <Ionicons name="checkmark" size={20} color={colors.primary} />
-          )}
-        </TouchableOpacity>
-      </View>
+          
+          <TouchableOpacity
+            style={[styles.resetButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleResetSettings}
+          >
+            <Text style={[styles.resetButtonText, { color: colors.text }]}>
+              {i18n.t('settings.resetToDefault')}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* About Section */}
-      <View style={styles.section}>
-        {renderSectionHeader(i18n.t('settings.about.title'))}
-        
-        <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.settingLabel, { color: colors.text }]}>
-            {i18n.t('settings.about.version')}
-          </Text>
-          <Text style={[styles.settingValue, { color: colors.gray }]}>
-            1.0.0
+        {/* Version Info */}
+        <View style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: colors.gray }]}>
+            AI Calorie Tracker v1.0.0
           </Text>
         </View>
-        
-        <TouchableOpacity
-          style={[styles.settingItem, { borderBottomColor: colors.border }]}
-          onPress={handleTermsOfService}
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>
-            {i18n.t('settings.about.termsOfService')}
-          </Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.settingItem, { borderBottomColor: colors.border }]}
-          onPress={handlePrivacyPolicy}
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>
-            {i18n.t('settings.about.privacyPolicy')}
-          </Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.settingItem, { borderBottomColor: colors.border }]}
-          onPress={handleLicenses}
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>
-            {i18n.t('settings.about.licenses')}
-          </Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -584,137 +498,119 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    padding: 16,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 40,
   },
   section: {
+    marginTop: 24,
     paddingHorizontal: 20,
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    fontFamily: 'Inter-SemiBold',
   },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-  },
-  settingValue: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    marginTop: 16,
-    marginBottom: 16,
   },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
-  },
-  goalsContainer: {
-    marginBottom: 24,
-  },
-  goalInputRow: {
+  settingItemContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'space-between',
   },
-  goalLabel: {
+  settingItemInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingItemTitle: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  goalInput: {
+  settingItemSubtitle: {
+    fontSize: 14,
+  },
+  input: {
     width: 80,
-    height: 40,
+    padding: 8,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    textAlign: 'center',
     borderWidth: 1,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
+  unitButtons: {
+    flexDirection: 'row',
+  },
+  unitButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginLeft: 8,
+  },
+  unitButtonActive: {
+    borderWidth: 0,
+  },
+  unitButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  actionButtons: {
+    marginTop: 32,
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
   saveButton: {
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   saveButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    marginLeft: 8,
   },
-  presetsTitle: {
+  resetButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  resetButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
-    fontFamily: 'Inter-SemiBold',
   },
-  presetsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  presetButton: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: 'center',
+  versionContainer: {
     alignItems: 'center',
-    marginHorizontal: 4,
-    borderWidth: 1,
+    paddingBottom: 20,
   },
-  presetButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
-  },
-  languageOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-  },
-  languageText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+  versionText: {
+    fontSize: 12,
   },
 });

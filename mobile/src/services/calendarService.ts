@@ -152,7 +152,6 @@ const calendarService = {
       
       return generateMockCalendarData(currentMonth);
     } catch (error) {
-      console.error('Error fetching calendar data:', error);
       throw new Error('Failed to fetch calendar data. Please try again.');
     }
   },
@@ -170,7 +169,6 @@ const calendarService = {
       
       return generateMockDailyStats(date);
     } catch (error) {
-      console.error('Error fetching daily stats:', error);
       throw new Error('Failed to fetch daily stats. Please try again.');
     }
   },

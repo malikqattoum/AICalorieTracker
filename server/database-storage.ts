@@ -13,6 +13,10 @@ import session from 'express-session';
 import { pool } from './db';
 import MySQLStoreImport from 'express-mysql-session';
 import { HIPAA_COMPLIANCE_ENABLED } from './config';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Create PostgreSQL session store
 // const PostgresSessionStore = connectPg(session);
@@ -26,11 +30,11 @@ export class DatabaseStorage implements IStorage {
     
     // Use express-mysql-session for MySQL/MariaDB
     const options = {
-      host: 'localhost',
-      port: 3306,
-      user: 'root',
-      password: '',
-      database: 'calorie_tracker',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '3306'),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'calorie_tracker',
     };
     // For ESM: MySQLStore is a function, not a class, so call it with session to get the constructor
     const MySQLStore = (MySQLStoreImport as any).default ? (MySQLStoreImport as any).default : MySQLStoreImport;
@@ -125,7 +129,7 @@ export class DatabaseStorage implements IStorage {
     const encryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
       ...insertAnalysis,
       foodName: encryptPHI(insertAnalysis.foodName),
-      imageData: encryptPHI(insertAnalysis.imageData),
+      imageData: insertAnalysis.imageData ? encryptPHI(insertAnalysis.imageData) : null,
       metadata: insertAnalysis.metadata ? encryptPHI(insertAnalysis.metadata) : undefined
     } : insertAnalysis;
 
@@ -154,7 +158,7 @@ export class DatabaseStorage implements IStorage {
     const decryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
       ...analysis,
       foodName: decryptPHI(analysis.foodName),
-      imageData: decryptPHI(analysis.imageData),
+      imageData: analysis.imageData ? decryptPHI(analysis.imageData) : null,
       metadata: analysis.metadata ? decryptPHI(analysis.metadata) : undefined
     } : analysis;
     

@@ -1,4 +1,13 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noEmitOnError": false
+  },
+  "extends": "./tsconfig.base",
+  "exclude": [
+    "node_modules/**/tsconfig.json",
+    "node_modules/expo-camera/tsconfig.json",
+    "node_modules/expo-image-manipulator/tsconfig.json",
+    "node_modules/expo-image-picker/tsconfig.json"
+  ]
 }

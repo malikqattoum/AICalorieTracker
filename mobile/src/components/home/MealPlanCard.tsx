@@ -1,349 +1,461 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import i18n from '../../i18n';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { RootStackParamList } from '../../navigation';
-import { API_URL } from '../../config';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type MealPlanCardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-type MealPlan = {
-  id: string;
-  goal: string;
-  calorieTarget: number;
-  meals: {
-    breakfast: { name: string; calories: number }[];
-    lunch: { name: string; calories: number }[];
-    dinner: { name: string; calories: number }[];
-    snacks: { name: string; calories: number }[];
-  };
-  createdAt: string;
+type MealPlanCardProps = {
+  meals?: Array<{
+    id: string;
+    name: string;
+    type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    prepTime: number;
+    difficulty: 'easy' | 'medium' | 'hard';
+    ingredients: string[];
+    instructions: string[];
+  }>;
 };
 
-export default function MealPlanCard() {
-  const navigation = useNavigation<MealPlanCardNavigationProp>();
+type MealPlanNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+export default function MealPlanCard({ meals = [] }: MealPlanCardProps) {
   const { colors } = useTheme();
+  const navigation = useNavigation<MealPlanNavigationProp>();
+  const [selectedDay, setSelectedDay] = useState(0);
+  const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
 
-  // Fetch current meal plan
-  const { data: mealPlan, isLoading } = useQuery({
-    queryKey: ['currentMealPlan'],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/meal-plan/current`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null; // No meal plan found
-        }
-        throw new Error('Failed to fetch meal plan');
-      }
-      return response.json();
-    },
-    // Mock data for development
-    placeholderData: {
+  // Mock meal plan data
+  const mockMealPlan = [
+    {
       id: '1',
-      goal: 'weightLoss',
-      calorieTarget: 1800,
-      meals: {
-        breakfast: [{ name: 'Greek Yogurt with Berries', calories: 320 }],
-        lunch: [{ name: 'Grilled Chicken Salad', calories: 450 }],
-        dinner: [{ name: 'Baked Salmon with Vegetables', calories: 520 }],
-        snacks: [{ name: 'Apple with Almond Butter', calories: 210 }],
-      },
-      createdAt: new Date().toISOString(),
+      name: 'Overnight Oats with Berries',
+      type: 'breakfast' as const,
+      calories: 320,
+      protein: 12,
+      carbs: 45,
+      fat: 8,
+      prepTime: 5,
+      difficulty: 'easy' as const,
+      ingredients: ['Rolled oats', 'Milk', 'Greek yogurt', 'Mixed berries', 'Honey', 'Chia seeds'],
+      instructions: [
+        'Combine oats, milk, and chia seeds in a jar',
+        'Add Greek yogurt and mix well',
+        'Top with berries and drizzle with honey',
+        'Refrigerate overnight',
+        'Enjoy in the morning'
+      ],
     },
-  });
+    {
+      id: '2',
+      name: 'Grilled Chicken Salad',
+      type: 'lunch' as const,
+      calories: 420,
+      protein: 35,
+      carbs: 20,
+      fat: 18,
+      prepTime: 15,
+      difficulty: 'medium' as const,
+      ingredients: ['Chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil', 'Lemon'],
+      instructions: [
+        'Season chicken breast with salt and pepper',
+        'Grill for 6-8 minutes per side',
+        'Let rest for 5 minutes',
+        'Combine all vegetables in a bowl',
+        'Slice chicken and add to salad',
+        'Drizzle with olive oil and lemon'
+      ],
+    },
+    {
+      id: '3',
+      name: 'Salmon with Roasted Vegetables',
+      type: 'dinner' as const,
+      calories: 480,
+      protein: 38,
+      carbs: 25,
+      fat: 22,
+      prepTime: 25,
+      difficulty: 'medium' as const,
+      ingredients: ['Salmon fillet', 'Broccoli', 'Carrots', 'Bell peppers', 'Olive oil', 'Garlic'],
+      instructions: [
+        'Preheat oven to 400°F (200°C)',
+        'Season salmon with herbs and lemon',
+        'Toss vegetables with olive oil and garlic',
+        'Roast for 20-25 minutes',
+        'Serve salmon with roasted vegetables'
+      ],
+    },
+    {
+      id: '4',
+      name: 'Protein Smoothie',
+      type: 'snack' as const,
+      calories: 180,
+      protein: 25,
+      carbs: 15,
+      fat: 5,
+      prepTime: 5,
+      difficulty: 'easy' as const,
+      ingredients: ['Protein powder', 'Banana', 'Almond milk', 'Spinach', 'Ice'],
+      instructions: [
+        'Add protein powder to blender',
+        'Add banana and spinach',
+        'Pour in almond milk',
+        'Add ice and blend until smooth',
+        'Pour into glass and enjoy'
+      ],
+    },
+  ];
 
-  // Get goal text
-  const getGoalText = (goal: string) => {
-    switch (goal) {
-      case 'weightLoss':
-        return i18n.t('mealPlan.weightLoss');
-      case 'maintenance':
-        return i18n.t('mealPlan.maintenance');
-      case 'muscleGain':
-        return i18n.t('mealPlan.muscleGain');
+  const days = ['Today', 'Tomorrow', 'Wednesday', 'Thursday', 'Friday'];
+  const displayMeals = meals.length > 0 ? meals : mockMealPlan;
+
+  const getMealTypeIcon = (type: string) => {
+    switch (type) {
+      case 'breakfast':
+        return 'sunny-outline';
+      case 'lunch':
+        return 'restaurant-outline';
+      case 'dinner':
+        return 'moon-outline';
+      case 'snack':
+        return 'ice-cream-outline';
       default:
-        return i18n.t('mealPlan.weightLoss');
+        return 'restaurant-outline';
     }
   };
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {i18n.t('mealPlan.title')}
-        </Text>
-        
-        <TouchableOpacity
-          onPress={() => navigation.navigate('MealPlan')}
-          style={styles.viewAllButton}
-        >
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>
-            {i18n.t('home.viewAll')}
+  const getMealTypeColor = (type: string) => {
+    switch (type) {
+      case 'breakfast':
+        return '#F59E0B';
+      case 'lunch':
+        return '#10B981';
+      case 'dinner':
+        return '#3B82F6';
+      case 'snack':
+        return '#8B5CF6';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return '#10B981';
+      case 'medium':
+        return '#F59E0B';
+      case 'hard':
+        return '#EF4444';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const getDifficultyText = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy':
+        return 'Easy';
+      case 'medium':
+        return 'Medium';
+      case 'hard':
+        return 'Hard';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const handleMealPress = (mealId: string) => {
+    setExpandedMeal(expandedMeal === mealId ? null : mealId);
+  };
+
+  const handleRecipePress = (mealId: string) => {
+    navigation.navigate('MealDetails', { mealId });
+  };
+
+  const renderMealItem = ({ item }: { item: typeof mockMealPlan[0] }) => (
+    <TouchableOpacity
+      style={[styles.mealItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={() => handleMealPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.mealHeader}>
+        <View style={styles.mealType}>
+          <Ionicons 
+            name={getMealTypeIcon(item.type)} 
+            size={20} 
+            color={getMealTypeColor(item.type)} 
+          />
+          <Text style={[styles.mealTypeText, { color: getMealTypeColor(item.type) }]}>
+            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
           </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </TouchableOpacity>
+        </View>
+        <View style={styles.mealStats}>
+          <Text style={[styles.mealCalories, { color: colors.text }]}>
+            {item.calories} cal
+          </Text>
+          <Text style={[styles.mealMacros, { color: colors.gray }]}>
+            P: {item.protein}g | C: {item.carbs}g | F: {item.fat}g
+          </Text>
+        </View>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : mealPlan ? (
-        <View style={styles.mealPlanContainer}>
-          <View style={styles.mealPlanHeader}>
-            <View style={styles.mealPlanInfo}>
-              <Text style={[styles.mealPlanTitle, { color: colors.text }]}>
-                {getGoalText(mealPlan.goal)} Plan
-              </Text>
-              <Text style={[styles.mealPlanCalories, { color: colors.gray }]}>
-                {mealPlan.calorieTarget} calories
-              </Text>
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.regenerateButton, { backgroundColor: colors.primary + '20' }]}
-              onPress={() => navigation.navigate('MealPlan')}
-            >
-              <Ionicons name="refresh" size={16} color={colors.primary} />
-              <Text style={[styles.regenerateButtonText, { color: colors.primary }]}>
-                {i18n.t('mealPlan.regenerate')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.mealsPreview}>
-            <View style={styles.mealRow}>
-              <View style={[styles.mealTypeTag, { backgroundColor: '#F59E0B20' }]}>
-                <Ionicons name="sunny-outline" size={14} color="#F59E0B" />
-                <Text style={[styles.mealTypeText, { color: '#F59E0B' }]}>
-                  {i18n.t('mealPlan.breakfast')}
-                </Text>
-              </View>
-              
-              <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
-                {mealPlan.meals.breakfast[0]?.name}
-              </Text>
-              
-              <Text style={[styles.mealCalories, { color: colors.gray }]}>
-                {mealPlan.meals.breakfast[0]?.calories} cal
-              </Text>
-            </View>
-            
-            <View style={styles.mealRow}>
-              <View style={[styles.mealTypeTag, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="restaurant-outline" size={14} color="#10B981" />
-                <Text style={[styles.mealTypeText, { color: '#10B981' }]}>
-                  {i18n.t('mealPlan.lunch')}
-                </Text>
-              </View>
-              
-              <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
-                {mealPlan.meals.lunch[0]?.name}
-              </Text>
-              
-              <Text style={[styles.mealCalories, { color: colors.gray }]}>
-                {mealPlan.meals.lunch[0]?.calories} cal
-              </Text>
-            </View>
-            
-            <View style={styles.mealRow}>
-              <View style={[styles.mealTypeTag, { backgroundColor: '#6366F120' }]}>
-                <Ionicons name="moon-outline" size={14} color="#6366F1" />
-                <Text style={[styles.mealTypeText, { color: '#6366F1' }]}>
-                  {i18n.t('mealPlan.dinner')}
-                </Text>
-              </View>
-              
-              <Text style={[styles.mealName, { color: colors.text }]} numberOfLines={1}>
-                {mealPlan.meals.dinner[0]?.name}
-              </Text>
-              
-              <Text style={[styles.mealCalories, { color: colors.gray }]}>
-                {mealPlan.meals.dinner[0]?.calories} cal
-              </Text>
-            </View>
-          </View>
-          
-          <TouchableOpacity
-            style={[styles.viewFullPlanButton, { borderColor: colors.border }]}
-            onPress={() => navigation.navigate('MealPlan')}
-          >
-            <Text style={[styles.viewFullPlanText, { color: colors.text }]}>
-              View Full Plan
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.gray }]}>
-            No meal plan available. Create a personalized meal plan based on your goals.
+      <Text style={[styles.mealName, { color: colors.text }]}>
+        {item.name}
+      </Text>
+
+      <View style={styles.mealMeta}>
+        <View style={styles.metaItem}>
+          <Ionicons name="time-outline" size={14} color={colors.gray} />
+          <Text style={[styles.metaText, { color: colors.gray }]}>
+            {item.prepTime} min
           </Text>
-          
+        </View>
+        <View style={styles.metaItem}>
+          <Ionicons name="fitness-outline" size={14} color={colors.gray} />
+          <Text style={[styles.metaText, { color: colors.gray }]}>
+            {getDifficultyText(item.difficulty)}
+          </Text>
+        </View>
+      </View>
+
+      {expandedMeal === item.id && (
+        <View style={styles.mealDetails}>
+          <View style={styles.ingredientsSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Ingredients
+            </Text>
+            <FlatList
+              data={item.ingredients}
+              renderItem={({ item: ingredient }) => (
+                <Text style={[styles.ingredientItem, { color: colors.gray }]}>
+                  • {ingredient}
+                </Text>
+              )}
+              keyExtractor={(item, index) => `ingredient-${index}`}
+              scrollEnabled={false}
+            />
+          </View>
+
+          <View style={styles.instructionsSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Instructions
+            </Text>
+            {item.instructions.map((instruction, index) => (
+              <Text key={index} style={[styles.instructionItem, { color: colors.gray }]}>
+                {index + 1}. {instruction}
+              </Text>
+            ))}
+          </View>
+
           <TouchableOpacity
-            style={[styles.createPlanButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('MealPlan')}
+            style={[styles.viewRecipeButton, { backgroundColor: colors.primary }]}
+            onPress={() => handleRecipePress(item.id)}
           >
-            <Ionicons name="restaurant-outline" size={16} color="white" />
-            <Text style={styles.createPlanButtonText}>
-              {i18n.t('mealPlan.generatePlan')}
+            <Text style={styles.viewRecipeText}>
+              View Full Recipe
             </Text>
           </TouchableOpacity>
         </View>
       )}
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Meal Plan
+        </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('MealPlan' as any)}>
+          <Text style={[styles.viewAll, { color: colors.primary }]}>
+            View All
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.daysSelector}>
+        {days.map((day, index) => (
+          <TouchableOpacity
+            key={day}
+            style={[
+              styles.dayButton,
+              { 
+                backgroundColor: selectedDay === index ? colors.primary : colors.background,
+                borderColor: colors.border
+              }
+            ]}
+            onPress={() => setSelectedDay(index)}
+          >
+            <Text style={[
+              styles.dayText,
+              { color: selectedDay === index ? 'white' : colors.text }
+            ]}>
+              {day}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.mealsList}
+      >
+        <FlatList
+          data={displayMeals.map(meal => ({ ...meal, type: meal.type as any, difficulty: meal.difficulty as any }))}
+          renderItem={renderMealItem}
+          keyExtractor={(item) => item.id}
+          scrollEnabled={false}
+          contentContainerStyle={styles.mealsContent}
+        />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
-    overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
+    marginBottom: 16,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
   },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  viewAllText: {
+  viewAll: {
     fontSize: 14,
     fontWeight: '500',
-    marginRight: 2,
     fontFamily: 'Inter-Medium',
   },
-  loadingContainer: {
-    padding: 20,
+  daysSelector: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  dayButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
   },
-  mealPlanContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+  dayText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
   },
-  mealPlanHeader: {
+  mealsList: {
+    maxHeight: 400,
+  },
+  mealsContent: {
+    gap: 12,
+  },
+  mealItem: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  mealPlanInfo: {
-    flex: 1,
-  },
-  mealPlanTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-    fontFamily: 'Inter-SemiBold',
-  },
-  mealPlanCalories: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-  },
-  regenerateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  regenerateButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-    fontFamily: 'Inter-SemiBold',
-  },
-  mealsPreview: {
-    marginBottom: 16,
-  },
-  mealRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 12,
   },
-  mealTypeTag: {
+  mealType: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    width: 100,
+    gap: 8,
   },
   mealTypeText: {
     fontSize: 12,
     fontWeight: '600',
-    marginLeft: 4,
     fontFamily: 'Inter-SemiBold',
   },
-  mealName: {
-    flex: 1,
-    fontSize: 14,
-    marginLeft: 12,
-    fontFamily: 'Inter-Regular',
+  mealStats: {
+    alignItems: 'flex-end',
   },
   mealCalories: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
-  },
-  viewFullPlanButton: {
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  viewFullPlanText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
   },
-  emptyContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
+  mealMacros: {
+    fontSize: 12,
     fontFamily: 'Inter-Regular',
   },
-  createPlanButton: {
+  mealName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    fontFamily: 'Inter-SemiBold',
+  },
+  mealMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 4,
   },
-  createPlanButtonText: {
-    color: 'white',
+  metaText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  mealDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  ingredientsSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginLeft: 6,
+    marginBottom: 8,
+    fontFamily: 'Inter-SemiBold',
+  },
+  ingredientItem: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: 'Inter-Regular',
+  },
+  instructionsSection: {
+    marginBottom: 16,
+  },
+  instructionItem: {
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+  },
+  viewRecipeButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  viewRecipeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
     fontFamily: 'Inter-SemiBold',
   },
 });

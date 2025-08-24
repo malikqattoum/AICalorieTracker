@@ -6,177 +6,217 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Image,
+  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import i18n from '../i18n';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
-import { APP_CONFIG } from '../config';
+import { RootStackParamList } from '../navigation';
+
+type AboutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function AboutScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AboutScreenNavigationProp>();
   const { colors } = useTheme();
 
-  const handleOpenLink = (url: string) => {
-    Linking.openURL(url).catch(err => {
-      console.error('Failed to open link:', err);
-    });
+  const handleBack = () => {
+    navigation.goBack();
   };
 
-  const handleEmailSupport = () => {
-    const email = APP_CONFIG.supportEmail;
-    const subject = `${APP_CONFIG.appName} Support Request`;
-    const body = `
-App Version: ${APP_CONFIG.version}
-Device: iOS/Android
-Issue Description: [Please describe your issue here]
-`;
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    Linking.openURL(mailtoUrl).catch(err => {
-      console.error('Failed to open email client:', err);
-    });
+  const handleContactSupport = () => {
+    Linking.openURL('mailto:support@aicalorietracker.com');
   };
 
-  const renderInfoSection = (title: string, items: Array<{label: string, value: string, onPress?: () => void}>) => (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-      {items.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[styles.infoItem, { borderBottomColor: colors.border }]}
-          onPress={item.onPress}
-          disabled={!item.onPress}
-        >
-          <Text style={[styles.infoLabel, { color: colors.text }]}>{item.label}</Text>
-          <View style={styles.infoValueContainer}>
-            <Text style={[styles.infoValue, { color: colors.gray }]}>{item.value}</Text>
-            {item.onPress && (
-              <Ionicons name="chevron-forward" size={16} color={colors.gray} />
-            )}
-          </View>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  const handlePrivacyPolicy = () => {
+    Linking.openURL('https://aicalorietracker.com/privacy');
+  };
+
+  const handleTermsOfService = () => {
+    Linking.openURL('https://aicalorietracker.com/terms');
+  };
+
+  const handleRateApp = () => {
+    Alert.alert(
+      'Rate App',
+      'Thank you for using AI Calorie Tracker! Would you like to rate us on the App Store?',
+      [
+        { text: 'Maybe Later', style: 'cancel' },
+        { text: 'Rate Now', onPress: () => Linking.openURL('https://apps.apple.com/app/id123456789') },
+      ]
+    );
+  };
+
+  const handleShareApp = () => {
+    Linking.openURL('https://aicalorietracker.com');
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.card }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      <View style={[styles.header, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
         <Text style={[styles.headerTitle, { color: colors.text }]}>
           About
         </Text>
-        
-        <View style={{ width: 40 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* App Logo & Info */}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* App Info */}
         <View style={styles.appInfoContainer}>
           <View style={[styles.appIcon, { backgroundColor: colors.primary }]}>
-            <Text style={styles.appIconText}>🍎</Text>
+            <Ionicons name="restaurant" size={48} color="white" />
           </View>
-          
           <Text style={[styles.appName, { color: colors.text }]}>
-            {APP_CONFIG.appName}
+            AI Calorie Tracker
           </Text>
-          
           <Text style={[styles.appVersion, { color: colors.gray }]}>
-            Version {APP_CONFIG.version}
+            Version 1.0.0
           </Text>
-          
-          <Text style={[styles.appDescription, { color: colors.gray }]}>
-            Your AI-powered nutrition companion for tracking calories, planning meals, and achieving health goals with personalized insights and smart food recognition.
+          <Text style={[styles.appTagline, { color: colors.gray }]}>
+            Smart nutrition tracking powered by AI
           </Text>
         </View>
 
-        {/* App Information */}
-        {renderInfoSection('App Information', [
-          { label: 'Version', value: APP_CONFIG.version },
-          { label: 'Build Number', value: '1.0.0 (100)' },
-          { label: 'Environment', value: APP_CONFIG.environment },
-          { label: 'Release Date', value: '2024' },
-        ])}
+        {/* Description */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            About This App
+          </Text>
+          <Text style={[styles.sectionContent, { color: colors.text }]}>
+            AI Calorie Tracker is a revolutionary mobile application that uses artificial intelligence to help you track your nutrition and achieve your health goals. Simply take photos of your meals, and our AI will analyze them to provide detailed nutritional information.
+          </Text>
+        </View>
 
         {/* Features */}
-        {renderInfoSection('Key Features', [
-          { label: 'AI Food Recognition', value: 'Powered by advanced AI' },
-          { label: 'Nutrition Tracking', value: 'Complete macro & micro nutrients' },
-          { label: 'Meal Planning', value: 'Personalized meal recommendations' },
-          { label: 'Nutrition Coaching', value: 'Expert guidance & tips' },
-          { label: 'Recipe Import', value: 'Import from any website' },
-          { label: 'Progress Analytics', value: 'Detailed insights & reports' },
-        ])}
-
-        {/* Support & Contact */}
-        {renderInfoSection('Support & Contact', [
-          { 
-            label: 'Email Support', 
-            value: APP_CONFIG.supportEmail,
-            onPress: handleEmailSupport
-          },
-          { 
-            label: 'Website', 
-            value: 'aicalorietracker.com',
-            onPress: () => handleOpenLink('https://aicalorietracker.com')
-          },
-          { 
-            label: 'Privacy Policy', 
-            value: 'View our privacy policy',
-            onPress: () => handleOpenLink('https://aicalorietracker.com/privacy')
-          },
-          { 
-            label: 'Terms of Service', 
-            value: 'View terms and conditions',
-            onPress: () => handleOpenLink('https://aicalorietracker.com/terms')
-          },
-        ])}
-
-        {/* Technology */}
-        {renderInfoSection('Technology', [
-          { label: 'Platform', value: 'React Native with Expo' },
-          { label: 'AI Models', value: 'OpenAI GPT-4 Vision, Google Gemini' },
-          { label: 'Database', value: 'MySQL with Sequelize ORM' },
-          { label: 'Authentication', value: 'JWT with secure storage' },
-          { label: 'Offline Support', value: 'Full offline functionality' },
-        ])}
-
-        {/* Acknowledgments */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Acknowledgments</Text>
-          <Text style={[styles.acknowledgmentText, { color: colors.gray }]}>
-            This app is made possible by the contributions of the open-source community and the following technologies:
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Key Features
           </Text>
-          
-          <View style={styles.techList}>
-            <Text style={[styles.techItem, { color: colors.gray }]}>• React Native & Expo</Text>
-            <Text style={[styles.techItem, { color: colors.gray }]}>• OpenAI API</Text>
-            <Text style={[styles.techItem, { color: colors.gray }]}>• Google Generative AI</Text>
-            <Text style={[styles.techItem, { color: colors.gray }]}>• React Query</Text>
-            <Text style={[styles.techItem, { color: colors.gray }]}>• Inter Font Family</Text>
+          <View style={styles.featuresList}>
+            <View style={styles.featureItem}>
+              <Ionicons name="camera-outline" size={20} color={colors.primary} />
+              <Text style={[styles.featureText, { color: colors.text }]}>
+                AI-powered food recognition
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="analytics-outline" size={20} color={colors.primary} />
+              <Text style={[styles.featureText, { color: colors.text }]}>
+                Detailed nutritional analysis
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <Text style={[styles.featureText, { color: colors.text }]}>
+                Meal planning and tracking
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.primary} />
+              <Text style={[styles.featureText, { color: colors.text }]}>
+                AI nutrition coaching
+              </Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
+              <Text style={[styles.featureText, { color: colors.text }]}>
+                Progress tracking and insights
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Copyright */}
-        <View style={styles.copyrightContainer}>
-          <Text style={[styles.copyrightText, { color: colors.gray }]}>
-            © 2024 AI Calorie Tracker. All rights reserved.
+        {/* Links */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Links
           </Text>
-          <Text style={[styles.copyrightText, { color: colors.gray }]}>
-            Made with ❤️ for healthier living
+          <TouchableOpacity
+            style={[styles.linkItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleContactSupport}
+          >
+            <View style={styles.linkItemContent}>
+              <Ionicons name="mail-outline" size={20} color={colors.primary} />
+              <Text style={[styles.linkItemText, { color: colors.text }]}>
+                Contact Support
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.linkItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handlePrivacyPolicy}
+          >
+            <View style={styles.linkItemContent}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+              <Text style={[styles.linkItemText, { color: colors.text }]}>
+                Privacy Policy
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.linkItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleTermsOfService}
+          >
+            <View style={styles.linkItemContent}>
+              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+              <Text style={[styles.linkItemText, { color: colors.text }]}>
+                Terms of Service
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Actions */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Support Us
+          </Text>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            onPress={handleRateApp}
+          >
+            <Ionicons name="star-outline" size={20} color="white" />
+            <Text style={[styles.actionButtonText, { color: 'white' }]}>
+              Rate App
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleShareApp}
+          >
+            <Ionicons name="share-social-outline" size={20} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>
+              Share App
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Credits */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Credits
+          </Text>
+          <Text style={[styles.sectionContent, { color: colors.text }]}>
+            Developed with ❤️ by the AI Calorie Tracker team
+          </Text>
+          <Text style={[styles.sectionContent, { color: colors.text }]}>
+            Special thanks to our AI partners for providing advanced food recognition technology
           </Text>
         </View>
 
-        <View style={{ height: 50 }} />
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.gray }]}>
+            © 2024 AI Calorie Tracker. All rights reserved.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -189,121 +229,113 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    padding: 16,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
     flex: 1,
     textAlign: 'center',
-    marginHorizontal: 10,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
+  headerSpacer: {
+    width: 40,
   },
   appInfoContainer: {
     alignItems: 'center',
-    paddingVertical: 30,
-    marginBottom: 20,
+    padding: 40,
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   appIcon: {
     width: 80,
     height: 80,
-    borderRadius: 20,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  appIconText: {
-    fontSize: 40,
-  },
   appName: {
-    fontSize: 28,
-    fontWeight: '700',
-    fontFamily: 'Inter-Bold',
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 8,
   },
   appVersion: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    marginBottom: 16,
-  },
-  appDescription: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
+    marginBottom: 4,
+  },
+  appTagline: {
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
     paddingHorizontal: 20,
   },
   section: {
-    marginBottom: 24,
+    marginTop: 24,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  infoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  infoLabel: {
+  sectionContent: {
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    flex: 1,
-  },
-  infoValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 2,
-    justifyContent: 'flex-end',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    textAlign: 'right',
-    marginRight: 8,
-  },
-  acknowledgmentText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 20,
+    lineHeight: 24,
     marginBottom: 16,
   },
-  techList: {
-    paddingLeft: 8,
+  featuresList: {
+    gap: 12,
   },
-  techItem: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    lineHeight: 22,
-  },
-  copyrightContainer: {
+  featureItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
-    marginTop: 20,
+    marginBottom: 8,
   },
-  copyrightText: {
+  featureText: {
+    fontSize: 16,
+    marginLeft: 12,
+  },
+  linkItem: {
+    marginBottom: 8,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  linkItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  linkItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  footer: {
+    alignItems: 'center',
+    padding: 20,
+    marginTop: 32,
+  },
+  footerText: {
     fontSize: 12,
-    fontFamily: 'Inter-Regular',
     textAlign: 'center',
-    lineHeight: 18,
   },
 });

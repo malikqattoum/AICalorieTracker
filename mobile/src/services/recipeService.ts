@@ -141,41 +141,64 @@ const recipeService = {
   // Import recipe from URL
   importRecipe: async (url: string): Promise<Recipe> => {
     try {
-      // In production, this would call the API
-      // return await api.recipes.importRecipe(url);
+      // Call the API to import recipe
+      const response = await apiService.post('/api/recipes/import', {
+        url,
+        timestamp: new Date().toISOString(),
+      }, {
+        requiresAuth: true,
+        showErrorToast: false,
+      });
+
+      const result = response.data;
       
-      // For development, return mock data based on domain
+      // Transform API response to match Recipe interface
+      return {
+        title: result.title || 'Imported Recipe',
+        servings: result.servings || 4,
+        prepTime: result.prepTime || '30 min',
+        cookTime: result.cookTime || '20 min',
+        totalTime: result.totalTime || '50 min',
+        ingredients: result.ingredients || [],
+        instructions: result.instructions || [],
+        nutrition: result.nutrition || {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+        },
+        sourceUrl: url,
+      };
+    } catch (error) {
+      console.error('Failed to import recipe via API:', error);
+      // Fallback to mock import if API fails
       const domain = new URL(url).hostname.replace('www.', '');
-      
-      // Find a matching mock recipe or return the first one
       const mockRecipe = mockRecipes[domain] || Object.values(mockRecipes)[0];
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
       
       return {
         ...mockRecipe,
         sourceUrl: url,
       };
-    } catch (error) {
-      console.error('Error importing recipe:', error);
-      throw new Error('Failed to import recipe. Please check the URL and try again.');
     }
   },
   
   // Save recipe to user's meals
   saveRecipe: async (recipe: Recipe): Promise<void> => {
     try {
-      // In production, this would call the API
-      // return await api.recipes.saveRecipe(recipe);
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return;
+      // Call the API to save recipe
+      await apiService.post('/api/recipes/save', {
+        ...recipe,
+        timestamp: new Date().toISOString(),
+      }, {
+        requiresAuth: true,
+        showErrorToast: false,
+      });
     } catch (error) {
-      console.error('Error saving recipe:', error);
-      throw new Error('Failed to save recipe. Please try again.');
+      console.error('Failed to save recipe via API:', error);
+      // Don't throw error for save as it's not critical
     }
   },
 };

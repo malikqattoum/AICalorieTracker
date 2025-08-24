@@ -1,249 +1,419 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import i18n from '../../i18n';
 import { useTheme } from '../../contexts/ThemeContext';
-import { RootStackParamList } from '../../navigation';
-import { API_URL } from '../../config';
 
-type NutritionTipsCardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+interface NutritionTipsCardProps {
+  tips?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    category: 'weight-loss' | 'muscle-gain' | 'general-health' | 'meal-prep' | 'supplements';
+    readTime: number;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    tags: string[];
+    content: string;
+  }>;
+}
 
-type Tip = {
-  id: string;
-  title: string;
-  content: string;
-  category: string;
-  createdAt: string;
-};
-
-export default function NutritionTipsCard() {
-  const navigation = useNavigation<NutritionTipsCardNavigationProp>();
+export default function NutritionTipsCard({ tips = [] }: NutritionTipsCardProps) {
   const { colors } = useTheme();
-  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [expandedTip, setExpandedTip] = useState<string | null>(null);
 
-  // Fetch nutrition tips
-  const { data: tips, isLoading } = useQuery({
-    queryKey: ['nutritionTips'],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/nutrition-tips`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch nutrition tips');
-      }
-      return response.json();
+  // Mock nutrition tips data
+  const mockTips = [
+    {
+      id: '1',
+      title: 'The Science of Protein Timing',
+      description: 'Learn when to consume protein for optimal muscle recovery and growth.',
+      category: 'muscle-gain' as const,
+      readTime: 5,
+      difficulty: 'intermediate' as const,
+      tags: ['protein', 'muscle', 'recovery'],
+      content: `
+Protein timing is crucial for maximizing muscle protein synthesis and recovery. Here are the key principles:
+
+1. **Post-Workout Window**: Consume 20-30g of protein within 30-60 minutes after exercise to kickstart recovery.
+
+2. **Evenly Distributed**: Spread your protein intake evenly throughout the day (4-6 meals) to maintain optimal muscle protein synthesis.
+
+3. **Pre-Sleep Protein**: Casein protein or Greek yogurt before bed can provide sustained amino acid release during sleep.
+
+4. **Total Daily Intake**: Aim for 1.6-2.2g of protein per kg of body weight for optimal muscle growth.
+
+5. **Quality Matters**: Choose complete protein sources containing all essential amino acids.
+      `.trim(),
     },
-    // Mock data for development
-    placeholderData: [
-      {
-        id: '1',
-        title: 'Hydration Matters',
-        content: 'Drinking enough water is crucial for metabolism and digestion. Aim for at least 8 glasses daily, and more if you exercise regularly.',
-        category: 'hydration',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        title: 'Protein After Workouts',
-        content: 'Consuming protein within 30 minutes after exercise helps muscle recovery and growth. Good options include a protein shake, Greek yogurt, or lean meat.',
-        category: 'protein',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '3',
-        title: 'Fiber for Gut Health',
-        content: 'A diet rich in fiber promotes good gut bacteria and helps prevent digestive issues. Include plenty of fruits, vegetables, and whole grains in your meals.',
-        category: 'fiber',
-        createdAt: new Date().toISOString(),
-      },
-    ],
-  });
+    {
+      id: '2',
+      title: 'Meal Prep Success Strategies',
+      description: 'Master the art of meal prepping with these proven strategies.',
+      category: 'meal-prep' as const,
+      readTime: 8,
+      difficulty: 'beginner' as const,
+      tags: ['meal-prep', 'planning', 'efficiency'],
+      content: `
+Successful meal prepping requires the right approach and tools. Here's how to do it effectively:
 
-  // Get category icon
-  const getCategoryIcon = (category: string) => {
+1. **Plan Your Meals**: Start with a weekly meal plan and create a detailed shopping list.
+
+2. **Choose the Right Containers**: Invest in high-quality, portion-controlled containers that are microwave and freezer safe.
+
+3. **Batch Cooking**: Cook proteins, grains, and vegetables in bulk to save time throughout the week.
+
+4. **Prep Ingredients**: Wash and chop vegetables, cook grains, and portion out snacks ahead of time.
+
+5. **Label Everything**: Use labels to track dates and contents, especially for frozen items.
+
+6. **Storage Guidelines**: Follow proper food safety practices and know storage times for different food types.
+      `.trim(),
+    },
+    {
+      id: '3',
+      title: 'Understanding Macronutrients',
+      description: 'A comprehensive guide to carbs, proteins, and fats.',
+      category: 'general-health' as const,
+      readTime: 10,
+      difficulty: 'beginner' as const,
+      tags: ['macros', 'nutrition', 'diet'],
+      content: `
+Macronutrients are the three main components of your diet that provide energy. Understanding them is key to optimal nutrition:
+
+**Carbohydrates (45-65% of daily calories)**
+- **Simple Carbs**: Found in fruits, milk, and processed foods. Provide quick energy.
+- **Complex Carbs**: Found in whole grains, legumes, and vegetables. Provide sustained energy.
+- **Fiber**: Important for digestive health and blood sugar control.
+
+**Proteins (10-35% of daily calories)**
+- **Complete Proteins**: Contain all essential amino acids (animal products, soy).
+- **Incomplete Proteins**: Lack one or more essential amino acids (plant sources).
+- **Quality**: Choose lean sources like chicken, fish, eggs, legumes, and tofu.
+
+**Fats (20-35% of daily calories)**
+- **Saturated Fats**: Limit intake (red meat, butter, coconut oil).
+- **Unsaturated Fats**: Heart-healthy (olive oil, avocados, nuts).
+- **Trans Fats**: Avoid completely (processed foods, fried foods).
+      `.trim(),
+    },
+    {
+      id: '4',
+      title: 'Supplement Smart: What You Really Need',
+      description: 'Cut through the supplement confusion with evidence-based recommendations.',
+      category: 'supplements' as const,
+      readTime: 7,
+      difficulty: 'intermediate' as const,
+      tags: ['supplements', 'vitamins', 'nutrition'],
+      content: `
+Not all supplements are created equal. Here's what science says about the most common ones:
+
+**Essential Supplements:**
+1. **Multivitamin**: Fills nutritional gaps in your diet.
+2. **Vitamin D**: Especially important if you have limited sun exposure.
+3. **Omega-3 Fatty Acids**: Supports brain and heart health.
+4. **Protein Powder**: Convenient way to meet protein needs.
+
+**Performance-Enhancing:**
+1. **Creatine**: Proven to improve strength and power output.
+2. **Caffeine**: Enhances focus and exercise performance.
+3. **Beta-Alanine**: Reduces muscle fatigue during high-intensity exercise.
+
+**Use With Caution:**
+- Always consult with a healthcare provider before starting new supplements.
+- Look for third-party testing (NSF, Informed Choice).
+- Quality matters more than quantity.
+      `.trim(),
+    },
+    {
+      id: '5',
+      title: 'Sustainable Weight Loss Strategies',
+      description: 'Lose weight the healthy way with these science-backed approaches.',
+      category: 'weight-loss' as const,
+      readTime: 12,
+      difficulty: 'intermediate' as const,
+      tags: ['weight-loss', 'diet', 'health'],
+      content: `
+Sustainable weight loss is about making lasting lifestyle changes, not quick fixes:
+
+1. **Create a Moderate Calorie Deficit**: Aim for 500-750 calories below maintenance for 1-2 lbs per week.
+
+2. **Focus on Nutrient Density**: Choose foods that are high in nutrients but relatively low in calories.
+
+3. **Increase Protein Intake**: Helps preserve muscle mass and increases satiety.
+
+4. **Stay Hydrated**: Drink plenty of water and limit sugary beverages.
+
+5. **Incorporate Strength Training**: Builds muscle which boosts metabolism.
+
+6. **Get Enough Sleep**: Poor sleep disrupts hunger hormones and increases cravings.
+
+7. **Manage Stress**: Chronic stress can lead to emotional eating and weight gain.
+
+8. **Be Patient**: Healthy weight loss takes time and consistency.
+      `.trim(),
+    },
+  ];
+
+  const categories = [
+    { id: 'all', name: 'All Tips', icon: 'grid-outline' },
+    { id: 'weight-loss', name: 'Weight Loss', icon: 'fitness-outline' },
+    { id: 'muscle-gain', name: 'Muscle Gain', icon: 'fitness-outline' },
+    { id: 'general-health', name: 'Health', icon: 'heart-outline' },
+    { id: 'meal-prep', name: 'Meal Prep', icon: 'restaurant-outline' },
+    { id: 'supplements', name: 'Supplements', icon: 'pill-outline' },
+  ];
+
+  const displayTips = tips.length > 0 ? tips : mockTips;
+  const filteredTips = selectedCategory === 'all' 
+    ? displayTips 
+    : displayTips.filter(tip => tip.category === selectedCategory);
+
+  const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'hydration':
-        return 'water-outline';
-      case 'protein':
-        return 'barbell-outline';
-      case 'fiber':
-        return 'leaf-outline';
-      case 'vitamins':
-        return 'medkit-outline';
-      case 'fats':
-        return 'flask-outline';
+      case 'weight-loss':
+        return '#EF4444';
+      case 'muscle-gain':
+        return '#10B981';
+      case 'general-health':
+        return '#3B82F6';
+      case 'meal-prep':
+        return '#F59E0B';
+      case 'supplements':
+        return '#8B5CF6';
       default:
-        return 'nutrition-outline';
+        return '#6B7280';
     }
   };
 
-  // Handle next tip
-  const handleNextTip = () => {
-    if (tips && tips.length > 0) {
-      setCurrentTipIndex((prevIndex) => (prevIndex + 1) % tips.length);
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner':
+        return '#10B981';
+      case 'intermediate':
+        return '#F59E0B';
+      case 'advanced':
+        return '#EF4444';
+      default:
+        return '#6B7280';
     }
   };
 
-  // Handle previous tip
-  const handlePrevTip = () => {
-    if (tips && tips.length > 0) {
-      setCurrentTipIndex((prevIndex) => (prevIndex - 1 + tips.length) % tips.length);
+  const getDifficultyText = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner':
+        return 'Beginner';
+      case 'intermediate':
+        return 'Intermediate';
+      case 'advanced':
+        return 'Advanced';
+      default:
+        return 'Unknown';
     }
   };
 
-  return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {i18n.t('home.nutritionTips')}
-        </Text>
-        
-        <TouchableOpacity
-          onPress={() => navigation.navigate('NutritionCoach')}
-          style={styles.viewAllButton}
-        >
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>
-            {i18n.t('home.viewAll')}
+  const handleTipPress = (tipId: string) => {
+    setExpandedTip(expandedTip === tipId ? null : tipId);
+  };
+
+  const renderTipItem = ({ item }: { item: typeof mockTips[0] }) => (
+    <TouchableOpacity
+      style={[styles.tipItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={() => handleTipPress(item.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.tipHeader}>
+        <View style={[styles.tipCategory, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
+          <View style={[styles.categoryDot, { backgroundColor: getCategoryColor(item.category) }]} />
+          <Text style={[styles.categoryText, { color: getCategoryColor(item.category) }]}>
+            {item.category.replace('-', ' ')}
           </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </TouchableOpacity>
+        </View>
+        <View style={styles.tipMeta}>
+          <View style={styles.metaItem}>
+            <Ionicons name="time-outline" size={12} color={colors.gray} />
+            <Text style={[styles.metaText, { color: colors.gray }]}>
+              {item.readTime} min
+            </Text>
+          </View>
+          <View style={styles.metaItem}>
+            <Ionicons name="fitness-outline" size={12} color={colors.gray} />
+            <Text style={[styles.metaText, { color: getDifficultyColor(item.difficulty) }]}>
+              {getDifficultyText(item.difficulty)}
+            </Text>
+          </View>
+        </View>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : tips && tips.length > 0 ? (
-        <View style={styles.tipContainer}>
-          <View style={styles.tipContent}>
-            <View 
-              style={[
-                styles.tipIconContainer, 
-                { backgroundColor: colors.primary + '20' }
-              ]}
-            >
-              <Ionicons 
-                name={getCategoryIcon(tips[currentTipIndex].category)} 
-                size={24} 
-                color={colors.primary} 
-              />
-            </View>
-            
-            <View style={styles.tipTextContainer}>
-              <Text style={[styles.tipTitle, { color: colors.text }]}>
-                {tips[currentTipIndex].title}
-              </Text>
-              <Text style={[styles.tipText, { color: colors.gray }]}>
-                {tips[currentTipIndex].content}
-              </Text>
-            </View>
+      <Text style={[styles.tipTitle, { color: colors.text }]}>
+        {item.title}
+      </Text>
+
+      <Text style={[styles.tipDescription, { color: colors.gray }]}>
+        {item.description}
+      </Text>
+
+      <View style={styles.tagsContainer}>
+        {item.tags.map((tag, index) => (
+          <View key={index} style={[styles.tag, { backgroundColor: colors.background }]}>
+            <Text style={[styles.tagText, { color: colors.gray }]}>
+              #{tag}
+            </Text>
           </View>
-          
-          <View style={styles.tipNavigation}>
-            <TouchableOpacity
-              style={[styles.navButton, { backgroundColor: colors.background }]}
-              onPress={handlePrevTip}
-            >
-              <Ionicons name="chevron-back" size={20} color={colors.text} />
-            </TouchableOpacity>
-            
-            <View style={styles.tipIndicators}>
-              {tips.map((_, index) => (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.tipIndicator, 
-                    { 
-                      backgroundColor: index === currentTipIndex 
-                        ? colors.primary 
-                        : colors.border 
-                    }
-                  ]} 
-                />
-              ))}
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.navButton, { backgroundColor: colors.background }]}
-              onPress={handleNextTip}
-            >
-              <Ionicons name="chevron-forward" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.gray }]}>
-            No nutrition tips available at the moment.
-          </Text>
+        ))}
+      </View>
+
+      {expandedTip === item.id && (
+        <View style={styles.tipContent}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={[styles.contentText, { color: colors.text }]}>
+              {item.content}
+            </Text>
+          </ScrollView>
         </View>
       )}
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          Nutrition Tips
+        </Text>
+      </View>
+
+      <View style={styles.categoriesContainer}>
+        <FlatList
+          data={categories}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.categoryButton,
+                { 
+                  backgroundColor: selectedCategory === item.id ? colors.primary : colors.background,
+                  borderColor: colors.border
+                }
+              ]}
+              onPress={() => setSelectedCategory(item.id)}
+            >
+              <Ionicons 
+                name={item.icon as any} 
+                size={16} 
+                color={selectedCategory === item.id ? 'white' : colors.text} 
+              />
+              <Text style={[
+                styles.categoryButtonText,
+                { color: selectedCategory === item.id ? 'white' : colors.text }
+              ]}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesList}
+        />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.tipsList}
+      >
+        <FlatList
+          data={filteredTips.map(tip => ({ ...tip, category: tip.category as any, difficulty: tip.difficulty as any }))}
+          renderItem={renderTipItem}
+          keyExtractor={(item) => item.id}
+          scrollEnabled={false}
+          contentContainerStyle={styles.tipsContent}
+        />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
-    overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
+    marginBottom: 16,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
   },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginRight: 2,
-    fontFamily: 'Inter-Medium',
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  tipContainer: {
-    padding: 16,
-  },
-  tipContent: {
-    flexDirection: 'row',
+  categoriesContainer: {
     marginBottom: 16,
   },
-  tipIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  categoriesList: {
+    gap: 8,
   },
-  tipTextContainer: {
-    flex: 1,
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  categoryButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
+  },
+  tipsList: {
+    maxHeight: 400,
+  },
+  tipsContent: {
+    gap: 12,
+  },
+  tipItem: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  tipCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  categoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  categoryText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  tipMeta: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
   },
   tipTitle: {
     fontSize: 16,
@@ -251,40 +421,37 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: 'Inter-SemiBold',
   },
-  tipText: {
+  tipDescription: {
     fontSize: 14,
     lineHeight: 20,
+    marginBottom: 12,
     fontFamily: 'Inter-Regular',
   },
-  tipNavigation: {
+  tagsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
   },
-  navButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
   },
-  tipIndicators: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  tagText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
   },
-  tipIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
+  tipContent: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
   },
-  emptyContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyText: {
+  contentText: {
     fontSize: 14,
-    textAlign: 'center',
+    lineHeight: 20,
     fontFamily: 'Inter-Regular',
   },
 });

@@ -1,206 +1,257 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import i18n from '../../i18n';
 import { useTheme } from '../../contexts/ThemeContext';
-import { RootStackParamList } from '../../navigation';
-import { API_URL } from '../../config';
 
-type AiInsightsCardNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+interface AiInsightsCardProps {
+  insights?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    type: 'nutrition' | 'fitness' | 'health' | 'behavior';
+    priority: 'high' | 'medium' | 'low';
+    actionable: boolean;
+    timestamp: string;
+  }>;
+}
 
-type Insight = {
-  id: string;
-  title: string;
-  content: string;
-  type: 'tip' | 'warning' | 'achievement';
-  createdAt: string;
-};
-
-export default function AiInsightsCard() {
-  const navigation = useNavigation<AiInsightsCardNavigationProp>();
+export default function AiInsightsCard({ insights = [] }: AiInsightsCardProps) {
   const { colors } = useTheme();
+  const [expanded, setExpanded] = useState(false);
 
-  // Fetch AI insights
-  const { data: insights, isLoading } = useQuery({
-    queryKey: ['aiInsights'],
-    queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/insights`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch AI insights');
-      }
-      return response.json();
+  // Mock AI insights data
+  const mockInsights = [
+    {
+      id: '1',
+      title: 'Protein Intake Optimization',
+      description: 'Your protein intake is 15% below target. Consider adding lean proteins like chicken, fish, or legumes to your meals.',
+      type: 'nutrition' as const,
+      priority: 'high' as const,
+      actionable: true,
+      timestamp: '2 hours ago',
     },
-    // Mock data for development
-    placeholderData: [
-      {
-        id: '1',
-        title: 'Protein Intake',
-        content: 'Your protein intake has been consistently below your goal. Consider adding more lean protein sources like chicken, fish, or legumes to your meals.',
-        type: 'tip',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        title: 'Calorie Consistency',
-        content: 'Great job maintaining consistent calorie intake this week! This helps establish a stable metabolic pattern.',
-        type: 'achievement',
-        createdAt: new Date().toISOString(),
-      },
-    ],
-  });
+    {
+      id: '2',
+      title: 'Hydration Reminder',
+      description: 'You\'ve consumed only 1.2L of water today. Aim for 2.5L to maintain optimal hydration levels.',
+      type: 'health' as const,
+      priority: 'medium' as const,
+      actionable: true,
+      timestamp: '4 hours ago',
+    },
+    {
+      id: '3',
+      title: 'Meal Timing Analysis',
+      description: 'Your dinner is typically consumed 30 minutes later than optimal. Try to eat dinner 2-3 hours before bedtime.',
+      type: 'behavior' as const,
+      priority: 'low' as const,
+      actionable: true,
+      timestamp: '6 hours ago',
+    },
+    {
+      id: '4',
+      title: 'Nutrient Deficiency Alert',
+      description: 'Your vitamin D levels appear to be low based on your meal patterns. Consider incorporating fatty fish or fortified foods.',
+      type: 'nutrition' as const,
+      priority: 'high' as const,
+      actionable: true,
+      timestamp: '1 day ago',
+    },
+    {
+      id: '5',
+      title: 'Exercise Recovery',
+      description: 'Your post-workout nutrition could be improved. Add 20-30g of protein within 30 minutes of exercise for better recovery.',
+      type: 'fitness' as const,
+      priority: 'medium' as const,
+      actionable: true,
+      timestamp: '1 day ago',
+    },
+  ];
 
-  // Get icon based on insight type
+  const displayInsights = insights.length > 0 ? insights : mockInsights;
+  const visibleInsights = expanded ? displayInsights : displayInsights.slice(0, 3);
+
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'tip':
-        return 'bulb-outline';
-      case 'warning':
-        return 'alert-circle-outline';
-      case 'achievement':
-        return 'trophy-outline';
+      case 'nutrition':
+        return 'restaurant';
+      case 'fitness':
+        return 'fitness';
+      case 'health':
+        return 'heart';
+      case 'behavior':
+        return 'people';
       default:
-        return 'information-circle-outline';
+        return 'bulb';
     }
   };
 
-  // Get color based on insight type
   const getInsightColor = (type: string) => {
     switch (type) {
-      case 'tip':
-        return colors.primary;
-      case 'warning':
-        return colors.error;
-      case 'achievement':
-        return '#F59E0B'; // Amber
+      case 'nutrition':
+        return '#EF4444';
+      case 'fitness':
+        return '#10B981';
+      case 'health':
+        return '#3B82F6';
+      case 'behavior':
+        return '#8B5CF6';
       default:
-        return colors.primary;
+        return '#6B7280';
     }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return '#EF4444';
+      case 'medium':
+        return '#F59E0B';
+      case 'low':
+        return '#10B981';
+      default:
+        return '#6B7280';
+    }
+  };
+
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'High Priority';
+      case 'medium':
+        return 'Medium Priority';
+      case 'low':
+        return 'Low Priority';
+      default:
+        return 'Normal';
+    }
+  };
+
+  const handleInsightPress = (insightId: string) => {
+    // Handle insight interaction
+    console.log('Insight pressed:', insightId);
+  };
+
+  const handleActionablePress = (insightId: string) => {
+    // Handle actionable insight
+    console.log('Actionable insight:', insightId);
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          {i18n.t('home.aiInsights')}
-        </Text>
-        
-        <TouchableOpacity
-          onPress={() => navigation.navigate('NutritionCoach')}
-          style={styles.viewAllButton}
-        >
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>
-            {i18n.t('home.viewAll')}
-          </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.insightsIcon, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="bulb" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.headerText}>
+              <Text style={[styles.title, { color: colors.text }]}>
+                AI Insights
+              </Text>
+              <Text style={[styles.subtitle, { color: colors.gray }]}>
+                Personalized recommendations for you
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => setExpanded(!expanded)}>
+            <Ionicons 
+              name={expanded ? 'chevron-up' : 'chevron-down'} 
+              size={20} 
+              color={colors.text} 
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : insights && insights.length > 0 ? (
-        <View style={styles.insightsContainer}>
-          {insights.slice(0, 2).map((insight: Insight) => (
-            <TouchableOpacity
-              key={insight.id}
-              style={[styles.insightItem, { borderBottomColor: colors.border }]}
-              onPress={() => navigation.navigate('NutritionCoach')}
-            >
-              <View 
-                style={[
-                  styles.insightIconContainer, 
-                  { backgroundColor: getInsightColor(insight.type) + '20' }
-                ]}
-              >
-                <Ionicons 
-                  name={getInsightIcon(insight.type)} 
-                  size={20} 
-                  color={getInsightColor(insight.type)} 
-                />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.insightsList}
+      >
+        {visibleInsights.map((insight) => (
+          <TouchableOpacity
+            key={insight.id}
+            style={[styles.insightItem, { backgroundColor: colors.background }]}
+            onPress={() => handleInsightPress(insight.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.insightHeader}>
+              <View style={[styles.insightType, { backgroundColor: getInsightColor(insight.type) + '20' }]}>
+                <Ionicons name={getInsightIcon(insight.type)} size={16} color={getInsightColor(insight.type)} />
               </View>
-              
-              <View style={styles.insightContent}>
-                <Text style={[styles.insightTitle, { color: colors.text }]}>
-                  {insight.title}
+              <View style={styles.insightPriority}>
+                <Text style={[styles.priorityText, { color: getPriorityColor(insight.priority) }]}>
+                  {getPriorityText(insight.priority)}
                 </Text>
-                <Text 
-                  style={[styles.insightText, { color: colors.gray }]} 
-                  numberOfLines={2}
+              </View>
+            </View>
+
+            <Text style={[styles.insightTitle, { color: colors.text }]}>
+              {insight.title}
+            </Text>
+
+            <Text style={[styles.insightDescription, { color: colors.gray }]}>
+              {insight.description}
+            </Text>
+
+            <View style={styles.insightFooter}>
+              <Text style={[styles.insightTime, { color: colors.gray }]}>
+                {insight.timestamp}
+              </Text>
+              {insight.actionable && (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleActionablePress(insight.id);
+                  }}
                 >
-                  {insight.content}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.gray }]}>
-            No insights available yet. Keep tracking your meals to receive personalized insights.
+                  <Text style={styles.actionButtonText}>
+                    Take Action
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {displayInsights.length > 3 && !expanded && (
+        <TouchableOpacity
+          style={styles.expandButton}
+          onPress={() => setExpanded(true)}
+        >
+          <Text style={[styles.expandText, { color: colors.primary }]}>
+            Show {displayInsights.length - 3} More Insights
           </Text>
-        </View>
+          <Ionicons name="chevron-down" size={16} color={colors.primary} />
+        </TouchableOpacity>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     borderRadius: 16,
+    padding: 16,
     marginBottom: 16,
-    overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   header: {
+    marginBottom: 16,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
-  },
-  viewAllButton: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginRight: 2,
-    fontFamily: 'Inter-Medium',
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  insightsContainer: {
-    paddingHorizontal: 16,
-  },
-  insightItem: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  insightIconContainer: {
+  insightsIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -208,27 +259,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  insightContent: {
+  headerText: {
     flex: 1,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 2,
+    fontFamily: 'Inter-SemiBold',
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  insightsList: {
+    maxHeight: 400,
+  },
+  insightItem: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  insightType: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  insightPriority: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
   insightTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-    fontFamily: 'Inter-Medium',
+    fontWeight: '600',
+    marginBottom: 8,
+    fontFamily: 'Inter-SemiBold',
   },
-  insightText: {
+  insightDescription: {
     fontSize: 14,
     lineHeight: 20,
+    marginBottom: 12,
     fontFamily: 'Inter-Regular',
   },
-  emptyContainer: {
-    padding: 20,
+  insightFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  emptyText: {
-    fontSize: 14,
-    textAlign: 'center',
+  insightTime: {
+    fontSize: 12,
     fontFamily: 'Inter-Regular',
+  },
+  actionButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'white',
+    fontFamily: 'Inter-SemiBold',
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  expandText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 4,
+    fontFamily: 'Inter-Medium',
   },
 });

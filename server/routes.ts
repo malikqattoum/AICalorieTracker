@@ -9,6 +9,7 @@ import { insertMealAnalysisSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
 import { getNutritionCoachReply } from "./openai";
+import { aiCache } from "./ai-cache";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -86,8 +87,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? imageData.split('base64,')[1]
           : imageData;
 
-        // Analyze the food image using configured AI service
-        const analysis = await aiService.analyzeMultiFoodImage(base64Data);
+        // Check cache first
+        let analysis = aiCache.get(base64Data);
+        
+        if (!analysis) {
+          // Analyze the food image using configured AI service
+          analysis = await aiService.analyzeMultiFoodImage(base64Data);
+          
+          // Cache the result
+          aiCache.set(base64Data, analysis);
+        }
+        
         analysisResults.push(analysis);
       }
 
@@ -147,8 +157,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
 
-      // Analyze the food image using configured AI service
-      const analysis = await aiService.analyzeFoodImage(base64Data);
+      // Check cache first
+      let analysis = aiCache.get(base64Data);
+      
+      if (!analysis) {
+        // Analyze the food image using configured AI service
+        analysis = await aiService.analyzeFoodImage(base64Data);
+        
+        // Cache the result
+        aiCache.set(base64Data, analysis);
+      }
 
       // Return the analysis but don't save it
       res.status(200).json(analysis);
@@ -177,8 +195,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
 
-      // Analyze the food image using configured AI service
-      const analysis = await aiService.analyzeFoodImage(base64Data);
+      // Check cache first
+      let analysis = aiCache.get(base64Data);
+      
+      if (!analysis) {
+        // Analyze the food image using configured AI service
+        analysis = await aiService.analyzeFoodImage(base64Data);
+        
+        // Cache the result
+        aiCache.set(base64Data, analysis);
+      }
 
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
@@ -406,8 +432,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // --- Admin: Site Content Management ---
-  app.get("/api/admin/content/:key", isAuthenticated, async (req, res) => {
-    // TODO: Add admin check
+  // Import admin auth middleware
+  const { isAdmin } = require("./admin-auth");
+
+  app.get("/api/admin/content/:key", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const key = req.params.key;
       const value = await storage.getSiteContent(key);
@@ -417,8 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/content/:key", isAuthenticated, async (req, res) => {
-    // TODO: Add admin check
+  app.post("/api/admin/content/:key", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const key = req.params.key;
       const value = req.body.value;
@@ -606,12 +633,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.error('Error loading admin routes:', error);
   }
 
+  // Import and mount security routes
+  try {
+    const securityRouter = require('./src/routes/security').default;
+    app.use('/api/security', securityRouter);
+  } catch (error) {
+    console.error('Error loading security routes:', error);
+  }
+
   // Import and mount user routes
   try {
     const userRouter = require('./src/routes/user/index').default;
     app.use('/api/user', userRouter);
   } catch (error) {
     console.error('Error loading user routes:', error);
+  }
+
+  // Import and mount wearable routes
+  try {
+    const wearableRouter = require('./src/routes/wearables').default;
+    app.use('/api/wearable', wearableRouter);
+  } catch (error) {
+    console.error('Error loading wearable routes:', error);
   }
 
   const httpServer = createServer(app);

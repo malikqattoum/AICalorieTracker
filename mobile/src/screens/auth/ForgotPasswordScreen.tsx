@@ -19,6 +19,7 @@ import i18n from '../../i18n';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AuthStackParamList } from '../../navigation';
 import { API_URL } from '../../config';
+import { safeFetchJson } from '../../utils/fetchWrapper';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
@@ -32,7 +33,7 @@ export default function ForgotPasswordScreen() {
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+      const data = await safeFetchJson(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -40,12 +41,11 @@ export default function ForgotPasswordScreen() {
         body: JSON.stringify({ email }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reset password');
+      if (data === null) {
+        throw new Error('Failed to reset password');
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       setIsSubmitted(true);

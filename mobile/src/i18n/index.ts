@@ -4,14 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import translations
 import en from './translations/en';
-import es from './translations/es';
-import fr from './translations/fr';
 
 // Create i18n instance
 const i18n = new I18n({
   en,
-  es,
-  fr,
 });
 
 // Set the locale once at the beginning of your app
@@ -35,7 +31,6 @@ export async function setupI18n() {
       await AsyncStorage.setItem('language', i18n.locale);
     }
   } catch (error) {
-    console.log('Failed to load language:', error);
     i18n.locale = 'en';
   }
   
@@ -51,7 +46,6 @@ export async function changeLanguage(locale: string) {
     await AsyncStorage.setItem('language', locale);
     return true;
   } catch (error) {
-    console.log('Failed to save language:', error);
     return false;
   }
 }

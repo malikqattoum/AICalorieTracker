@@ -18,6 +18,7 @@ import i18n from '../../i18n';
 import { useTheme } from '../../contexts/ThemeContext';
 import { RootStackParamList } from '../../navigation';
 import { API_URL } from '../../config';
+import { safeFetchJson } from '../../utils/fetchWrapper';
 
 type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -65,14 +66,14 @@ export default function OnboardingScreen() {
       await AsyncStorage.setItem('onboardingCompleted', 'true');
       
       // You can also send this info to the backend if needed
-      const response = await fetch(`${API_URL}/api/user/onboarding-completed`, {
+      const data = await safeFetchJson(`${API_URL}/api/user/onboarding-completed`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
-      if (!response.ok) {
+      if (data === null) {
         // We'll still proceed even if the API call fails
         console.log('Failed to update onboarding status on server');
       }

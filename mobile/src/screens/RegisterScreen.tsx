@@ -20,6 +20,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -42,7 +43,7 @@ export default function RegisterScreen() {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const data = await safeFetchJson(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,12 +51,11 @@ export default function RegisterScreen() {
         body: JSON.stringify({ firstName, lastName, email, password }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || i18n.t('auth.registerError'));
+      if (data === null) {
+        throw new Error(i18n.t('auth.registerError'));
       }
       
-      return response.json();
+      return data;
     },
     onSuccess: (data) => {
       // Call login function from AuthContext
@@ -68,7 +68,7 @@ export default function RegisterScreen() {
       });
       
       // Navigate to onboarding
-      navigation.navigate('Onboarding');
+      navigation.navigate('Auth');
     },
     onError: (error: Error) => {
       Toast.show({
@@ -359,7 +359,7 @@ export default function RegisterScreen() {
               {i18n.t('auth.haveAccount')}
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Login')}
+              onPress={() => navigation.navigate('Auth')}
             >
               <Text style={[styles.loginLink, { color: colors.primary }]}>
                 {i18n.t('auth.loginInstead')}

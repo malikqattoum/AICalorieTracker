@@ -1,0 +1,54 @@
+{
+  "cli": {
+    "version": ">= 8.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "ios": {
+        "serviceAccountKeyPath": "./ios/service-account-key.json",
+        "teamId": "YOUR_TEAM_ID",
+        "provisioningProfilePath": "./ios/development.provisionprofile",
+        "certificatePath": "./ios/development.p12",
+        "releaseChannel": "production",
+        "assetPatterns": [
+          "assets/**/*"
+        ],
+        "incremental": true,
+        "upload": true,
+        "submit": true
+      },
+      "android": {
+        "serviceAccountKeyPath": "./android/service-account-key.json",
+        "keystorePath": "./android/keystore.jks",
+        "keystorePassword": "your-keystore-password",
+        "keyAlias": "your-key-alias",
+        "keyPassword": "your-key-password",
+        "gradleCommand": "bundleRelease",
+        "upload": true,
+        "submit": true
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "your-apple-id",
+        "ascAppId": "your-app-store-connect-app-id",
+        "appleTeamId": "YOUR_TEAM_ID",
+        "ipaPath": "ios/build/Build/Products/Release-iphonesimulator/app.ipa"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./android/service-account-key.json",
+        "track": "production",
+        "aabPath": "android/app/build/outputs/bundle/release/app.aab"
+      }
+    }
+  }
+}

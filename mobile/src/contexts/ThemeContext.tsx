@@ -78,7 +78,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setThemeState(savedTheme as Theme);
         }
       } catch (error) {
-        console.log('Failed to load theme:', error);
+        // Silently fail theme loading
       }
     };
     
@@ -91,7 +91,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await AsyncStorage.setItem('theme', newTheme);
       setThemeState(newTheme);
     } catch (error) {
-      console.log('Failed to save theme:', error);
+      // Silently fail theme saving
     }
   };
   

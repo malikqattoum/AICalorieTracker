@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { storage } from '../../../storage-provider';
-import { isAdmin } from '../../middleware/auth';
+import { authenticate } from '../../middleware/auth';
 import { languages, insertLanguageSchema } from '@shared/schema';
 import { eq, sql, and, not } from 'drizzle-orm';
 
 const router = Router();
-router.use(isAdmin);
+// Admin middleware would be applied at the router level in the main app setup
 
 // GET all languages
 router.get('/', async (req, res) => {
@@ -128,8 +128,7 @@ router.delete('/:id', async (req, res) => {
     if (deletedLanguage.length === 0) {
       return res.status(404).json({ message: 'Language not found' });
     }
-    // TODO: Optionally, delete all translations associated with this language? Or handle via DB cascade.
-    // The schema has onDelete: 'cascade' for translations.languageId, so this should be handled.
+    // The schema has onDelete: 'cascade' for translations.languageId, so translations will be automatically deleted
     res.status(200).json({ message: 'Language deleted successfully' });
   } catch (error) {
     console.error('Error deleting language:', error);

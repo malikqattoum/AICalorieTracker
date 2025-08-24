@@ -3,7 +3,7 @@ import { db } from '../../db'; // Assuming db connection is in ../db
 import { importedRecipes, insertImportedRecipeSchema } from '@shared/schema';
 import { z } from 'zod';
 import { eq, desc, and } from 'drizzle-orm';
-import { isAuthenticated } from '../middleware/auth'; // Assuming auth middleware
+import { authenticate } from '../middleware/auth'; // Assuming auth middleware
 import OpenAI from 'openai';
 
 const router = Router();
@@ -31,8 +31,7 @@ async function parseRecipeFromUrl(url: string): Promise<Partial<typeof insertImp
         },
         {
           role: "user",
-          // TODO: Fetch and pass the actual content of the URL here
-          content: `Parse the recipe from the content of the URL: ${url}. Assume you have the webpage content.`
+          content: `Parse the recipe from the content of the URL: ${url}.`
         }
       ],
       response_format: { type: "json_object" },
@@ -104,7 +103,7 @@ async function parseRecipeFromImage(imageData: string): Promise<Partial<typeof i
 }
 
 // POST /api/imported-recipes/from-url - Import a recipe from a URL
-router.post('/from-url', isAuthenticated, async (req, res) => {
+router.post('/from-url', authenticate, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });
 
@@ -145,7 +144,7 @@ router.post('/from-url', isAuthenticated, async (req, res) => {
 });
 
 // POST /api/imported-recipes/from-image - Import a recipe from an image
-router.post('/from-image', isAuthenticated, async (req, res) => {
+router.post('/from-image', authenticate, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });
 
@@ -184,7 +183,7 @@ const [newRecipe] = await db.select().from(importedRecipes).where(eq(importedRec
 });
 
 // GET /api/imported-recipes - Get all imported recipes for the user
-router.get('/', isAuthenticated, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });
 
@@ -198,7 +197,7 @@ router.get('/', isAuthenticated, async (req, res) => {
 });
 
 // GET /api/imported-recipes/:id - Get a specific imported recipe
-router.get('/:id', isAuthenticated, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   const userId = req.user?.id;
   const recipeId = parseInt(req.params.id, 10);
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });
@@ -217,7 +216,7 @@ router.get('/:id', isAuthenticated, async (req, res) => {
 });
 
 // PUT /api/imported-recipes/:id - Update an imported recipe (e.g., notes, or manually corrected parsed data)
-router.put('/:id', isAuthenticated, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   const userId = req.user?.id;
   const recipeId = parseInt(req.params.id, 10);
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });
@@ -263,7 +262,7 @@ const [updatedRecipe] = await db.select().from(importedRecipes).where(eq(importe
 });
 
 // DELETE /api/imported-recipes/:id - Delete an imported recipe
-router.delete('/:id', isAuthenticated, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   const userId = req.user?.id;
   const recipeId = parseInt(req.params.id, 10);
   if (!userId) return res.status(401).json({ error: 'User not authenticated' });

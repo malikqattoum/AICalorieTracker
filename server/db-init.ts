@@ -8,9 +8,9 @@ async function main() {
   try {
     // Check if tables exist
     const tables = await db.execute(sql`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
       AND table_type = 'BASE TABLE'
     `);
     
@@ -21,19 +21,19 @@ async function main() {
     if (!tableNames.includes('users')) {
       console.log('Creating users table...');
       await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS "users" (
-          "id" SERIAL PRIMARY KEY,
-          "username" TEXT NOT NULL UNIQUE,
-          "password" TEXT NOT NULL,
-          "first_name" TEXT NOT NULL,
-          "last_name" TEXT NOT NULL,
-          "email" TEXT,
-          "stripe_customer_id" TEXT,
-          "stripe_subscription_id" TEXT,
-          "subscription_type" TEXT,
-          "subscription_status" TEXT,
-          "subscription_end_date" TIMESTAMP,
-          "is_premium" BOOLEAN DEFAULT false
+        CREATE TABLE IF NOT EXISTS users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          username VARCHAR(255) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL,
+          first_name VARCHAR(255) NOT NULL,
+          last_name VARCHAR(255) NOT NULL,
+          email VARCHAR(255),
+          stripe_customer_id VARCHAR(255),
+          stripe_subscription_id VARCHAR(255),
+          subscription_type VARCHAR(255),
+          subscription_status VARCHAR(255),
+          subscription_end_date TIMESTAMP,
+          is_premium BOOLEAN DEFAULT false
         )
       `);
       console.log('Users table created!');
@@ -45,17 +45,17 @@ async function main() {
     if (!tableNames.includes('meal_analyses')) {
       console.log('Creating meal_analyses table...');
       await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS "meal_analyses" (
-          "id" SERIAL PRIMARY KEY,
-          "user_id" INTEGER NOT NULL,
-          "food_name" TEXT NOT NULL,
-          "calories" INTEGER NOT NULL,
-          "protein" INTEGER NOT NULL,
-          "carbs" INTEGER NOT NULL,
-          "fat" INTEGER NOT NULL,
-          "fiber" INTEGER NOT NULL,
-          "image_data" TEXT NOT NULL,
-          "timestamp" TIMESTAMP DEFAULT NOW() NOT NULL
+        CREATE TABLE IF NOT EXISTS meal_analyses (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          food_name VARCHAR(255) NOT NULL,
+          calories INTEGER NOT NULL,
+          protein INTEGER NOT NULL,
+          carbs INTEGER NOT NULL,
+          fat INTEGER NOT NULL,
+          fiber INTEGER NOT NULL,
+          image_data TEXT NOT NULL,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
         )
       `);
       console.log('Meal analyses table created!');
@@ -67,15 +67,15 @@ async function main() {
     if (!tableNames.includes('weekly_stats')) {
       console.log('Creating weekly_stats table...');
       await db.execute(sql`
-        CREATE TABLE IF NOT EXISTS "weekly_stats" (
-          "id" SERIAL PRIMARY KEY,
-          "user_id" INTEGER NOT NULL,
-          "average_calories" INTEGER NOT NULL,
-          "meals_tracked" INTEGER NOT NULL,
-          "average_protein" INTEGER NOT NULL,
-          "healthiest_day" TEXT NOT NULL,
-          "week_starting" TIMESTAMP NOT NULL,
-          "calories_by_day" JSONB NOT NULL
+        CREATE TABLE IF NOT EXISTS weekly_stats (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INTEGER NOT NULL,
+          average_calories INTEGER NOT NULL,
+          meals_tracked INTEGER NOT NULL,
+          average_protein INTEGER NOT NULL,
+          healthiest_day VARCHAR(255) NOT NULL,
+          week_starting TIMESTAMP NOT NULL,
+          calories_by_day JSON NOT NULL
         )
       `);
       console.log('Weekly stats table created!');

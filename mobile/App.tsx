@@ -16,7 +16,7 @@ import { setupI18n } from './src/i18n';
 import { initializeNetworkMonitoring } from './src/services/apiService';
 import { offlineManager } from './src/utils/offlineManager';
 import ErrorHandler from './src/utils/errorHandler';
-import { log, logError, APP_CONFIG } from './src/config';
+import { log, logError, APP_CONFIG, API_URL, ENABLE_LOGGING } from './src/config';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -53,6 +53,12 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
+log(`=== APP INITIALIZATION DEBUG ===`);
+        log(`Starting ${APP_CONFIG.appName} v${APP_CONFIG.version} initialization...`);
+        log(`Environment: ${APP_CONFIG.environment}`);
+        log(`API URL: ${API_URL}`);
+        log(`Enable Logging: ${ENABLE_LOGGING}`);
+        log(`===============================`);
         log(`Starting ${APP_CONFIG.appName} v${APP_CONFIG.version} initialization...`);
         
         // Initialize i18n
@@ -88,7 +94,7 @@ export default function App() {
         
         log('App initialization completed successfully');
       } catch (e) {
-        const error = ErrorHandler.normalizeError(e);
+        const error = await ErrorHandler.normalizeError(e);
         logError('Critical app initialization error:', error);
         setInitError(error.message);
         
@@ -123,7 +129,7 @@ export default function App() {
       if (offlineManager.hasPendingActions()) {
         log('Found pending offline actions, attempting sync...');
         // Don't await this - let it happen in background
-        offlineManager.forcSync().catch(error => {
+        offlineManager.forceSync().catch(error => {
           log('Background sync failed:', error);
         });
       }

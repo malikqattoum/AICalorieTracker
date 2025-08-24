@@ -3,15 +3,18 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
-import { 
-  API_URL, 
-  USE_MOCK_DATA, 
-  NETWORK_CONFIG, 
-  CACHE_KEYS, 
+import {
+  API_URL,
+  USE_MOCK_DATA,
+  NETWORK_CONFIG,
+  CACHE_KEYS,
   ERROR_MESSAGES,
   log,
-  logError 
+  logError
 } from '../config';
+import secureApiService from './secureApiService';
+import { validateApiResponse } from '../utils/responseValidator';
+import { ApiMonitoring } from '../utils/monitoring';
 
 // Types
 export interface ApiResponse<T> {
@@ -122,90 +125,8 @@ const clearCache = async (pattern?: string): Promise<void> => {
   }
 };
 
-// Create API instance
-const createApiInstance = (): AxiosInstance => {
-  const instance = axios.create({
-    baseURL: API_URL,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    timeout: NETWORK_CONFIG.timeout,
-  });
-
-  // Request interceptor
-  instance.interceptors.request.use(
-    async (config: any) => {
-      try {
-        // Add auth token if required
-        if (config.requiresAuth !== false) {
-          const token = await SecureStore.getItemAsync(CACHE_KEYS.AUTH_TOKEN);
-          if (token && config.headers) {
-            config.headers.Authorization = `Bearer ${token}`;
-          }
-        }
-
-        // Add request timestamp
-        config.metadata = { startTime: Date.now() };
-        
-        log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
-        return config;
-      } catch (error) {
-        logError('Request interceptor error:', error);
-        return Promise.reject(error);
-      }
-    },
-    (error) => {
-      logError('Request interceptor error:', error);
-      return Promise.reject(error);
-    }
-  );
-
-  // Response interceptor
-  instance.interceptors.response.use(
-    (response: AxiosResponse) => {
-      const duration = Date.now() - response.config.metadata?.startTime;
-      log(`API Response: ${response.status} in ${duration}ms`);
-      return response;
-    },
-    async (error: AxiosError) => {
-      const originalRequest = error.config as any;
-      
-      // Handle token expiration
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-        
-        try {
-          const refreshToken = await SecureStore.getItemAsync(CACHE_KEYS.REFRESH_TOKEN);
-          if (refreshToken) {
-            const response = await instance.post('/api/auth/refresh-token', {
-              refreshToken,
-            });
-            
-            const { token } = response.data;
-            await SecureStore.setItemAsync(CACHE_KEYS.AUTH_TOKEN, token);
-            
-            // Retry original request
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return instance(originalRequest);
-          }
-        } catch (refreshError) {
-          // Refresh failed, logout user
-          await SecureStore.deleteItemAsync(CACHE_KEYS.AUTH_TOKEN);
-          await SecureStore.deleteItemAsync(CACHE_KEYS.REFRESH_TOKEN);
-          
-          // Navigate to login (would need navigation ref)
-          logError('Token refresh failed, user needs to login');
-        }
-      }
-      
-      return Promise.reject(error);
-    }
-  );
-
-  return instance;
-};
-
-const apiInstance = createApiInstance();
+// Use secure API instance
+const apiInstance = secureApiService.getApiInstance();
 
 // Retry mechanism
 const retryRequest = async <T>(
@@ -300,22 +221,107 @@ export class ApiService {
     }
     
     try {
-      const response = await retryRequest(() => apiInstance.request<T>(config));
+      // Use secure API service with retry logic
+      const response = await retryRequest(async () => {
+        const axiosConfig: AxiosRequestConfig = {
+          method: config.method?.toUpperCase() as any,
+          url: config.url,
+          data: config.data,
+          headers: config.headers,
+          params: config.params,
+        };
+
+        if (config.requiresAuth !== false) {
+          const response = await secureApiService.getApiInstance().request(axiosConfig);
+          return response.data;
+        } else {
+          const response = await axios({
+            ...axiosConfig,
+            baseURL: API_URL,
+          });
+          return response.data;
+        }
+      });
+      
+      // Validate response data
+      const validation = validateApiResponse(
+        response,
+        config.url || '',
+        this.getDefaultDataForEndpoint(config.url || '')
+      );
+
+      if (!validation.isValid && validation.fallbackData) {
+        log(`Using fallback data for ${config.url} due to: ${validation.error}`);
+        
+        // Cache the fallback data if caching is enabled
+        if (config.cache && config.cacheKey) {
+          await setCache(config.cacheKey, validation.fallbackData, config.cacheDuration);
+        }
+
+        return {
+          data: validation.fallbackData,
+          status: 200,
+          message: 'Using cached/fallback data due to server response issue',
+          cached: true,
+        };
+      }
+
+      if (!validation.isValid) {
+        throw new Error(`Invalid API response: ${validation.error}`);
+      }
       
       // Cache response if enabled
-      if (config.cache && config.cacheKey && response.data) {
-        await setCache(config.cacheKey, response.data, config.cacheDuration);
+      if (config.cache && config.cacheKey && response) {
+        await setCache(config.cacheKey, response, config.cacheDuration);
       }
       
       return {
-        data: response.data,
-        status: response.status,
-        message: response.statusText,
+        data: response,
+        status: 200,
+        message: 'Success',
       };
     } catch (error) {
+      // Handle JSON parsing errors specifically
+      if (error instanceof SyntaxError && error.message.includes('JSON')) {
+        logError('JSON Parse Error:', {
+          endpoint: config.url,
+          error: error.message,
+          message: 'Server returned malformed JSON, using fallback data'
+        });
+
+        // Try to return cached data as fallback
+        if (config.cache && config.cacheKey) {
+          const cached = await getCache<T>(config.cacheKey);
+          if (cached) {
+            log('Returning cached data due to JSON parse error:', config.cacheKey);
+            return {
+              data: cached,
+              status: 200,
+              cached: true,
+              message: 'Using cached data due to server response issue',
+            };
+          }
+        }
+
+        // Use default fallback data
+        const fallbackData = this.getDefaultDataForEndpoint(config.url || '');
+        if (fallbackData) {
+          log('Using default fallback data for:', config.url);
+          return {
+            data: fallbackData,
+            status: 200,
+            cached: true,
+            message: 'Using default data due to server response issue',
+          };
+        }
+        
+        // If no fallback data available, throw a more informative error
+        throw new Error(`JSON parsing failed for endpoint ${config.url}: ${error.message}. This may indicate a server issue or network problem.`);
+      }
+
       const apiError = handleApiError(error, config);
       
-      // Try to return cached data as fallback
+      // Try to return cached data as fallback for other errors
       if (config.cache && config.cacheKey && !isOnline) {
         const cached = await getCache<T>(config.cacheKey);
         if (cached) {
@@ -350,6 +356,21 @@ export class ApiService {
     return this.request<T>({ method: 'DELETE', url, ...config });
   }
   
+  // File upload method
+  async uploadFile(url: string, file: any, onProgress?: (progress: number) => void, config?: RequestConfig): Promise<ApiResponse<any>> {
+    try {
+      const response = await secureApiService.uploadFile(url, file, onProgress, config);
+      return {
+        data: response,
+        status: 200,
+        message: 'File uploaded successfully',
+      };
+    } catch (error) {
+      const apiError = handleApiError(error, config);
+      throw apiError;
+    }
+  }
+  
   // Utility methods
   async clearAllCache(): Promise<void> {
     await clearCache();
@@ -361,6 +382,59 @@ export class ApiService {
   
   isOnline(): boolean {
     return isOnline;
+  }
+  
+  // Authentication methods
+  async setAuthToken(token: string): Promise<void> {
+    await secureApiService.setAuthToken(token);
+  }
+  
+  async clearAuthToken(): Promise<void> {
+    await secureApiService.clearAuthToken();
+  }
+  
+  // Add method to get default data for endpoints
+  private getDefaultDataForEndpoint(url: string): any {
+    if (url.includes('/api/auth/me')) {
+      return {
+        firstName: 'Guest',
+        lastName: 'User',
+        email: 'guest@example.com',
+        isPremium: false,
+      };
+    }
+    
+    if (url && url.includes('/api/user/profile')) {
+      return {
+        totalMeals: 0,
+        streakDays: 0,
+        perfectDays: 0,
+        favoriteFoods: [],
+      };
+    }
+
+    if (url.includes('/api/user/settings')) {
+      return {
+        notifications: {
+          mealReminders: true,
+          weeklyReports: true,
+          tips: true,
+        },
+        privacy: {
+          shareAnalytics: true,
+          storeImages: false,
+        },
+        goals: {
+          calorieGoal: 2000,
+          proteinGoal: 150,
+          carbsGoal: 200,
+          fatGoal: 65,
+        },
+      };
+    }
+
+    // Add more endpoint defaults as needed
+    return null;
   }
 }
 

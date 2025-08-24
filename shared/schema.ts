@@ -63,9 +63,19 @@ export const mealAnalyses = mysqlTable("meal_analyses", {
   carbs: int("carbs").notNull(),
   fat: int("fat").notNull(),
   fiber: int("fiber").notNull(),
-  imageData: text("image_data").notNull(),
+  imageData: text("image_data"), // Keep for backward compatibility, but will be deprecated
   timestamp: datetime("timestamp").notNull(),
   metadata: text("metadata"),
+  // New fields for optimized image storage
+  imageId: int("image_id"), // References meal_images table
+  thumbnailPath: varchar("thumbnail_path", { length: 500 }),
+  optimizedPath: varchar("optimized_path", { length: 500 }),
+  originalPath: varchar("original_path", { length: 500 }),
+  imageHash: varchar("image_hash", { length: 64 }),
+  // Audit fields
+  created_at: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updated_at: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  deleted_at: datetime("deleted_at"),
 });
 
 // Weekly stats schema
@@ -217,6 +227,33 @@ export const wearableData = mysqlTable("wearable_data", {
   sleepHours: int("sleep_hours"),
   date: datetime("date").notNull(),
   createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: datetime("deleted_at"),
+});
+
+// Meal images table for optimized image storage
+export const mealImages = mysqlTable("meal_images", {
+  id: int("id").autoincrement().primaryKey(),
+  mealAnalysisId: int("meal_analysis_id").notNull(),
+  filePath: varchar("file_path", { length: 500 }).notNull(),
+  fileSize: int("file_size").notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  width: int("width"),
+  height: int("height"),
+  imageHash: varchar("image_hash", { length: 64 }).unique(),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: datetime("deleted_at"),
+});
+
+// Meal image archive table for old images
+export const mealImageArchive = mysqlTable("meal_image_archive", {
+  id: int("id").autoincrement().primaryKey(),
+  mealAnalysisId: int("meal_analysis_id").notNull(),
+  filePath: varchar("file_path", { length: 500 }).notNull(),
+  fileSize: int("file_size").notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  archivedAt: datetime("archived_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const aiConfig = mysqlTable("ai_config", {
@@ -244,6 +281,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertMealAnalysisSchema = createInsertSchema(mealAnalyses).omit({
   id: true,
   timestamp: true,
+  created_at: true,
+  updated_at: true,
+  deleted_at: true,
 });
 
 export const insertWeeklyStatsSchema = createInsertSchema(weeklyStats).omit({
@@ -259,7 +299,31 @@ export const insertNutritionGoalsSchema = createInsertSchema(nutritionGoals).omi
 export const insertImportedRecipeSchema = createInsertSchema(importedRecipes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLanguageSchema = createInsertSchema(languages).omit({ id: true, createdAt: true });
 export const insertTranslationSchema = createInsertSchema(translations).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWorkoutSchema = createInsertSchema(workouts).omit({ id: true, createdAt: true });
+export const insertWorkoutSchema = createInsertSchema(workouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true
+} as any);
+
+export const insertWearableDataSchema = createInsertSchema(wearableData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true
+});
+
+export const insertMealImageSchema = createInsertSchema(mealImages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true
+});
+
+export const insertMealImageArchiveSchema = createInsertSchema(mealImageArchive).omit({
+  id: true,
+  archivedAt: true
+});
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -283,6 +347,8 @@ export type Translation = typeof translations.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type WearableData = typeof wearableData.$inferSelect;
 export type AIConfig = typeof aiConfig.$inferSelect;
+export type MealImage = typeof mealImages.$inferSelect;
+export type MealImageArchive = typeof mealImageArchive.$inferSelect;
 
 // Nutrition Analysis Types
 export interface NutritionData {

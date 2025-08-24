@@ -3,9 +3,9 @@ import Constants from 'expo-constants';
 // Environment configuration
 const ENV = {
   development: {
-    apiUrl: 'http://localhost:5001',
+    apiUrl: 'http://localhost:3002',
     enableLogging: true,
-    useMockData: true,
+    useMockData: false, // Changed to false for real backend integration
   },
   staging: {
     apiUrl: 'https://staging-api.aicalorietracker.com',
@@ -35,6 +35,7 @@ const currentEnv = getEnvironment();
 export const API_URL = Constants.expoConfig?.extra?.apiUrl || ENV[currentEnv].apiUrl;
 export const ENABLE_LOGGING = Constants.expoConfig?.extra?.enableLogging ?? ENV[currentEnv].enableLogging;
 export const USE_MOCK_DATA = Constants.expoConfig?.extra?.useMockData ?? ENV[currentEnv].useMockData;
+export const SENTRY_DSN = Constants.expoConfig?.extra?.sentryDsn || '';
 
 // App configuration
 export const APP_CONFIG = {

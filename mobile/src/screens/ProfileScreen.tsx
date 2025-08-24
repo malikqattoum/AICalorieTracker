@@ -1,432 +1,393 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
-  Switch,
-  Linking,
+  RefreshControl,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RootStackParamList } from '../navigation';
-import profileService, { ProfileStats } from '../services/profileService';
-import { APP_CONFIG } from '../config';
+import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface UserProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  username: string;
+  height?: number;
+  weight?: number;
+  age?: number;
+  gender?: string;
+  activityLevel?: string;
+  primaryGoal?: string;
+  targetWeight?: number;
+  timeline?: string;
+  dietaryPreferences?: any;
+  allergies?: any;
+  totalMeals: number;
+  streakDays: number;
+  perfectDays: number;
+  favoriteFoods: string[];
+  isPremium: boolean;
+  createdAt: string;
+}
+
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const { colors, isDark, setTheme } = useTheme();
+  const { colors } = useTheme();
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch profile stats
-  const { data: stats } = useQuery({
-    queryKey: ['profileStats'],
-    queryFn: async () => {
-      return await profileService.getProfileStats();
+  // Fetch user profile
+  const { data: profile, isLoading, error, refetch } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async (): Promise<UserProfile> => {
+      const result = await safeFetchJson(`${API_URL}/api/user/profile`);
+      if (result === null) {
+        throw new Error('Failed to fetch user profile');
+      }
+      return result;
     },
   });
+
+  // Fetch user stats
+  const { data: stats } = useQuery({
+    queryKey: ['userStats'],
+    queryFn: async () => {
+      const result = await safeFetchJson(`${API_URL}/api/user/stats`);
+      if (result === null) {
+        throw new Error('Failed to fetch user stats');
+      }
+      return result;
+    },
+  });
+
+  // Handle refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetch()]);
+    setRefreshing(false);
+  };
 
   // Handle logout
   const handleLogout = () => {
     Alert.alert(
-      i18n.t('profile.logoutConfirm'),
-      '',
-      [
-        {
-          text: i18n.t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: i18n.t('profile.logout'),
-          style: 'destructive',
-          onPress: () => logout(),
-        },
-      ],
-    );
-  };
-
-  // Handle theme toggle
-  const handleThemeToggle = () => {
-    setTheme(isDark ? 'light' : 'dark');
-  };
-
-  // Navigation handlers
-  const handlePersonalInfo = () => {
-    navigation.navigate('PersonalInfo' as never);
-  };
-
-  const handleChangePassword = () => {
-    navigation.navigate('ChangePassword' as never);
-  };
-
-  const handleNotifications = () => {
-    navigation.navigate('NotificationSettings' as never);
-  };
-
-  const handleLanguage = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Language Settings',
-      text2: 'Language selection is available in Settings',
-    });
-    navigation.navigate('Settings' as never);
-  };
-
-  const handleAchievements = () => {
-    Toast.show({
-      type: 'info',
-      text1: 'Achievements',
-      text2: 'Achievement system coming soon!',
-    });
-  };
-
-  const handleUpgradeToPremium = () => {
-    Alert.alert(
-      'Upgrade to Premium',
-      'Premium features include:\n\n• Advanced meal planning\n• Detailed analytics\n• Recipe collections\n• Priority support\n\nUpgrade now?',
-      [
-        { text: 'Maybe Later', style: 'cancel' },
-        { 
-          text: 'Upgrade', 
-          onPress: () => {
-            Toast.show({
-              type: 'info',
-              text1: 'Premium Upgrade',
-              text2: 'Premium subscription coming soon!',
-            });
-          }
-        },
-      ]
-    );
-  };
-
-  const handleManagePlan = () => {
-    Alert.alert(
-      'Manage Subscription',
-      'Manage your premium subscription through your device\'s app store settings.',
+      'Logout',
+      'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Open App Store', 
-          onPress: () => {
-            // This would open the app store subscription management
-            Toast.show({
-              type: 'info',
-              text1: 'Subscription Management',
-              text2: 'Subscription management coming soon!',
-            });
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              queryClient.clear();
+            } catch (error) {
+              console.error('Logout error:', error);
+            }
           }
-        },
+        }
       ]
     );
   };
 
-  const handleFAQ = () => {
-    const faqUrl = 'https://aicalorietracker.com/faq';
-    Linking.openURL(faqUrl).catch(() => {
-      Toast.show({
-        type: 'error',
-        text1: 'Unable to Open',
-        text2: 'Could not open FAQ page',
-      });
-    });
+  // Handle edit profile
+  const handleEditProfile = () => {
+    navigation.navigate('PersonalInfo');
   };
 
-  const handleContactSupport = () => {
-    const email = APP_CONFIG.supportEmail;
-    const subject = `${APP_CONFIG.appName} Support Request`;
-    const body = `Hi Support Team,\n\nI need help with:\n\n[Please describe your issue here]\n\nApp Version: ${APP_CONFIG.version}\nUser: ${user?.email || 'N/A'}`;
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    Linking.openURL(mailtoUrl).catch(() => {
-      Toast.show({
-        type: 'error',
-        text1: 'Unable to Open Email',
-        text2: `Please email us at ${email}`,
-      });
-    });
+  // Handle settings
+  const handleSettings = () => {
+    navigation.navigate('Settings');
   };
 
-  const handleTermsOfService = () => {
-    const termsUrl = 'https://aicalorietracker.com/terms';
-    Linking.openURL(termsUrl).catch(() => {
-      Toast.show({
-        type: 'error',
-        text1: 'Unable to Open',
-        text2: 'Could not open Terms of Service',
-      });
-    });
+  // Handle change password
+  const handleChangePassword = () => {
+    navigation.navigate('ChangePassword');
   };
 
-  const handlePrivacyPolicy = () => {
-    const privacyUrl = 'https://aicalorietracker.com/privacy';
-    Linking.openURL(privacyUrl).catch(() => {
-      Toast.show({
-        type: 'error',
-        text1: 'Unable to Open',
-        text2: 'Could not open Privacy Policy',
-      });
-    });
+  // Handle notifications
+  const handleNotifications = () => {
+    navigation.navigate('NotificationSettings');
   };
 
+  // Handle about
   const handleAbout = () => {
-    navigation.navigate('About' as never);
+    navigation.navigate('About');
   };
 
-  // Render menu item
-  const renderMenuItem = (
-    icon: string, 
-    title: string, 
-    onPress: () => void, 
-    showBadge?: boolean,
-    rightElement?: React.ReactNode,
-  ) => (
-    <TouchableOpacity
-      style={[styles.menuItem, { borderBottomColor: colors.border }]}
-      onPress={onPress}
-    >
-      <View style={styles.menuItemLeft}>
-        <View style={[styles.menuItemIcon, { backgroundColor: colors.primary + '20' }]}>
-          <Ionicons name={icon as any} size={20} color={colors.primary} />
-        </View>
-        <Text style={[styles.menuItemText, { color: colors.text }]}>
-          {title}
+  // Handle premium dashboard
+  const handlePremiumDashboard = () => {
+    navigation.navigate('PremiumDashboard');
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          {i18n.t('common.loading')}
         </Text>
       </View>
-      
-      <View style={styles.menuItemRight}>
-        {showBadge && (
-          <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.badgeText}>NEW</Text>
-          </View>
-        )}
-        
-        {rightElement || (
-          <Ionicons name="chevron-forward" size={20} color={colors.gray} />
-        )}
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.text }]}>
+          {i18n.t('profile.errorLoading')}
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+          onPress={() => refetch()}
+        >
+          <Text style={styles.retryButtonText}>{i18n.t('common.retry')}</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: colors.background }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.profileContainer}>
-          <View style={[styles.avatarContainer, { borderColor: colors.primary }]}>
-            {user?.firstName ? (
-              <Text style={styles.avatarText}>
-                {user.firstName.charAt(0)}{user.lastName?.charAt(0)}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Profile Header */}
+        <LinearGradient
+          colors={[colors.primary, '#6366F1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.avatarContainer}>
+              <View style={[styles.avatar, { backgroundColor: '#ffffff20' }]}>
+                <Text style={[styles.avatarText, { color: 'white' }]}>
+                  {profile?.firstName?.charAt(0)}{profile?.lastName?.charAt(0)}
+                </Text>
+              </View>
+              {profile?.isPremium && (
+                <View style={[styles.premiumBadge, { backgroundColor: '#FFD700' }]}>
+                  <Text style={styles.premiumText}>PRO</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={[styles.userName, { color: 'white' }]}>
+                {profile?.firstName} {profile?.lastName}
               </Text>
-            ) : (
-              <Ionicons name="person" size={40} color="white" />
-            )}
-          </View>
-          
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, { color: colors.text }]}>
-              {user?.firstName} {user?.lastName}
-            </Text>
-            <Text style={[styles.profileEmail, { color: colors.gray }]}>
-              {user?.email}
-            </Text>
-            
-            <View style={[styles.subscriptionTag, { backgroundColor: user?.isPremium ? colors.primary : colors.gray }]}>
-              <Text style={styles.subscriptionText}>
-                {user?.isPremium ? i18n.t('profile.premium') : i18n.t('profile.free')}
+              <Text style={[styles.userEmail, { color: 'rgba(255,255,255,0.8)' }]}>
+                {profile?.email}
+              </Text>
+              <Text style={[styles.userUsername, { color: 'rgba(255,255,255,0.6)' }]}>
+                @{profile?.username}
               </Text>
             </View>
           </View>
+        </LinearGradient>
+
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
+              {stats?.totalMeals || profile?.totalMeals || 0}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>
+              {i18n.t('profile.totalMeals')}
+            </Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
+              {stats?.streakDays || profile?.streakDays || 0}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>
+              {i18n.t('profile.streakDays')}
+            </Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
+              {stats?.perfectDays || profile?.perfectDays || 0}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.text }]}>
+              {i18n.t('profile.perfectDays')}
+            </Text>
+          </View>
         </View>
-        
-        <TouchableOpacity
-          style={[styles.editProfileButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => navigation.navigate('PersonalInfo' as never)}
-        >
-          <Text style={[styles.editProfileText, { color: colors.text }]}>
-            {i18n.t('profile.editProfile')}
+
+        {/* Personal Information */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('profile.personalInfo')}
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats */}
-      {stats && (
-        <View style={[styles.statsContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {stats.totalMeals}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.gray }]}>
-              {i18n.t('home.totalMeals')}
-            </Text>
-          </View>
-          
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {stats.streakDays}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.gray }]}>
-              {i18n.t('home.streakDays')}
-            </Text>
-          </View>
-          
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {stats.perfectDays}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.gray }]}>
-              {i18n.t('home.perfectDays')}
-            </Text>
-          </View>
+          <TouchableOpacity
+            style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleEditProfile}
+          >
+            <View style={styles.infoItemContent}>
+              <Ionicons name="person-outline" size={20} color={colors.primary} />
+              <View style={styles.infoItemText}>
+                <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                  {i18n.t('profile.editProfile')}
+                </Text>
+                <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('profile.updatePersonalInfo')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* Menu Sections */}
-      <View style={styles.menuSection}>
-        <Text style={[styles.menuSectionTitle, { color: colors.text }]}>
-          {i18n.t('profile.accountSettings')}
-        </Text>
-        
-        {renderMenuItem(
-          'person-outline',
-          i18n.t('profile.personalInfo'),
-          handlePersonalInfo
-        )}
-        
-        {renderMenuItem(
-          'lock-closed-outline',
-          i18n.t('profile.changePassword'),
-          handleChangePassword
-        )}
-        
-        {renderMenuItem(
-          'notifications-outline',
-          i18n.t('profile.notifications'),
-          handleNotifications
-        )}
-        
-        {renderMenuItem(
-          'moon-outline',
-          i18n.t('profile.theme'),
-          handleThemeToggle,
-          false,
-          <Switch
-            value={isDark}
-            onValueChange={handleThemeToggle}
-            trackColor={{ false: '#767577', true: colors.primary }}
-            thumbColor="white"
-          />
-        )}
-        
-        {renderMenuItem(
-          'globe-outline',
-          i18n.t('profile.language'),
-          handleLanguage
-        )}
-      </View>
+        {/* Account Settings */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('profile.accountSettings')}
+          </Text>
+          <TouchableOpacity
+            style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleChangePassword}
+          >
+            <View style={styles.infoItemContent}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
+              <View style={styles.infoItemText}>
+                <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                  {i18n.t('profile.changePassword')}
+                </Text>
+                <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('profile.updatePassword')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleNotifications}
+          >
+            <View style={styles.infoItemContent}>
+              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+              <View style={styles.infoItemText}>
+                <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                  {i18n.t('profile.notifications')}
+                </Text>
+                <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('profile.manageNotifications')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleSettings}
+          >
+            <View style={styles.infoItemContent}>
+              <Ionicons name="settings-outline" size={20} color={colors.primary} />
+              <View style={styles.infoItemText}>
+                <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                  {i18n.t('profile.settings')}
+                </Text>
+                <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('profile.appSettings')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.menuSection}>
-        <Text style={[styles.menuSectionTitle, { color: colors.text }]}>
-          {i18n.t('profile.preferences')}
-        </Text>
-        
-        {renderMenuItem(
-          'fitness-outline',
-          i18n.t('profile.goals'),
-          () => navigation.navigate('Settings')
-        )}
-        
-        {renderMenuItem(
-          'trophy-outline',
-          i18n.t('profile.achievements'),
-          handleAchievements
-        )}
-        
-        {!user?.isPremium && renderMenuItem(
-          'star-outline',
-          i18n.t('profile.upgradeToPremium'),
-          handleUpgradeToPremium,
-          true
-        )}
-        
-        {user?.isPremium && renderMenuItem(
-          'card-outline',
-          i18n.t('profile.managePlan'),
-          handleManagePlan
-        )}
-      </View>
+        {/* Support */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {i18n.t('profile.support')}
+          </Text>
+          <TouchableOpacity
+            style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleAbout}
+          >
+            <View style={styles.infoItemContent}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              <View style={styles.infoItemText}>
+                <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                  {i18n.t('profile.about')}
+                </Text>
+                <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                  {i18n.t('profile.appInfo')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+            </View>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.menuSection}>
-        <Text style={[styles.menuSectionTitle, { color: colors.text }]}>
-          {i18n.t('profile.help')}
-        </Text>
-        
-        {renderMenuItem(
-          'help-circle-outline',
-          i18n.t('profile.faq'),
-          handleFAQ
+        {/* Premium Section */}
+        {profile?.isPremium && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Premium Features
+            </Text>
+            <TouchableOpacity
+              style={[styles.infoItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={handlePremiumDashboard}
+            >
+              <View style={styles.infoItemContent}>
+                <Ionicons name="star-outline" size={20} color="#F59E0B" />
+                <View style={styles.infoItemText}>
+                  <Text style={[styles.infoItemTitle, { color: colors.text }]}>
+                    Premium Dashboard
+                  </Text>
+                  <Text style={[styles.infoItemSubtitle, { color: colors.gray }]}>
+                    Access advanced analytics and features
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.gray} />
+              </View>
+            </TouchableOpacity>
+          </View>
         )}
-        
-        {renderMenuItem(
-          'mail-outline',
-          i18n.t('profile.contactSupport'),
-          handleContactSupport
-        )}
-        
-        {renderMenuItem(
-          'document-text-outline',
-          i18n.t('profile.termsOfService'),
-          handleTermsOfService
-        )}
-        
-        {renderMenuItem(
-          'shield-outline',
-          i18n.t('profile.privacyPolicy'),
-          handlePrivacyPolicy
-        )}
-        
-        {renderMenuItem(
-          'information-circle-outline',
-          i18n.t('profile.about'),
-          handleAbout
-        )}
-      </View>
 
-      {/* Logout Button */}
-      <TouchableOpacity
-        style={[styles.logoutButton, { backgroundColor: colors.error + '10' }]}
-        onPress={handleLogout}
-      >
-        <Ionicons name="log-out-outline" size={20} color={colors.error} />
-        <Text style={[styles.logoutText, { color: colors.error }]}>
-          {i18n.t('profile.logout')}
-        </Text>
-      </TouchableOpacity>
+        {/* Logout Button */}
+        <View style={styles.logoutSection}>
+          <TouchableOpacity
+            style={[styles.logoutButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+            <Text style={[styles.logoutButtonText, { color: '#DC2626' }]}>
+              {i18n.t('profile.logout')}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Version */}
-      <Text style={[styles.versionText, { color: colors.gray }]}>
-        Version 1.0.0
-      </Text>
-    </ScrollView>
+        {/* Version Info */}
+        <View style={styles.versionContainer}>
+          <Text style={[styles.versionText, { color: colors.gray }]}>
+            AI Calorie Tracker v1.0.0
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -434,164 +395,181 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    padding: 20,
-    paddingTop: 60,
-  },
-  profileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#6366F1',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
   },
-  avatarText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: 'Inter-Bold',
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
   },
-  profileInfo: {
-    marginLeft: 16,
+  errorContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  profileName: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-    fontFamily: 'Inter-Bold',
+  errorText: {
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 16,
   },
-  profileEmail: {
-    fontSize: 14,
-    marginBottom: 8,
-    fontFamily: 'Inter-Regular',
-  },
-  subscriptionTag: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  subscriptionText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
-  },
-  editProfileButton: {
+  retryButton: {
+    paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
   },
-  editProfileText: {
+  retryButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+  },
+  header: {
+    paddingTop: 20,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  premiumBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  userUsername: {
+    fontSize: 14,
   },
   statsContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 20,
+    backgroundColor: '#ffffff',
     marginHorizontal: 20,
-    marginBottom: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: -20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 4,
+    borderRadius: 8,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  infoItem: {
+    marginBottom: 8,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
   },
-  statItem: {
-    flex: 1,
+  infoItemContent: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
-    fontFamily: 'Inter-Bold',
+  infoItemText: {
+    flex: 1,
+    marginLeft: 12,
   },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-  },
-  statDivider: {
-    width: 1,
-    height: '80%',
-    alignSelf: 'center',
-  },
-  menuSection: {
-    marginBottom: 24,
-  },
-  menuSectionTitle: {
+  infoItemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 20,
-    marginBottom: 8,
-    fontFamily: 'Inter-SemiBold',
+    marginBottom: 2,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
+  infoItemSubtitle: {
+    fontSize: 14,
+  },
+  logoutSection: {
+    marginTop: 32,
+    marginBottom: 20,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  menuItemText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-  },
-  menuItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginRight: 8,
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Inter-Bold',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
-    marginBottom: 16,
+    borderWidth: 1,
   },
-  logoutText: {
+  logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
-    fontFamily: 'Inter-SemiBold',
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingBottom: 20,
   },
   versionText: {
-    textAlign: 'center',
     fontSize: 12,
-    marginBottom: 32,
-    fontFamily: 'Inter-Regular',
   },
 });

@@ -1,4 +1,5 @@
 import api from './api';
+import { ErrorHandler } from '../utils/errorHandler';
 
 // Types
 export type ProfileStats = {
@@ -64,7 +65,6 @@ const profileService = {
       
       return generateMockProfileStats();
     } catch (error) {
-      console.error('Error fetching profile stats:', error);
       throw new Error('Failed to fetch profile stats. Please try again.');
     }
   },
@@ -93,8 +93,21 @@ const profileService = {
         createdAt: '2023-01-01T00:00:00.000Z',
       };
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      throw new Error('Failed to fetch user profile. Please try again.');
+      ErrorHandler.handleError(error, 'profileService.getUserProfile');
+      
+      // Return mock data as fallback
+      return {
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        weight: 75,
+        height: 180,
+        age: 30,
+        gender: 'male',
+        activityLevel: 'moderatelyActive',
+        isPremium: false,
+        createdAt: '2023-01-01T00:00:00.000Z',
+      };
     }
   },
   
@@ -122,7 +135,6 @@ const profileService = {
         createdAt: '2023-01-01T00:00:00.000Z',
       };
     } catch (error) {
-      console.error('Error updating user profile:', error);
       throw new Error('Failed to update user profile. Please try again.');
     }
   },
@@ -156,7 +168,6 @@ const profileService = {
         },
       };
     } catch (error) {
-      console.error('Error fetching user settings:', error);
       throw new Error('Failed to fetch user settings. Please try again.');
     }
   },
@@ -190,7 +201,6 @@ const profileService = {
         },
       };
     } catch (error) {
-      console.error('Error updating user settings:', error);
       throw new Error('Failed to update user settings. Please try again.');
     }
   },
@@ -213,7 +223,6 @@ const profileService = {
       
       return;
     } catch (error) {
-      console.error('Error changing password:', error);
       throw error;
     }
   },

@@ -6,6 +6,12 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
+// ES Module __dirname replacement
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const viteLogger = createLogger();
 
 export function log(message: string, source = "express") {

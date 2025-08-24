@@ -1,361 +1,439 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   Switch,
+  TouchableOpacity,
   Alert,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Notifications from 'expo-notifications';
-import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
+import { RootStackParamList } from '../navigation';
+import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
+
+type NotificationSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface NotificationSettings {
+  mealReminders: {
+    enabled: boolean;
+    time: string;
+    days: string[];
+  };
+  weeklyReports: {
+    enabled: boolean;
+    day: string;
+    time: string;
+  };
+  tips: {
+    enabled: boolean;
+    frequency: 'daily' | 'weekly' | 'monthly';
+  };
+  pushNotifications: {
+    enabled: boolean;
+    sound: boolean;
+    vibration: boolean;
+  };
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  mealReminders: {
+    enabled: true,
+    time: '12:00',
+    days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+  },
+  weeklyReports: {
+    enabled: true,
+    day: 'sunday',
+    time: '20:00',
+  },
+  tips: {
+    enabled: true,
+    frequency: 'weekly',
+  },
+  pushNotifications: {
+    enabled: true,
+    sound: true,
+    vibration: true,
+  },
+};
 
 export default function NotificationSettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NotificationSettingsScreenNavigationProp>();
   const { colors } = useTheme();
   const queryClient = useQueryClient();
+  const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [permissions, setPermissions] = useState<Notifications.NotificationPermissionsStatus | null>(null);
-  const [settings, setSettings] = useState({
-    pushEnabled: true,
-    mealReminders: true,
-    mealReminderTimes: {
-      breakfast: '08:00',
-      lunch: '13:00',
-      dinner: '19:00',
-    },
-    weeklyReports: true,
-    weeklyReportDay: 'sunday',
-    weeklyReportTime: '09:00',
-    nutritionTips: true,
-    nutritionTipFrequency: 'daily',
-    achievementNotifications: true,
-    goalReminders: true,
-    waterReminders: false,
-    waterReminderInterval: 60, // minutes
-  });
-
-  useEffect(() => {
-    checkNotificationPermissions();
-  }, []);
-
-  const checkNotificationPermissions = async () => {
-    const permission = await Notifications.getPermissionsAsync();
-    setPermissions(permission);
-  };
-
-  const requestPermissions = async () => {
-    const permission = await Notifications.requestPermissionsAsync({
-      ios: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
-    });
-    setPermissions(permission);
-    
-    if (!permission.granted) {
-      Alert.alert(
-        'Permissions Required',
-        'To receive notifications, please enable them in your device settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Open Settings', 
-            onPress: () => Notifications.openSettingsAsync() 
-          },
-        ]
-      );
-    }
-  };
-
-  // Save notification settings mutation
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (newSettings: typeof settings) => {
-      // In production, this would call the real API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Schedule notifications based on settings
-      if (newSettings.pushEnabled && permissions?.granted) {
-        await scheduleNotifications(newSettings);
-      } else {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+  // Fetch notification settings
+  const { data: notificationSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['notificationSettings'],
+    queryFn: async (): Promise<NotificationSettings> => {
+      const result = await safeFetchJson(`${API_URL}/api/user/notification-settings`);
+      if (result === null) {
+        throw new Error('Failed to fetch notification settings');
       }
-      
-      return newSettings;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notificationSettings'] });
-      
-      Toast.show({
-        type: 'success',
-        text1: 'Settings Saved',
-        text2: 'Your notification preferences have been updated',
-      });
-    },
-    onError: (error: any) => {
-      Toast.show({
-        type: 'error',
-        text1: 'Save Failed',
-        text2: error.message || 'Failed to save notification settings',
-      });
+      return result;
     },
   });
 
-  const scheduleNotifications = async (notificationSettings: typeof settings) => {
-    // Cancel existing notifications
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    if (!notificationSettings.pushEnabled) return;
-
-    // Schedule meal reminders
-    if (notificationSettings.mealReminders) {
-      const mealTypes = ['breakfast', 'lunch', 'dinner'] as const;
-      
-      for (const mealType of mealTypes) {
-        const time = notificationSettings.mealReminderTimes[mealType];
-        const [hours, minutes] = time.split(':').map(Number);
-        
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `Time for ${mealType}! 🍽️`,
-            body: `Don't forget to track your ${mealType} in AI Calorie Tracker`,
-            data: { type: 'meal_reminder', mealType },
-          },
-          trigger: {
-            hour: hours,
-            minute: minutes,
-            repeats: true,
-          },
-        });
-      }
-    }
-
-    // Schedule weekly reports
-    if (notificationSettings.weeklyReports) {
-      const [hours, minutes] = notificationSettings.weeklyReportTime.split(':').map(Number);
-      const weekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-        .indexOf(notificationSettings.weeklyReportDay) + 1;
-      
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Weekly Nutrition Report 📊',
-          body: 'Check out your weekly nutrition progress and insights!',
-          data: { type: 'weekly_report' },
-        },
-        trigger: {
-          weekday,
-          hour: hours,
-          minute: minutes,
-          repeats: true,
-        },
-      });
-    }
-
-    // Schedule water reminders
-    if (notificationSettings.waterReminders) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Stay Hydrated! 💧',
-          body: 'Remember to drink some water',
-          data: { type: 'water_reminder' },
-        },
-        trigger: {
-          seconds: notificationSettings.waterReminderInterval * 60,
-          repeats: true,
-        },
-      });
-    }
-  };
-
-  const handleToggle = (key: string, value: boolean) => {
-    if (key === 'pushEnabled' && value && !permissions?.granted) {
-      requestPermissions();
-      return;
-    }
-
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleNestedToggle = (parent: string, key: string, value: boolean) => {
+  // Handle setting change
+  const handleSettingChange = (section: keyof NotificationSettings, field: string, value: any) => {
     setSettings(prev => ({
       ...prev,
-      [parent]: { ...prev[parent as keyof typeof prev], [key]: value },
+      [section]: {
+        ...prev[section],
+        [field]: value,
+      },
     }));
   };
 
-  const handleSave = () => {
-    saveSettingsMutation.mutate(settings);
+  // Handle meal reminders toggle
+  const handleMealRemindersToggle = (enabled: boolean) => {
+    handleSettingChange('mealReminders', 'enabled', enabled);
   };
 
-  const renderToggleItem = (key: string, title: string, subtitle?: string, disabled = false) => (
-    <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingTitle, { color: colors.text }]}>{title}</Text>
-        {subtitle && (
-          <Text style={[styles.settingSubtitle, { color: colors.gray }]}>{subtitle}</Text>
-        )}
-      </View>
-      <Switch
-        value={settings[key as keyof typeof settings] as boolean}
-        onValueChange={(value) => handleToggle(key, value)}
-        trackColor={{ false: '#767577', true: colors.primary }}
-        thumbColor="white"
-        disabled={disabled}
-      />
-    </View>
-  );
+  // Handle weekly reports toggle
+  const handleWeeklyReportsToggle = (enabled: boolean) => {
+    handleSettingChange('weeklyReports', 'enabled', enabled);
+  };
 
-  const renderTimeSelector = (label: string, time: string, onTimeChange: (time: string) => void) => (
-    <TouchableOpacity
-      style={[styles.timeSelector, { borderColor: colors.border, backgroundColor: colors.card }]}
-      onPress={() => {
-        // In a real app, you'd open a time picker
-        Alert.alert('Time Picker', 'Time picker would open here');
-      }}
-    >
-      <Text style={[styles.timeLabel, { color: colors.text }]}>{label}</Text>
-      <View style={styles.timeValue}>
-        <Text style={[styles.timeText, { color: colors.primary }]}>{time}</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.gray} />
+  // Handle tips toggle
+  const handleTipsToggle = (enabled: boolean) => {
+    handleSettingChange('tips', 'enabled', enabled);
+  };
+
+  // Handle push notifications toggle
+  const handlePushNotificationsToggle = (enabled: boolean) => {
+    handleSettingChange('pushNotifications', 'enabled', enabled);
+  };
+
+  // Handle sound toggle
+  const handleSoundToggle = (enabled: boolean) => {
+    handleSettingChange('pushNotifications', 'sound', enabled);
+  };
+
+  // Handle vibration toggle
+  const handleVibrationToggle = (enabled: boolean) => {
+    handleSettingChange('pushNotifications', 'vibration', enabled);
+  };
+
+  // Save settings
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (newSettings: NotificationSettings) => {
+      const response = await fetch(`${API_URL}/api/user/notification-settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSettings),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save notification settings');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificationSettings'] });
+      Alert.alert(
+        'Success',
+        'Notification settings saved successfully!',
+        [{ text: 'OK', style: 'default' }]
+      );
+    },
+    onError: (error) => {
+      Alert.alert(
+        'Error',
+        'Failed to save notification settings. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    },
+  });
+
+  const handleSaveSettings = () => {
+    setIsLoading(true);
+    saveSettingsMutation.mutate(settings);
+    setIsLoading(false);
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
+  if (isLoadingSettings) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading notification settings...
+        </Text>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.card }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+      <View style={[styles.header, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
-        
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Notifications
+          {i18n.t('profile.notifications')}
         </Text>
-
-        <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: colors.primary }]}
-          onPress={handleSave}
-          disabled={saveSettingsMutation.isPending}
-        >
-          {saveSettingsMutation.isPending ? (
-            <Ionicons name="hourglass" size={20} color="white" />
-          ) : (
-            <Ionicons name="checkmark" size={20} color="white" />
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Permission Status */}
-        {permissions && !permissions.granted && (
-          <View style={[styles.permissionAlert, { backgroundColor: colors.error + '10', borderColor: colors.error }]}>
-            <Ionicons name="warning" size={20} color={colors.error} />
-            <View style={styles.permissionContent}>
-              <Text style={[styles.permissionTitle, { color: colors.error }]}>
-                Notifications Disabled
-              </Text>
-              <Text style={[styles.permissionText, { color: colors.text }]}>
-                Enable notifications in your device settings to receive reminders and updates.
-              </Text>
-              <TouchableOpacity
-                style={[styles.permissionButton, { backgroundColor: colors.error }]}
-                onPress={() => Notifications.openSettingsAsync()}
-              >
-                <Text style={styles.permissionButtonText}>Open Settings</Text>
-              </TouchableOpacity>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Meal Reminders */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {i18n.t('settings.mealReminders')}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.gray }]}>
+              Get reminders to log your meals throughout the day
+            </Text>
+            
+            <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.settingItemContent}>
+                <View style={styles.settingItemInfo}>
+                  <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                    {i18n.t('settings.mealReminders')}
+                  </Text>
+                  <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                    {settings.mealReminders.enabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.mealReminders.enabled}
+                  onValueChange={handleMealRemindersToggle}
+                  trackColor={{ false: '#767577', true: colors.primary }}
+                  thumbColor={settings.mealReminders.enabled ? '#f4f3f4' : '#f4f3f4'}
+                />
+              </View>
             </View>
+
+            {settings.mealReminders.enabled && (
+              <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.settingItemContent}>
+                  <View style={styles.settingItemInfo}>
+                    <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                      {i18n.t('settings.reminderTime')}
+                    </Text>
+                    <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                      Reminder time
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.timeButton}>
+                    <Text style={[styles.timeButtonText, { color: colors.primary }]}>
+                      {settings.mealReminders.time}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.gray} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
-        )}
 
-        {/* Push Notifications */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Push Notifications</Text>
-          {renderToggleItem('pushEnabled', 'Enable Push Notifications', 'Receive notifications on your device')}
-        </View>
-
-        {/* Meal Reminders */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Meal Reminders</Text>
-          {renderToggleItem(
-            'mealReminders',
-            'Meal Reminders',
-            'Get reminded when it\'s time to eat',
-            !settings.pushEnabled
-          )}
-          
-          {settings.mealReminders && settings.pushEnabled && (
-            <View style={styles.subSection}>
-              {renderTimeSelector(
-                'Breakfast',
-                settings.mealReminderTimes.breakfast,
-                (time) => handleNestedToggle('mealReminderTimes', 'breakfast', time)
-              )}
-              {renderTimeSelector(
-                'Lunch',
-                settings.mealReminderTimes.lunch,
-                (time) => handleNestedToggle('mealReminderTimes', 'lunch', time)
-              )}
-              {renderTimeSelector(
-                'Dinner',
-                settings.mealReminderTimes.dinner,
-                (time) => handleNestedToggle('mealReminderTimes', 'dinner', time)
-              )}
+          {/* Weekly Reports */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {i18n.t('settings.weeklyReports')}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.gray }]}>
+              Receive weekly summaries of your nutrition progress
+            </Text>
+            
+            <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.settingItemContent}>
+                <View style={styles.settingItemInfo}>
+                  <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                    {i18n.t('settings.weeklyReports')}
+                  </Text>
+                  <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                    {settings.weeklyReports.enabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.weeklyReports.enabled}
+                  onValueChange={handleWeeklyReportsToggle}
+                  trackColor={{ false: '#767577', true: colors.primary }}
+                  thumbColor={settings.weeklyReports.enabled ? '#f4f3f4' : '#f4f3f4'}
+                />
+              </View>
             </View>
-          )}
-        </View>
 
-        {/* Reports & Insights */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Reports & Insights</Text>
-          {renderToggleItem(
-            'weeklyReports',
-            'Weekly Reports',
-            'Get a summary of your nutrition progress',
-            !settings.pushEnabled
-          )}
-          {renderToggleItem(
-            'nutritionTips',
-            'Nutrition Tips',
-            'Receive helpful tips and advice',
-            !settings.pushEnabled
-          )}
-        </View>
+            {settings.weeklyReports.enabled && (
+              <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.settingItemContent}>
+                  <View style={styles.settingItemInfo}>
+                    <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                      {i18n.t('settings.reportDay')}
+                    </Text>
+                    <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                      Day of week
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.dayButton}>
+                    <Text style={[styles.dayButtonText, { color: colors.primary }]}>
+                      {settings.weeklyReports.day.charAt(0).toUpperCase() + settings.weeklyReports.day.slice(1)}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.gray} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
 
-        {/* Health & Goals */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Health & Goals</Text>
-          {renderToggleItem(
-            'achievementNotifications',
-            'Achievement Notifications',
-            'Get notified when you reach milestones',
-            !settings.pushEnabled
-          )}
-          {renderToggleItem(
-            'goalReminders',
-            'Goal Reminders',
-            'Reminders to help you stay on track',
-            !settings.pushEnabled
-          )}
-          {renderToggleItem(
-            'waterReminders',
-            'Water Reminders',
-            'Stay hydrated with regular reminders',
-            !settings.pushEnabled
-          )}
-        </View>
+          {/* Nutrition Tips */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {i18n.t('settings.tips')}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.gray }]}>
+              Receive personalized nutrition tips and advice
+            </Text>
+            
+            <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.settingItemContent}>
+                <View style={styles.settingItemInfo}>
+                  <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                    {i18n.t('settings.tips')}
+                  </Text>
+                  <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                    {settings.tips.enabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.tips.enabled}
+                  onValueChange={handleTipsToggle}
+                  trackColor={{ false: '#767577', true: colors.primary }}
+                  thumbColor={settings.tips.enabled ? '#f4f3f4' : '#f4f3f4'}
+                />
+              </View>
+            </View>
 
-        <View style={{ height: 50 }} />
+            {settings.tips.enabled && (
+              <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.settingItemContent}>
+                  <View style={styles.settingItemInfo}>
+                    <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                      {i18n.t('settings.frequency')}
+                    </Text>
+                    <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                      Frequency
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.frequencyButton}>
+                    <Text style={[styles.frequencyButtonText, { color: colors.primary }]}>
+                      {settings.tips.frequency.charAt(0).toUpperCase() + settings.tips.frequency.slice(1)}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.gray} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Push Notifications */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {i18n.t('settings.pushNotifications')}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.gray }]}>
+              Configure push notification preferences
+            </Text>
+            
+            <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.settingItemContent}>
+                <View style={styles.settingItemInfo}>
+                  <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                    {i18n.t('settings.pushNotifications')}
+                  </Text>
+                  <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                    {settings.pushNotifications.enabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={settings.pushNotifications.enabled}
+                  onValueChange={handlePushNotificationsToggle}
+                  trackColor={{ false: '#767577', true: colors.primary }}
+                  thumbColor={settings.pushNotifications.enabled ? '#f4f3f4' : '#f4f3f4'}
+                />
+              </View>
+            </View>
+
+            {settings.pushNotifications.enabled && (
+              <>
+                <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.settingItemContent}>
+                    <View style={styles.settingItemInfo}>
+                      <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                        {i18n.t('settings.sound')}
+                      </Text>
+                      <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                        Play sound with notifications
+                      </Text>
+                    </View>
+                    <Switch
+                      value={settings.pushNotifications.sound}
+                      onValueChange={handleSoundToggle}
+                      trackColor={{ false: '#767577', true: colors.primary }}
+                      thumbColor={settings.pushNotifications.sound ? '#f4f3f4' : '#f4f3f4'}
+                    />
+                  </View>
+                </View>
+
+                <View style={[styles.settingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <View style={styles.settingItemContent}>
+                    <View style={styles.settingItemInfo}>
+                      <Text style={[styles.settingItemTitle, { color: colors.text }]}>
+                        {i18n.t('settings.vibration')}
+                      </Text>
+                      <Text style={[styles.settingItemSubtitle, { color: colors.gray }]}>
+                        Vibrate for notifications
+                      </Text>
+                    </View>
+                    <Switch
+                      value={settings.pushNotifications.vibration}
+                      onValueChange={handleVibrationToggle}
+                      trackColor={{ false: '#767577', true: colors.primary }}
+                      thumbColor={settings.pushNotifications.vibration ? '#f4f3f4' : '#f4f3f4'}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: colors.primary }]}
+            onPress={handleSaveSettings}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Ionicons name="save" size={20} color="white" />
+                <Text style={styles.saveButtonText}>
+                  {i18n.t('settings.saveChanges')}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -365,132 +443,115 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    padding: 16,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
     flex: 1,
     textAlign: 'center',
-    marginHorizontal: 10,
   },
-  saveButton: {
+  headerSpacer: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-  },
-  permissionAlert: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  permissionContent: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  permissionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    fontFamily: 'Inter-SemiBold',
-  },
-  permissionText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    fontFamily: 'Inter-Regular',
-  },
-  permissionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  permissionButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+    padding: 20,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
-    fontFamily: 'Inter-SemiBold',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  settingContent: {
-    flex: 1,
-    marginRight: 16,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
-    fontFamily: 'Inter-Medium',
-  },
-  settingSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: 'Inter-Regular',
-  },
-  subSection: {
-    marginTop: 16,
-    paddingLeft: 16,
-  },
-  timeSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
     marginBottom: 8,
   },
-  timeLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
   },
-  timeValue: {
+  settingItem: {
+    marginBottom: 12,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  settingItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  timeText: {
+  settingItemInfo: {
+    flex: 1,
+  },
+  settingItemTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginRight: 8,
-    fontFamily: 'Inter-Medium',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  settingItemSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  timeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  dayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  dayButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  frequencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  frequencyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

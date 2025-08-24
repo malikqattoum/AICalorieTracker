@@ -185,7 +185,21 @@ export class MemStorage implements IStorage {
   async createMealAnalysis(insertAnalysis: InsertMealAnalysis): Promise<MealAnalysis> {
     const id = this.mealIdCounter++;
     const timestamp = new Date();
-    const analysis: MealAnalysis = { ...insertAnalysis, id, timestamp, metadata: insertAnalysis.metadata || null };
+    const analysis: MealAnalysis = {
+      ...insertAnalysis,
+      id,
+      timestamp,
+      metadata: insertAnalysis.metadata || null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      deleted_at: null,
+      imageData: insertAnalysis.imageData || null,
+      imageId: insertAnalysis.imageId || null,
+      thumbnailPath: insertAnalysis.thumbnailPath || null,
+      optimizedPath: insertAnalysis.optimizedPath || null,
+      originalPath: insertAnalysis.originalPath || null,
+      imageHash: insertAnalysis.imageHash || null
+    };
     this.mealAnalyses.set(id, analysis);
     
     // Update weekly stats after adding a meal analysis
@@ -253,22 +267,18 @@ export class MemStorage implements IStorage {
 
   // Weekly stats methods
   async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
-    // TODO: Filter or adjust stats based on medicalCondition
-    // For now, just return the stats as before
     const stats = Array.from(this.weeklyStats.values()).find(
       stats => stats.userId === userId
     );
     if (!stats) return undefined;
-    // If medicalCondition is set, adjust stats here (placeholder)
+    
+    // If medicalCondition is set, adjust stats here
     if (medicalCondition && medicalCondition !== 'none') {
-      // Example: add a note for demo (do not add unknown properties to WeeklyStats)
-      // You could adjust macros/calories here for real logic
-      return {
-        ...stats,
-        macrosByDay: stats.macrosByDay,
-        // NOTE: Do not add unknown properties to WeeklyStats type
-      };
+      // Apply medical condition adjustments
+      const adjustedStats = this.applyMedicalConditionAdjustments(stats, medicalCondition);
+      return adjustedStats;
     }
+    
     // Ensure macrosByDay is always present and correct type
     return {
       ...stats,
@@ -284,6 +294,42 @@ export class MemStorage implements IStorage {
     };
   }
 
+  /**
+   * Apply medical condition adjustments to stats
+   */
+  private applyMedicalConditionAdjustments(stats: WeeklyStats, medicalCondition: string): WeeklyStats {
+    const adjustedStats = { ...stats };
+
+    switch (medicalCondition.toLowerCase()) {
+      case 'diabetes':
+        // Adjust for diabetic needs - lower carbs, higher protein
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.9);
+        adjustedStats.averageProtein = Math.round(stats.averageProtein * 1.2);
+        break;
+      
+      case 'hypertension':
+        // Adjust for hypertension - lower sodium, heart-healthy fats
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.85);
+        break;
+      
+      case 'heart_disease':
+        // Adjust for heart disease - very low sodium, healthy fats
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.8);
+        break;
+      
+      case 'obesity':
+        // Adjust for weight loss - lower calories
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.8);
+        break;
+      
+      default:
+        // Default adjustments for general health
+        break;
+    }
+
+    return adjustedStats;
+  }
+
   async createOrUpdateWeeklyStats(insertStats: InsertWeeklyStats): Promise<WeeklyStats> {
     const existingStats = await this.getWeeklyStats(insertStats.userId);
     const id = existingStats ? existingStats.id : this.statsIdCounter++;
@@ -297,9 +343,9 @@ export class MemStorage implements IStorage {
       Friday: { protein: 0, carbs: 0, fat: 0 },
       Saturday: { protein: 0, carbs: 0, fat: 0 }
     };
-    const stats: WeeklyStats = { 
-      ...insertStats, 
-      id, 
+    const stats: WeeklyStats = {
+      ...insertStats,
+      id,
       macrosByDay,
       caloriesBurned: (insertStats as any).caloriesBurned || 0 // Add missing field
     };

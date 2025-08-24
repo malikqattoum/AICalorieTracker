@@ -25,7 +25,7 @@ export default function HomePage() {
   const [mealPlan, setMealPlan] = useState<any | null>(null);
   const [isMealPlanLoading, setIsMealPlanLoading] = useState(false);
   const [mealPlanError, setMealPlanError] = useState<string | null>(null);
-  const goal = "weight-loss"; // TODO: fetch from user profile/goals if available
+  const [goal, setGoal] = useState<string>("");
   const fetchMealPlan = async () => {
     setIsMealPlanLoading(true);
     setMealPlanError(null);

@@ -1,13 +1,16 @@
 import Toast from 'react-native-toast-message';
 import { logError, ENABLE_LOGGING } from '../config';
 import { ApiError } from '../services/apiService';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
-export type ErrorType = 
+export type ErrorType =
   | 'network'
   | 'validation'
   | 'authentication'
   | 'permission'
   | 'server'
+  | 'jsonParse'
   | 'unknown';
 
 export interface AppError extends Error {
@@ -17,7 +20,33 @@ export interface AppError extends Error {
   retryable?: boolean;
 }
 
+/**
+ * Comprehensive error handling utility for mobile applications
+ *
+ * Features:
+ * - Error classification and normalization
+ * - User-friendly error messaging
+ * - Crash reporting integration
+ * - Automatic error logging
+ * - Async operation wrappers
+ */
 export class ErrorHandler {
+  /**
+   * Type guard to check if value is a proper object
+   */
+  private static isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  /**
+   * Safely extracts error message from unknown error type
+   */
+  private static getErrorMessage(error: unknown): string {
+    if (this.isObject(error) && typeof error.message === 'string') {
+      return error.message;
+    }
+    return 'An unexpected error occurred';
+  }
   static createError(
     message: string,
     type: ErrorType,
@@ -33,8 +62,14 @@ export class ErrorHandler {
     return error;
   }
 
-  static handleError(error: any, context?: string): void {
-    const appError = this.normalizeError(error);
+  /**
+   * Main error handling method that coordinates logging, user feedback, and crash reporting
+   *
+   * @param error - The raw error object
+   * @param context - Additional context about where the error occurred
+   */
+  static async handleError(error: unknown, context?: string): Promise<void> {
+    const appError = await this.normalizeError(error);
     
     logError(`Error in ${context || 'unknown context'}:`, {
       message: appError.message,
@@ -53,7 +88,23 @@ export class ErrorHandler {
     }
   }
 
-  static normalizeError(error: any): AppError {
+  /**
+   * Normalizes various error types into standardized AppError format
+   *
+   * @param error - The raw error object
+   * @returns Normalized AppError instance
+   */
+  static async normalizeError(error: unknown): Promise<AppError> {
+    // Handle JSON parsing errors specifically
+    if (error instanceof SyntaxError && error.message.includes('JSON')) {
+      return this.createError(
+        'Server returned invalid data. Please try again.',
+        'jsonParse',
+        'JSON_PARSE_ERROR',
+        { originalError: error.message }
+      );
+    }
+
     // Handle API errors
     if (this.isApiError(error)) {
       return this.createError(
@@ -65,7 +116,9 @@ export class ErrorHandler {
     }
 
     // Handle network errors
-    if (error.code === 'NETWORK_ERROR' || !navigator.onLine) {
+    // Check network status using NetInfo first
+    const isConnected = (await NetInfo.fetch()).isConnected;
+    if (!isConnected) {
       return this.createError(
         'No internet connection. Please check your network and try again.',
         'network',
@@ -73,45 +126,70 @@ export class ErrorHandler {
       );
     }
 
-    // Handle validation errors
-    if (error.name === 'ValidationError') {
+    // Use type-safe property access
+    if (this.isObject(error) && error.code === 'NETWORK_ERROR') {
       return this.createError(
-        error.message,
+        'Unable to connect to the server. Please try again later.',
+        'network',
+        'SERVER_UNREACHABLE'
+      );
+    }
+
+    // Handle validation errors
+    if (this.isObject(error) && error.name === 'ValidationError') {
+      return this.createError(
+        this.getErrorMessage(error),
         'validation',
         'VALIDATION_ERROR',
-        error.errors
+        this.isObject(error) ? error.errors : undefined
       );
     }
 
     // Handle permission errors
-    if (error.message?.includes('permission') || error.code === 'E_PERMISSION_DENIED') {
-      return this.createError(
-        'Permission denied. Please check your app permissions.',
-        'permission',
-        'PERMISSION_DENIED'
-      );
+    if (this.isObject(error)) {
+      const message = typeof error.message === 'string' ? error.message : '';
+      const code = typeof error.code === 'string' ? error.code : '';
+      
+      const hasPermissionMessage = message.includes('permission');
+      const hasPermissionCode = code === 'E_PERMISSION_DENIED';
+      
+      if (hasPermissionMessage || hasPermissionCode) {
+        return this.createError(
+          'Permission denied. Please check your app permissions.',
+          'permission',
+          'PERMISSION_DENIED'
+        );
+      }
     }
 
     // Handle camera/media errors
-    if (error.code === 'E_CAMERA_UNAVAILABLE' || error.code === 'E_PICKER_CANCELLED') {
+    if (this.isObject(error) &&
+        (error.code === 'E_CAMERA_UNAVAILABLE' || error.code === 'E_PICKER_CANCELLED')) {
       return this.createError(
         'Camera or photo library access was cancelled or is unavailable.',
         'permission',
-        error.code
+        typeof error.code === 'string' ? error.code : 'UNKNOWN_CAMERA_ERROR'
       );
     }
 
     // Default case
     return this.createError(
-      error.message || 'An unexpected error occurred',
+      this.getErrorMessage(error),
       'unknown',
-      error.code,
+      this.isObject(error) && typeof error.code === 'string' ? error.code : undefined,
       error
     );
   }
 
-  private static isApiError(error: any): error is ApiError {
-    return error && typeof error === 'object' && 'status' in error;
+  /**
+   * Type guard for API errors
+   */
+  private static isApiError(error: unknown): error is ApiError {
+    return this.isObject(error) &&
+           'status' in error &&
+           typeof error.status === 'number' &&
+           'message' in error &&
+           typeof error.message === 'string';
   }
 
   private static mapApiErrorType(status?: number): ErrorType {
@@ -171,6 +249,14 @@ export class ErrorHandler {
             position: 'bottom' as const,
           };
         
+        case 'jsonParse':
+          return {
+            type: 'info' as const,
+            text1: 'Data Loading Issue',
+            text2: 'Unable to load data. Using cached information.',
+            position: 'bottom' as const,
+          };
+        
         default:
           return {
             type: 'error' as const,
@@ -184,32 +270,54 @@ export class ErrorHandler {
     Toast.show(getToastConfig(error));
   }
 
+  /**
+   * Reports error to crash analytics service
+   */
   private static reportToCrashlytics(error: AppError, context?: string): void {
-    // In a real app, you would integrate with Firebase Crashlytics or similar
-    // Example:
-    // crashlytics().recordError(error);
-    // crashlytics().setAttributes({
-    //   errorType: error.type,
-    //   errorCode: error.code || 'unknown',
-    //   context: context || 'unknown',
-    // });
-    
-    logError('Error reported to analytics:', {
-      message: error.message,
-      type: error.type,
-      context,
-    });
+    try {
+      // Firebase Crashlytics integration
+      const crashlytics = require('@react-native-firebase/crashlytics');
+      
+      // Record error with stack trace
+      crashlytics().recordError(new Error(error.message), {
+        type: error.type,
+        code: error.code || 'unknown',
+        context: context || 'unknown',
+      });
+
+      // Set custom attributes
+      crashlytics().setAttributes({
+        errorType: error.type,
+        errorCode: error.code || 'unknown',
+        context: context || 'unknown',
+        retryable: String(error.retryable),
+      });
+
+      // Log custom error message
+      crashlytics().log(`Error: ${error.message} [${context || 'no context'}]`);
+    } catch (crashlyticsError) {
+      logError('Failed to report to Crashlytics:', crashlyticsError);
+    }
   }
 
   // Utility methods for common error scenarios
-  static handleAsyncOperation<T>(
+  /**
+   * Wrapper for async operations that automatically handles errors
+   *
+   * @param operation - Async function to execute
+   * @param context - Context for error reporting
+   * @returns Promise with error handling
+   */
+  static async handleAsyncOperation<T>(
     operation: () => Promise<T>,
     context?: string
   ): Promise<T> {
-    return operation().catch(error => {
+    try {
+      return await operation();
+    } catch (error) {
       this.handleError(error, context);
       throw error; // Re-throw for component handling
-    });
+    }
   }
 
   static handlePermissionError(permission: string): AppError {
@@ -240,6 +348,13 @@ export class ErrorHandler {
 }
 
 // Global error boundary helper
+/**
+ * Higher-order function that wraps any function with error handling
+ *
+ * @param fn - The function to wrap
+ * @param context - Context for error reporting
+ * @returns Wrapped function with error handling
+ */
 export const withErrorHandling = <T extends (...args: any[]) => any>(
   fn: T,
   context?: string
@@ -248,10 +363,10 @@ export const withErrorHandling = <T extends (...args: any[]) => any>(
     try {
       const result = fn(...args);
       
-      // Handle promises
-      if (result && typeof result.catch === 'function') {
-        return result.catch((error: any) => {
-          ErrorHandler.handleError(error, context);
+      // Handle async functions and promises
+      if (result && typeof result.then === 'function' && typeof result.catch === 'function') {
+        return result.catch(async (error: unknown) => {
+          await ErrorHandler.handleError(error, context);
           throw error;
         });
       }

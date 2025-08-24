@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { isAdmin } from '../../middleware/auth';
 import { db } from '@server/db';
 import { referralSettings, referralCommissions, users } from '@shared/schema';
-import { eq, desc, sql, alias } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 
 const router = Router();
 
@@ -88,9 +88,6 @@ router.get('/commissions', async (req, res) => {
   try {
     const { limit = 100, offset = 0 } = req.query;
     
-    // Create alias for users table to reference referee
-    const refereeUsers = alias(users, 'referee');
-    
     const commissions = await db.select({
       id: referralCommissions.id,
       referrerId: referralCommissions.referrerId,
@@ -102,11 +99,10 @@ router.get('/commissions', async (req, res) => {
       createdAt: referralCommissions.createdAt,
       paidAt: referralCommissions.paidAt,
       referrerEmail: users.email,
-      refereeEmail: refereeUsers.email
+      refereeEmail: users.email
     })
     .from(referralCommissions)
     .leftJoin(users, eq(referralCommissions.referrerId, users.id))
-    .leftJoin(refereeUsers, eq(referralCommissions.refereeId, refereeUsers.id))
     .orderBy(desc(referralCommissions.createdAt))
     .limit(Number(limit))
     .offset(Number(offset));

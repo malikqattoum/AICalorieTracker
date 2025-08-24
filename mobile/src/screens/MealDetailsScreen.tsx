@@ -8,6 +8,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +22,7 @@ import i18n from '../i18n';
 import { useTheme } from '../contexts/ThemeContext';
 import { RootStackParamList } from '../navigation';
 import { API_URL } from '../config';
+import { safeFetchJson } from '../utils/fetchWrapper';
 
 type MealDetailsScreenRouteProp = RouteProp<RootStackParamList, 'MealDetails'>;
 type MealDetailsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -48,16 +53,26 @@ export default function MealDetailsScreen() {
   const queryClient = useQueryClient();
   const { mealId } = route.params;
   const [isFavorite, setIsFavorite] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    foodName: '',
+    mealType: 'breakfast' as 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    servingSize: '',
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    ingredients: [] as string[],
+  });
 
   // Fetch meal details
   const { data: meal, isLoading } = useQuery({
     queryKey: ['mealDetails', mealId],
     queryFn: async () => {
-      const response = await fetch(`${API_URL}/api/meal-analyses/${mealId}`);
-      if (!response.ok) {
+      const data = await safeFetchJson(`${API_URL}/api/meal-analyses/${mealId}`);
+      if (data === null) {
         throw new Error('Failed to fetch meal details');
       }
-      const data = await response.json();
       setIsFavorite(data.isFavorite);
       return data;
     },
@@ -66,13 +81,13 @@ export default function MealDetailsScreen() {
   // Delete meal mutation
   const deleteMealMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/meal-analyses/${mealId}`, {
+      const data = await safeFetchJson(`${API_URL}/api/meal-analyses/${mealId}`, {
         method: 'DELETE',
       });
-      if (!response.ok) {
+      if (data === null) {
         throw new Error('Failed to delete meal');
       }
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       // Invalidate queries to refresh meal history
@@ -99,17 +114,17 @@ export default function MealDetailsScreen() {
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${API_URL}/api/meal-analyses/${mealId}/favorite`, {
+      const data = await safeFetchJson(`${API_URL}/api/meal-analyses/${mealId}/favorite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ isFavorite: !isFavorite }),
       });
-      if (!response.ok) {
+      if (data === null) {
         throw new Error('Failed to update favorite status');
       }
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       setIsFavorite(!isFavorite);
@@ -133,6 +148,63 @@ export default function MealDetailsScreen() {
       });
     },
   });
+
+  // Edit meal mutation
+  const editMealMutation = useMutation({
+    mutationFn: async (updatedMeal: any) => {
+      const data = await safeFetchJson(`${API_URL}/api/meal-analyses/${mealId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedMeal),
+      });
+      if (data === null) {
+        throw new Error('Failed to update meal');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      setEditModalVisible(false);
+      queryClient.invalidateQueries({ queryKey: ['mealDetails', mealId] });
+      queryClient.invalidateQueries({ queryKey: ['mealHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyStats'] });
+      
+      Toast.show({
+        type: 'success',
+        text1: i18n.t('common.success'),
+        text2: i18n.t('mealDetails.updateSuccess'),
+      });
+    },
+    onError: (error: Error) => {
+      Toast.show({
+        type: 'error',
+        text1: i18n.t('common.error'),
+        text2: error.message,
+      });
+    },
+  });
+
+  // Initialize edit form when meal data is loaded
+  React.useEffect(() => {
+    if (meal) {
+      setEditForm({
+        foodName: meal.foodName,
+        mealType: meal.mealType,
+        servingSize: meal.servingSize || '',
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        ingredients: meal.ingredients || [],
+      });
+    }
+  }, [meal]);
+
+  // Handle save meal
+  const handleSaveMeal = () => {
+    editMealMutation.mutate(editForm);
+  };
 
   // Handle delete meal
   const handleDeleteMeal = () => {
@@ -339,7 +411,7 @@ export default function MealDetailsScreen() {
             </Text>
             
             <View style={[styles.ingredientsContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {meal.ingredients.map((ingredient, index) => (
+              {meal.ingredients.map((ingredient: string, index: number) => (
                 <View 
                   key={index} 
                   style={[
@@ -377,12 +449,196 @@ export default function MealDetailsScreen() {
         <View style={styles.buttonsContainer}>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
-            onPress={() => {/* Navigate to edit meal */}}
+            onPress={() => setEditModalVisible(true)}
           >
             <Ionicons name="create-outline" size={20} color="white" />
             <Text style={styles.buttonText}>{i18n.t('mealDetails.editMeal')}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Edit Modal */}
+        <Modal
+          visible={editModalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+        >
+          <KeyboardAvoidingView
+            style={[styles.editModalContainer, { backgroundColor: colors.background }]}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          >
+            {/* Modal Header */}
+            <View style={[styles.editModalHeader, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={[styles.editModalTitle, { color: colors.text }]}>
+                {i18n.t('mealDetails.editMeal')}
+              </Text>
+              <View style={styles.editModalHeaderSpacer} />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.editModalContent}>
+              {/* Food Name */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.foodName')}
+                </Text>
+                <TextInput
+                  style={[styles.editInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.foodName}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, foodName: text }))}
+                  placeholder={i18n.t('mealDetails.enterFoodName')}
+                  placeholderTextColor={colors.gray}
+                />
+              </View>
+
+              {/* Meal Type */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.mealType')}
+                </Text>
+                <View style={styles.mealTypeSelector}>
+                  {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[
+                        styles.mealTypeButton,
+                        {
+                          backgroundColor: editForm.mealType === type ? colors.primary : colors.card,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                      onPress={() => setEditForm(prev => ({ ...prev, mealType: type }))}
+                    >
+                      <Text
+                        style={[
+                          styles.mealTypeButtonText,
+                          { color: editForm.mealType === type ? 'white' : colors.text },
+                        ]}
+                      >
+                        {i18n.t(`mealHistory.${type}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Serving Size */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.servingSize')}
+                </Text>
+                <TextInput
+                  style={[styles.editInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.servingSize}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, servingSize: text }))}
+                  placeholder={i18n.t('mealDetails.enterServingSize')}
+                  placeholderTextColor={colors.gray}
+                />
+              </View>
+
+              {/* Calories */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.calories')}
+                </Text>
+                <TextInput
+                  style={[styles.editInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.calories.toString()}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, calories: parseInt(text) || 0 }))}
+                  placeholder={i18n.t('mealDetails.enterCalories')}
+                  placeholderTextColor={colors.gray}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* Macros */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.macros')}
+                </Text>
+                <View style={styles.macrosContainer}>
+                  <View style={styles.macroInput}>
+                    <Text style={[styles.macroLabel, { color: colors.text }]}>
+                      {i18n.t('home.protein')}
+                    </Text>
+                    <TextInput
+                      style={[styles.macroValue, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                      value={editForm.protein.toString()}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, protein: parseFloat(text) || 0 }))}
+                      placeholder="0"
+                      placeholderTextColor={colors.gray}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.macroInput}>
+                    <Text style={[styles.macroLabel, { color: colors.text }]}>
+                      {i18n.t('home.carbs')}
+                    </Text>
+                    <TextInput
+                      style={[styles.macroValue, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                      value={editForm.carbs.toString()}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, carbs: parseFloat(text) || 0 }))}
+                      placeholder="0"
+                      placeholderTextColor={colors.gray}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <View style={styles.macroInput}>
+                    <Text style={[styles.macroLabel, { color: colors.text }]}>
+                      {i18n.t('home.fat')}
+                    </Text>
+                    <TextInput
+                      style={[styles.macroValue, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                      value={editForm.fat.toString()}
+                      onChangeText={(text) => setEditForm(prev => ({ ...prev, fat: parseFloat(text) || 0 }))}
+                      placeholder="0"
+                      placeholderTextColor={colors.gray}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Ingredients */}
+              <View style={styles.editInputContainer}>
+                <Text style={[styles.editInputLabel, { color: colors.text }]}>
+                  {i18n.t('mealDetails.ingredients')}
+                </Text>
+                <TextInput
+                  style={[styles.editInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
+                  value={editForm.ingredients.join(', ')}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, ingredients: text.split(',').map(i => i.trim()).filter(Boolean) }))}
+                  placeholder={i18n.t('mealDetails.enterIngredients')}
+                  placeholderTextColor={colors.gray}
+                  multiline
+                />
+                <Text style={[styles.editInputHint, { color: colors.gray }]}>
+                  {i18n.t('mealDetails.ingredientsHint')}
+                </Text>
+              </View>
+
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: colors.primary }]}
+                onPress={handleSaveMeal}
+                disabled={editMealMutation.isPending}
+              >
+                {editMealMutation.isPending ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Ionicons name="save" size={20} color="white" />
+                    <Text style={styles.saveButtonText}>
+                      {i18n.t('mealDetails.saveChanges')}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </ScrollView>
   );
@@ -560,5 +816,96 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
     fontFamily: 'Inter-SemiBold',
+  },
+  // Edit Modal Styles
+  editModalContainer: {
+    flex: 1,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+  },
+  editModalHeaderSpacer: {
+    width: 40,
+  },
+  editModalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  editInputContainer: {
+    marginBottom: 20,
+  },
+  editInputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  editInputHint: {
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  mealTypeSelector: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  mealTypeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  mealTypeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  macrosContainer: {
+    gap: 12,
+  },
+  macroInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  macroLabel: {
+    fontSize: 14,
+    width: 60,
+  },
+  macroValue: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 24,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
