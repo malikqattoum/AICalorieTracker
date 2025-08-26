@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +43,8 @@ export interface OnboardingData {
   notificationsEnabled?: boolean;
 }
 
-const STEPS = [
+// Define all possible steps
+const ALL_STEPS = [
   { id: 'welcome', title: 'Welcome', component: WelcomeStep, required: true },
   { id: 'account', title: 'Account', component: AccountCreationStep, required: true },
   { id: 'personal', title: 'Personal Info', component: PersonalInfoStep, required: true },
@@ -55,9 +56,22 @@ const STEPS = [
   { id: 'summary', title: 'Summary', component: FinalSummaryStep, required: true },
 ];
 
+// Filter steps based on authentication status
+const getStepsForUser = (isAuthenticated: boolean) => {
+  if (isAuthenticated) {
+    // Skip account creation step for already authenticated users
+    return ALL_STEPS.filter(step => step.id !== 'account');
+  }
+  return ALL_STEPS;
+};
+
 export default function OnboardingPage() {
   const { user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(0);
+  // Get steps based on authentication status
+  const STEPS = getStepsForUser(!!user);
+  // Determine initial step based on authentication status
+  const initialStep = user ? 0 : 0; // Start at 0 for both, but steps will be different
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
@@ -102,6 +116,11 @@ export default function OnboardingPage() {
 
   const progressPercentage = ((currentStep + 1) / STEPS.length) * 100;
 
+  // 使用 useCallback 缓存 onStepCompleted 函数，避免无限循环
+  const handleStepCompleted = useCallback(() => {
+    markStepCompleted(currentStep);
+  }, [currentStep]);
+
   const CurrentStepComponent = STEPS[currentStep].component;
 
   return (
@@ -135,7 +154,7 @@ export default function OnboardingPage() {
             <CurrentStepComponent
               data={onboardingData}
               updateData={updateOnboardingData}
-              onStepCompleted={() => markStepCompleted(currentStep)}
+              onStepCompleted={handleStepCompleted}
               onNext={goToNext}
               isCompleted={completedSteps.has(currentStep)}
             />

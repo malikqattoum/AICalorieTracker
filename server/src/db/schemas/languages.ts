@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { int, varchar, timestamp, boolean, text, mysqlTable } from 'drizzle-orm/mysql-core';
+import { z } from 'zod';
 
 // Languages Table
 export const languages = mysqlTable('languages', {
@@ -21,6 +22,21 @@ export const translations = mysqlTable('translations', {
   isAutoTranslated: boolean('is_auto_translated').default(false),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Zod schemas for validation
+export const insertLanguageSchema = z.object({
+  code: z.string().min(1, "Language code is required").max(10, "Code must be less than 10 characters"),
+  name: z.string().min(1, "Language name is required").max(100, "Name must be less than 100 characters"),
+  isDefault: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+
+export const insertTranslationSchema = z.object({
+  languageId: z.number().min(1, "Language ID is required"),
+  key: z.string().min(1, "Translation key is required").max(255, "Key must be less than 255 characters"),
+  value: z.string().min(1, "Translation value is required"),
+  isAutoTranslated: z.boolean().default(false),
 });
 
 // Create indexes for better performance

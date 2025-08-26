@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { visualizer } from "rollup-plugin-visualizer";
+import http from "http";
 
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
@@ -9,8 +10,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react({
-        // Enable fast refresh for development
-        fastRefresh: !isProduction,
         // Enable automatic JSX runtime
         jsxRuntime: 'automatic',
         // Enable use client directive detection
@@ -158,9 +157,42 @@ export default defineConfig(({ mode }) => {
       // Proxy API requests
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: 'http://localhost:3002',
           changeOrigin: true,
           secure: false,
+          // Handle connection issues
+          agent: new http.Agent({
+            keepAlive: true,
+            maxSockets: 50,
+            maxFreeSockets: 10,
+            timeout: 60000,
+          }),
+          // Add error handling
+          onError: (err, req, res) => {
+            console.log('Proxy error:', err);
+            if (!res.headersSent) {
+              res.writeHead(500, {
+                'Content-Type': 'application/json',
+              });
+              res.end(JSON.stringify({ error: 'Proxy error', message: err.message }));
+            }
+          },
+          // Add timeout
+          proxyTimeout: 5000,
+          // Retry failed requests
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.log('Proxy error:', err);
+            });
+
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Sending Request to the Target:', req.method, req.url);
+            });
+
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            });
+          },
         },
       },
     },

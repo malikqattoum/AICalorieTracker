@@ -1,15 +1,15 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
+import { Separator } from "../ui/separator";
 import { Mail, Lock, User, Apple } from "lucide-react";
-import { OnboardingData } from "@/pages/onboarding-page";
+import { OnboardingData } from "../../pages/onboarding-page";
 
 const accountSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -18,6 +18,7 @@ const accountSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Please confirm your password"),
+  referralCode: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -33,15 +34,32 @@ interface AccountCreationStepProps {
   isCompleted: boolean;
 }
 
-export default function AccountCreationStep({ 
-  data, 
-  updateData, 
-  onStepCompleted, 
+export default function AccountCreationStep({
+  data,
+  updateData,
+  onStepCompleted,
   onNext,
-  isCompleted 
+  isCompleted
 }: AccountCreationStepProps) {
-  const { registerMutation } = useAuth();
+  const { registerMutation, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'social' | 'email'>('social');
+
+  // If user is already authenticated, skip this step
+  if (user) {
+    useEffect(() => {
+      onStepCompleted();
+      onNext();
+    }, [onStepCompleted, onNext]);
+
+    return (
+      <div className="max-w-md mx-auto space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-neutral-900">Account Already Created</h2>
+          <p className="text-neutral-600">You're already logged in. Redirecting to next step...</p>
+        </div>
+      </div>
+    );
+  }
 
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
@@ -52,6 +70,7 @@ export default function AccountCreationStep({
       username: "",
       password: "",
       confirmPassword: "",
+      referralCode: "",
     },
   });
 
@@ -65,9 +84,9 @@ export default function AccountCreationStep({
         confirmPassword: formData.password, // Add confirmPassword field
         email: formData.email,
       });
-      
-      updateData({ 
-        name: `${formData.firstName} ${formData.lastName}` 
+
+      updateData({
+        name: `${formData.firstName} ${formData.lastName}`
       });
       onStepCompleted();
       onNext();
@@ -129,7 +148,7 @@ export default function AccountCreationStep({
                 Continue with Google
                 <span className="text-xs text-neutral-400 ml-2">(Coming Soon)</span>
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={() => handleSocialAuth('apple')}
@@ -164,7 +183,7 @@ export default function AccountCreationStep({
                   <FormField
                     control={form.control}
                     name="firstName"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
                         <FormControl>
@@ -174,11 +193,11 @@ export default function AccountCreationStep({
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="lastName"
-                    render={({ field }) => (
+                    render={({ field }: any) => (
                       <FormItem>
                         <FormLabel>Last Name</FormLabel>
                         <FormControl>
@@ -193,7 +212,7 @@ export default function AccountCreationStep({
                 <FormField
                   control={form.control}
                   name="email"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
@@ -203,11 +222,11 @@ export default function AccountCreationStep({
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="username"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Username</FormLabel>
                       <FormControl>
@@ -217,11 +236,11 @@ export default function AccountCreationStep({
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="password"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
@@ -231,11 +250,11 @@ export default function AccountCreationStep({
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="confirmPassword"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Confirm Password</FormLabel>
                       <FormControl>
@@ -245,11 +264,11 @@ export default function AccountCreationStep({
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="referralCode"
-                  render={({ field }) => (
+                  render={({ field }: any) => (
                     <FormItem>
                       <FormLabel>Referral Code (optional)</FormLabel>
                       <FormControl>
@@ -259,7 +278,7 @@ export default function AccountCreationStep({
                     </FormItem>
                   )}
                 />
-                
+
                 <Button
                   type="submit"
                   className="w-full"

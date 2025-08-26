@@ -26,7 +26,18 @@ export class DatabaseStorage implements IStorage {
   db: any;
 
   constructor() {
+    console.log('=== [DATABASE STORAGE] INITIALIZING ===');
+    console.log('[DATABASE STORAGE] DB_HOST:', process.env.DB_HOST || 'localhost');
+    console.log('[DATABASE STORAGE] DB_USER:', process.env.DB_USER || 'root');
+    console.log('[DATABASE STORAGE] DB_NAME:', process.env.DB_NAME || 'calorie_tracker');
+    console.log('[DATABASE STORAGE] DB_PORT:', process.env.DB_PORT || '3306');
+    
     this.db = db; // Expose db instance for admin routes
+    
+    // Test database connection
+    this.testConnection().catch(err => {
+      console.error('[DATABASE STORAGE] Connection test failed:', err);
+    });
     
     // Use express-mysql-session for MySQL/MariaDB
     const options = {
@@ -36,10 +47,25 @@ export class DatabaseStorage implements IStorage {
       password: process.env.DB_PASSWORD || '',
       database: process.env.DB_NAME || 'calorie_tracker',
     };
+    console.log('[DATABASE STORAGE] Session store options:', { host: options.host, database: options.database });
+    
     // For ESM: MySQLStore is a function, not a class, so call it with session to get the constructor
     const MySQLStore = (MySQLStoreImport as any).default ? (MySQLStoreImport as any).default : MySQLStoreImport;
     const MySQLStoreConstructor = MySQLStore(session);
     this.sessionStore = new MySQLStoreConstructor(options);
+    
+    console.log('=== [DATABASE STORAGE] INITIALIZATION COMPLETE ===');
+  }
+
+  async testConnection(): Promise<void> {
+    try {
+      console.log('[DATABASE STORAGE] Testing connection...');
+      const [result] = await db.select().from(users).limit(1);
+      console.log('[DATABASE STORAGE] Connection test successful');
+    } catch (error) {
+      console.error('[DATABASE STORAGE] Connection test failed:', error);
+      throw error;
+    }
   }
 
   // User methods
@@ -53,25 +79,66 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    // Insert user and get the insert id
-    const result = await db.insert(users).values({
-      ...insertUser,
-      email: insertUser.email || null,
-      stripeCustomerId: null,
-      stripeSubscriptionId: null,
-      subscriptionType: null,
-      subscriptionStatus: null,
-      subscriptionEndDate: null,
-      isPremium: false,
-      nutritionGoals: null // Ensure JSON column is set to null if not provided
-    });
-    // @ts-ignore drizzle-orm/mysql2 returns insertId
-    const insertId = result.insertId || result[0]?.insertId;
-    if (!insertId) throw new Error('Failed to get inserted user id');
-    const [user] = await db.select().from(users).where(eq(users.id, insertId));
-    if (!user) throw new Error('Failed to fetch inserted user');
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    console.log('=== [DATABASE STORAGE] CREATE USER ===');
+    console.log('[DATABASE STORAGE] Input data:', {
+      username: insertUser.username,
+      email: insertUser.email,
+      firstName: insertUser.firstName,
+      lastName: insertUser.lastName,
+      password: '***'
+    });
+    
+    try {
+      // Insert user and get the insert id
+      const userData = {
+        ...insertUser,
+        email: insertUser.email || null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        subscriptionType: null,
+        subscriptionStatus: null,
+        subscriptionEndDate: null,
+        isPremium: false,
+        nutritionGoals: null // Ensure JSON column is set to null if not provided
+      };
+      
+      console.log('[DATABASE STORAGE] Inserting user with data:', userData);
+      
+      const result = await db.insert(users).values(userData);
+      console.log('[DATABASE STORAGE] Insert result:', result);
+      
+      // @ts-ignore drizzle-orm/mysql2 returns insertId
+      const insertId = result.insertId || result[0]?.insertId;
+      console.log('[DATABASE STORAGE] Insert ID:', insertId);
+      
+      if (!insertId) {
+        console.error('[DATABASE STORAGE] Failed to get inserted user id');
+        throw new Error('Failed to get inserted user id');
+      }
+      
+      console.log('[DATABASE STORAGE] Fetching created user...');
+      const [user] = await db.select().from(users).where(eq(users.id, insertId));
+      if (!user) {
+        console.error('[DATABASE STORAGE] Failed to fetch inserted user');
+        throw new Error('Failed to fetch inserted user');
+      }
+      
+      console.log('[DATABASE STORAGE] User created successfully:', { id: user.id, username: user.username });
+      return user;
+    } catch (error) {
+      console.error('[DATABASE STORAGE] Error creating user:', error);
+      console.error('[DATABASE STORAGE] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
   }
 
   async updateUserStripeInfo(userId: number, stripeInfo: { 
@@ -118,25 +185,33 @@ export class DatabaseStorage implements IStorage {
     const analyses = await db.select()
       .from(mealAnalyses)
       .where(eq(mealAnalyses.userId, userId))
-      .orderBy(mealAnalyses.timestamp);
+      .orderBy(mealAnalyses.analysisTimestamp);
     
     return analyses;
   }
 
 
-  async createMealAnalysis(insertAnalysis: InsertMealAnalysis & { metadata?: string }): Promise<MealAnalysis> {
+  async createMealAnalysis(insertAnalysis: InsertMealAnalysis & { analysisDetails?: unknown }): Promise<MealAnalysis> {
+    // Convert numeric fields to strings for decimal columns
+    const dbReadyAnalysis = {
+      ...insertAnalysis,
+      estimatedProtein: insertAnalysis.estimatedProtein?.toString(),
+      estimatedCarbs: insertAnalysis.estimatedCarbs?.toString(),
+      estimatedFat: insertAnalysis.estimatedFat?.toString()
+    };
+
     // Encrypt PHI fields if HIPAA compliance is enabled
     const encryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
-      ...insertAnalysis,
-      foodName: encryptPHI(insertAnalysis.foodName),
-      imageData: insertAnalysis.imageData ? encryptPHI(insertAnalysis.imageData) : null,
-      metadata: insertAnalysis.metadata ? encryptPHI(insertAnalysis.metadata) : undefined
-    } : insertAnalysis;
+      ...dbReadyAnalysis,
+      foodName: encryptPHI(dbReadyAnalysis.foodName),
+      imageUrl: dbReadyAnalysis.imageUrl ? encryptPHI(dbReadyAnalysis.imageUrl) : null,
+      analysisDetails: dbReadyAnalysis.analysisDetails ? encryptPHI(JSON.stringify(dbReadyAnalysis.analysisDetails)) : null
+    } : dbReadyAnalysis;
 
     // Ensure timestamp is provided for MySQL (MariaDB) compatibility
     const now = new Date();
     const result = await db.insert(mealAnalyses)
-      .values({ ...encryptedAnalysis, timestamp: now });
+      .values({ ...encryptedAnalysis, analysisTimestamp: now });
     // @ts-ignore drizzle-orm/mysql2 returns insertId
     const insertId = result.insertId || result[0]?.insertId;
     if (!insertId) throw new Error('Failed to get inserted meal analysis id');
@@ -158,8 +233,8 @@ export class DatabaseStorage implements IStorage {
     const decryptedAnalysis = HIPAA_COMPLIANCE_ENABLED ? {
       ...analysis,
       foodName: decryptPHI(analysis.foodName),
-      imageData: analysis.imageData ? decryptPHI(analysis.imageData) : null,
-      metadata: analysis.metadata ? decryptPHI(analysis.metadata) : undefined
+      imageUrl: analysis.imageUrl ? decryptPHI(analysis.imageUrl) : null,
+      analysisDetails: analysis.analysisDetails ? decryptPHI(typeof analysis.analysisDetails === 'string' ? analysis.analysisDetails : JSON.stringify(analysis.analysisDetails)) : undefined
     } : analysis;
     
     return decryptedAnalysis as MealAnalysis;
@@ -177,15 +252,20 @@ export class DatabaseStorage implements IStorage {
     startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
     startOfWeek.setHours(0, 0, 0, 0);
     
-    const weekMeals = userMeals.filter(meal => 
-      meal.timestamp && new Date(meal.timestamp) >= startOfWeek
+    const weekMeals = userMeals.filter(meal =>
+      meal.analysisTimestamp && new Date(meal.analysisTimestamp) >= startOfWeek
     );
     
     if (weekMeals.length === 0) return;
     
     // Calculate stats
-    const totalCalories = weekMeals.reduce((sum, meal) => sum + meal.calories, 0);
-    const totalProtein = weekMeals.reduce((sum, meal) => sum + meal.protein, 0);
+    const totalCalories = weekMeals.reduce((sum, meal) => {
+      return sum + (meal.estimatedCalories ? meal.estimatedCalories : 0);
+    }, 0);
+    
+    const totalProtein = weekMeals.reduce((sum, meal) => {
+      return sum + (meal.estimatedProtein ? parseFloat(meal.estimatedProtein) : 0);
+    }, 0);
     const averageCalories = Math.round(totalCalories / weekMeals.length);
     const averageProtein = Math.round(totalProtein / weekMeals.length);
     
@@ -200,12 +280,17 @@ export class DatabaseStorage implements IStorage {
     });
     
     weekMeals.forEach(meal => {
-      if (meal.timestamp) {
-        const mealDay = dayNames[new Date(meal.timestamp).getDay()];
-        caloriesByDay[mealDay] = (caloriesByDay[mealDay] || 0) + meal.calories;
-        macrosByDay[mealDay].protein += meal.protein;
-        macrosByDay[mealDay].carbs += meal.carbs;
-        macrosByDay[mealDay].fat += meal.fat;
+      if (meal.analysisTimestamp) {
+        const mealDay = dayNames[new Date(meal.analysisTimestamp).getDay()];
+        const calories = meal.estimatedCalories ? meal.estimatedCalories : 0;
+        const protein = meal.estimatedProtein ? parseFloat(meal.estimatedProtein) : 0;
+        const carbs = meal.estimatedCarbs ? parseFloat(meal.estimatedCarbs) : 0;
+        const fat = meal.estimatedFat ? parseFloat(meal.estimatedFat) : 0;
+        
+        caloriesByDay[mealDay] = (caloriesByDay[mealDay] || 0) + calories;
+        macrosByDay[mealDay].protein += protein;
+        macrosByDay[mealDay].carbs += carbs;
+        macrosByDay[mealDay].fat += fat;
       }
     });
     
@@ -293,8 +378,19 @@ export class DatabaseStorage implements IStorage {
 
   // --- Site Content Methods ---
   async getSiteContent(key: string): Promise<string | null> {
-    const [row] = await db.select().from(siteContent).where(eq(siteContent.key, key));
-    return row ? row.value : null;
+    try {
+      console.log(`[DB STORAGE] Attempting to get site content for key: ${key}`);
+      console.log(`[DB STORAGE] Database connection status:`, this.db ? 'connected' : 'not connected');
+      
+      const [row] = await db.select().from(siteContent).where(eq(siteContent.key, key));
+      console.log(`[DB STORAGE] Query result for key ${key}:`, row ? 'found' : 'not found');
+      
+      return row ? row.value : null;
+    } catch (error) {
+      console.error(`[DB STORAGE] Error getting site content for key ${key}:`, error);
+      console.error(`[DB STORAGE] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+      throw error;
+    }
   }
 
   async updateSiteContent(key: string, value: string): Promise<void> {

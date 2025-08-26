@@ -29,26 +29,87 @@ export default function FinalSummaryStep({
     setIsCompleting(true);
     
     try {
+      // Validate required fields before sending
+      const requiredFields = ['age', 'gender', 'height', 'weight', 'activityLevel', 'primaryGoal'];
+      const missingFields = requiredFields.filter(field => !data[field]);
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+
+      // Validate numeric fields
+      if (data.age && (data.age < 13 || data.age > 120)) {
+        throw new Error('Age must be between 13 and 120');
+      }
+      if (data.height && (data.height < 100 || data.height > 250)) {
+        throw new Error('Height must be between 100cm and 250cm');
+      }
+      if (data.weight && (data.weight < 30 || data.weight > 300)) {
+        throw new Error('Weight must be between 30kg and 300kg');
+      }
+
+      // Validate activity level and goal
+      const validActivityLevels = ['sedentary', 'light', 'moderate', 'active', 'extra-active'];
+      const validGoals = ['lose-weight', 'maintain-weight', 'gain-muscle'];
+      
+      if (!validActivityLevels.includes(data.activityLevel || '')) {
+        throw new Error('Invalid activity level selected');
+      }
+      if (!validGoals.includes(data.primaryGoal || '')) {
+        throw new Error('Invalid primary goal selected');
+      }
+
+      console.log('Submitting onboarding data:', data);
+
       // Save onboarding data to the server
       const response = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Add authentication header if available
+          ...(user?.token && { Authorization: `Bearer ${user.token}` })
         },
         body: JSON.stringify(data),
+        credentials: 'include' // Important for session-based auth
       });
 
+      const responseText = await response.text();
+      console.log('Onboarding response status:', response.status);
+      console.log('Onboarding response body:', responseText);
+
       if (response.ok) {
-        onStepCompleted();
-        // Simulate background loading of AI features
-        setTimeout(() => {
-          setLocation('/dashboard');
-        }, 2000);
+        try {
+          const responseData = JSON.parse(responseText);
+          console.log('Onboarding successful:', responseData);
+          onStepCompleted();
+          // Simulate background loading of AI features
+          setTimeout(() => {
+            setLocation('/dashboard');
+          }, 2000);
+        } catch (parseError) {
+          console.error('Error parsing response:', parseError);
+          // If response isn't JSON but status is OK, still proceed
+          onStepCompleted();
+          setTimeout(() => {
+            setLocation('/dashboard');
+          }, 2000);
+        }
       } else {
-        throw new Error('Failed to complete onboarding');
+        let errorMessage = 'Failed to complete onboarding';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorMessage;
+          if (errorData.errors) {
+            errorMessage += ': ' + errorData.errors.join(', ');
+          }
+        } catch {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error completing onboarding:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
       setIsCompleting(false);
     }
   };

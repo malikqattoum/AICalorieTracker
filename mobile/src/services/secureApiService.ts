@@ -47,7 +47,6 @@ class SecureApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
-      timeout: NETWORK_CONFIG.timeout,
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': `AI-Calorie-Tracker/${getDeviceInfo().osName} ${getDeviceInfo().osVersion}`,
@@ -118,7 +117,7 @@ class SecureApiService {
         const validation = validateApiResponse(
           response.data,
           response.config.url || '',
-          this.getDefaultDataForEndpoint(response.config.url)
+          this.getDefaultDataForEndpoint(response.config.url || '')
         );
 
         if (!validation.isValid) {
@@ -344,7 +343,7 @@ class SecureApiService {
       this.emitAuthFailure();
 
       return Promise.reject({
-        ...error,
+        ...(error && typeof error === 'object' ? error : {}),
         code: 'AUTH_FAILED',
         message: 'Session expired. Please log in again.',
       });

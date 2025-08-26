@@ -1,1 +1,211 @@
 2025-08-24 11:02:35:235 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:15:07:157 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 12:15:07:157 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:15:19:1519 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 12:15:19:1519 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:45:13:4513 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 192.168.1.11[39m
+2025-08-25 12:45:13:4513 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:45:48:4548 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 192.168.1.11[39m
+2025-08-25 12:45:48:4548 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:46:51:4651 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 192.168.1.11[39m
+2025-08-25 12:46:51:4651 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:48:08:488 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 192.168.1.11[39m
+2025-08-25 12:48:08:488 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 12:49:37:4937 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 192.168.1.11[39m
+2025-08-25 12:49:37:4937 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:40:39:4039 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:40:39:4039 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:40:47:4047 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:40:47:4047 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:40:59:4059 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:40:59:4059 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:41:29:4129 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:41:29:4129 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:42:15:4215 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:42:15:4215 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:43:32:4332 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:43:32:4332 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:47:02:472 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:47:02:472 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:47:49:4749 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:47:49:4749 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:48:16:4816 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:48:16:4816 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:49:12:4912 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:49:12:4912 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 13:54:54:5454 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:54:54:5454 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-25 13:55:13:5513 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 13:55:13:5513 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 14:01:07:17 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:01:07:17 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 14:01:07:17 [32minfo[39m: [32mPerformance - Performance: GET / - Duration: 9ms[39m
+2025-08-25 14:04:03:43 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:04:03:43 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 14:04:03:43 [32minfo[39m: [32mPerformance - Performance: GET / - Duration: 4ms[39m
+2025-08-25 14:04:30:430 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 14:04:30:430 [35mhttp[39m: [35mPerformance: Request started: GET /api/test[39m
+2025-08-25 14:04:30:430 [32minfo[39m: [32mPerformance - Performance: GET /api/test - Duration: 4ms[39m
+2025-08-25 14:04:45:445 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 14:04:45:445 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-25 14:08:33:833 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:08:33:833 [33mwarn[39m: [33mSecureSession: Attempt to create session without authenticated user[39m
+2025-08-25 14:08:33:833 [32minfo[39m: [32mPerformance - Performance: GET / - Duration: 1ms[39m
+2025-08-25 14:08:51:851 [35mhttp[39m: [35mPerformance: Request started: GET /api/admin/content/home[39m
+2025-08-25 14:08:51:851 [32minfo[39m: [32mPerformance - Performance: GET /api/admin/content/home - Duration: 3ms[39m
+2025-08-25 14:09:21:921 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 14:09:21:921 [35mhttp[39m: [35mPerformance: Request started: GET /api/test[39m
+2025-08-25 14:09:21:921 [32minfo[39m: [32mPerformance - Performance: GET /api/test - Duration: 1ms[39m
+2025-08-25 14:12:52:1252 [35mhttp[39m: [35mPerformance: Request started: GET /api/admin/content/home[39m
+2025-08-25 14:12:52:1252 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 14:12:52:1252 [32minfo[39m: [32mPerformance - Performance: GET /api/admin/content/home - Duration: 37ms[39m
+2025-08-25 14:12:52:1252 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:12:52:1252 [32minfo[39m: [32mPerformance - Performance: GET /api/user - Duration: 12ms[39m
+2025-08-25 14:13:07:137 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-25 14:22:39:2239 [35mhttp[39m: [35mPerformance: Request started: GET /api/admin/content/home[39m
+2025-08-25 14:22:39:2239 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 14:22:39:2239 [32minfo[39m: [32mPerformance - Performance: GET /api/admin/content/home - Duration: 10ms[39m
+2025-08-25 14:22:39:2239 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:22:39:2239 [32minfo[39m: [32mPerformance - Performance: GET /api/user - Duration: 4ms[39m
+2025-08-25 14:22:51:2251 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 14:22:51:2251 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 14:22:51:2251 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 49ms[39m
+2025-08-25 14:25:08:258 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:25:08:258 [32minfo[39m: [32mPerformance - Performance: GET /api/user - Duration: 4ms[39m
+2025-08-25 14:26:26:2626 [35mhttp[39m: [35mPerformance: Request started: GET /api/admin/content/home[39m
+2025-08-25 14:26:26:2626 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 14:26:26:2626 [32minfo[39m: [32mPerformance - Performance: GET /api/admin/content/home - Duration: 15ms[39m
+2025-08-25 14:26:26:2626 [35mhttp[39m: [35mPerformance: Request started: GET /api/user[39m
+2025-08-25 14:26:26:2626 [32minfo[39m: [32mPerformance - Performance: GET /api/user - Duration: 8ms[39m
+2025-08-25 14:26:38:2638 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 14:26:38:2638 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 14:26:38:2638 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 40ms[39m
+2025-08-25 14:28:17:2817 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 14:28:17:2817 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 14:28:17:2817 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 11ms[39m
+2025-08-25 15:01:24:124 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:01:24:124 [35mhttp[39m: [35mPerformance: Request started: GET /api/public/connectivity-test[39m
+2025-08-25 15:01:24:124 [32minfo[39m: [32mPerformance - Performance: GET /api/public/connectivity-test - Duration: 25ms[39m
+2025-08-25 15:01:37:137 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:01:37:137 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 15:01:37:137 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 15:01:38:138 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:01:38:138 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 78ms[39m
+2025-08-25 15:01:48:148 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:01:48:148 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 15:01:48:148 [35mhttp[39m: [35mPerformance: Request started: POST /api/register[39m
+2025-08-25 15:01:48:148 [32minfo[39m: [32mPerformance - Performance: POST /api/register - Duration: 13ms[39m
+2025-08-25 15:02:17:217 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:02:17:217 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 15:02:17:217 [35mhttp[39m: [35mPerformance: Request started: POST /api/register[39m
+2025-08-25 15:02:17:217 [32minfo[39m: [32mPerformance - Performance: POST /api/register - Duration: 126ms[39m
+2025-08-25 15:02:28:228 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:02:28:228 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 15:02:28:228 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 15:02:28:228 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 85ms[39m
+2025-08-25 15:04:48:448 [37mdebug[39m: [37mSecurityEnhanced: CSRF protection skipped for auth endpoint:[39m
+2025-08-25 15:04:48:448 [35mhttp[39m: [35mPerformance: Request started: POST /api/login[39m
+2025-08-25 15:04:48:448 [32minfo[39m: [32mPerformance - Performance: POST /api/login - Duration: 33ms[39m
+2025-08-25 15:14:40:1440 [35mhttp[39m: [35mPerformance: Request started: GET /auth[39m
+2025-08-25 15:34:30:3430 [35mhttp[39m: [35mPerformance: Request started: GET /auth[39m
+2025-08-25 15:36:24:3624 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:36:24:3624 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:36:31:3631 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:36:39:3639 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:36:39:3639 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:36:50:3650 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:36:58:3658 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:37:05:375 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:37:05:375 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:45:16:4516 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:45:16:4516 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:45:30:4530 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:46:00:460 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:46:10:4610 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:46:33:4633 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 15:46:33:4633 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 15:48:49:4849 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:49:15:4915 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 15:51:19:5119 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:51:29:5129 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:51:43:5143 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 15:52:07:527 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 15:59:05:595 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 16:04:12:412 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 16:04:31:431 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 16:04:50:450 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 16:04:57:457 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 16:11:16:1116 [33mwarn[39m: [33mSecurityAudit: Security Event: rate_limit_exceeded - Rate limit exceeded[39m
+2025-08-25 16:44:50:4450 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 16:50:13:5013 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-25 16:50:18:5018 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-25 17:39:11:3911 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 17:41:27:4127 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 17:41:35:4135 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 17:53:40:5340 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 17:56:23:5623 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 17:56:23:5623 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 18:21:44:2144 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 19:07:11:711 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 19:07:11:711 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-25 21:37:01:371 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 21:37:17:3717 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 21:38:51:3851 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 21:40:58:4058 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:45:43:4543 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:46:09:469 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:46:17:4617 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:48:48:4848 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:50:10:5010 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:50:19:5019 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:51:46:5146 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:53:54:5354 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:54:21:5421 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:55:24:5524 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-25 23:56:26:5626 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:00:00:00 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:00:41:041 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:01:02:12 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:01:32:132 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:04:29:429 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:16:50:1650 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:17:10:1710 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:19:12:1912 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:19:23:1923 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:26:06:266 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:26:16:2616 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:40:41:4041 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:40:53:4053 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:40:53:4053 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-26 00:41:49:4149 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-26 00:43:44:4344 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 00:57:51:5751 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:57:51:5751 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 00:58:10:5810 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:58:19:5819 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:58:46:5846 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:58:46:5846 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m
+2025-08-26 00:58:56:5856 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:59:08:598 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:59:17:5917 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:59:17:5917 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 00:59:39:5939 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 00:59:39:5939 [33mwarn[39m: [33mSecurityEnhanced: CSRF token mismatch from:[39m
+2025-08-26 01:01:27:127 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:01:27:127 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:02:47:247 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:02:47:247 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:03:31:331 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:03:49:349 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:03:49:349 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:06:00:60 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:06:00:60 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:07:14:714 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:07:14:714 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:08:20:820 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:08:20:820 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:09:00:90 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:09:00:90 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:10:54:1054 [33mwarn[39m: [33mSecurityEnhanced: Bot detected: curl/8.10.1 from IP: 127.0.0.1[39m
+2025-08-26 01:10:54:1054 [33mwarn[39m: [33mSecurityEnhanced: CSRF protection failed - missing tokens from:[39m
+2025-08-26 01:19:48:1948 [33mwarn[39m: [33mSecurityAudit: Security Event: unauthorized_access - Unauthorized access attempt[39m

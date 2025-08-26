@@ -7,11 +7,12 @@ import Toast from 'react-native-toast-message';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Button } from 'react-native';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import Navigation from './src/navigation';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { ConnectivityTest } from './src/components/ConnectivityTest';
 import { setupI18n } from './src/i18n';
 import { initializeNetworkMonitoring } from './src/services/apiService';
 import { offlineManager } from './src/utils/offlineManager';
@@ -32,7 +33,7 @@ const queryClient = new QueryClient({
         return failureCount < 3;
       },
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (cacheTime is deprecated)
     },
     mutations: {
       retry: (failureCount, error: any) => {
@@ -49,6 +50,7 @@ const queryClient = new QueryClient({
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [showConnectivityTest, setShowConnectivityTest] = useState(false);
 
   useEffect(() => {
     async function prepare() {
@@ -222,13 +224,27 @@ log(`=== APP INITIALIZATION DEBUG ===`);
         <ThemeProvider>
           <AuthProvider>
             <NavigationContainer>
-              <Navigation />
-              <StatusBar style="auto" />
+              {showConnectivityTest ? (
+                <ConnectivityTest />
+              ) : (
+                <>
+                  <Navigation />
+                  <StatusBar style="auto" />
+                </>
+              )}
             </NavigationContainer>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
       <Toast />
+      {/* Debug button - only show in development */}
+      {__DEV__ && (
+        <Button
+          title="Test Connectivity"
+          onPress={() => setShowConnectivityTest(!showConnectivityTest)}
+          color="#4F46E5"
+        />
+      )}
     </SafeAreaProvider>
   );
 }

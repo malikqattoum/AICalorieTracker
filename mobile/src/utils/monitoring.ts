@@ -115,6 +115,39 @@ export const ApiMonitoring = {
       method,
       duration
     });
+  },
+  logJsonParseError: async (error: Error, endpoint: string, response: any) => {
+    logError(`JSON Parse Error: ${endpoint}`, error);
+    
+    logEvent('json_parse_error', {
+      endpoint,
+      errorType: error.name,
+      errorMessage: error.message,
+      responseStatus: response?.status
+    });
+    
+    await reportCrash(error, {
+      endpoint,
+      errorType: 'json_parse',
+      response
+    });
+  },
+  logApiError: async (error: any, endpoint: string, source: string) => {
+    const normalizedError = await ErrorHandler.normalizeError(error);
+    logError(`API Error from ${source}: ${endpoint}`, normalizedError);
+    
+    logEvent('api_error', {
+      endpoint,
+      source,
+      errorType: normalizedError.type,
+      errorCode: normalizedError.code || 'unknown',
+      status: 'status' in error ? error.status : 0
+    });
+    
+    await reportCrash(normalizedError, {
+      endpoint,
+      source
+    });
   }
 };
 

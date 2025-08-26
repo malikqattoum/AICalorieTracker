@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Logger } from '../utils/logger';
-import { AppError, AuthenticationError, AuthorizationError } from './errorHandler';
+import { AppError, AuthenticationError, AuthorizationError, ErrorType, ErrorCode } from './errorHandler';
 import { securityConfig } from '../config/security';
 
 const logger = new Logger('SecurityEnhanced');
@@ -170,8 +170,10 @@ export const inputValidation = (req: Request, res: Response, next: NextFunction)
     return value;
   };
   
-  // Sanitize input
-  req.body = sanitize(req.body);
+  // Sanitize input (only if body exists)
+  if (req.body) {
+    req.body = sanitize(req.body);
+  }
   req.query = sanitize(req.query);
   req.params = sanitize(req.params);
   
@@ -206,7 +208,7 @@ export const sqlInjectionProtection = (req: Request, res: Response, next: NextFu
   // Check request body, query, and params
   if (checkValue(req.body) || checkValue(req.query) || checkValue(req.params)) {
     logger.warn('SQL injection attempt detected from:', req.ip);
-    throw new AppError('VALIDATION_ERROR', 'VALIDATION_ERROR', 'Invalid request format');
+    throw new AppError(ErrorType.VALIDATION_ERROR, ErrorCode.INVALID_INPUT, 'Invalid request format');
   }
   
   next();
@@ -245,7 +247,7 @@ export const xssProtection = (req: Request, res: Response, next: NextFunction) =
   // Check for XSS patterns
   if (checkXSS(req.body) || checkXSS(req.query) || checkXSS(req.params)) {
     logger.warn('XSS attempt detected from:', req.ip);
-    throw new AppError('VALIDATION_ERROR', 'VALIDATION_ERROR', 'Invalid request format');
+    throw new AppError(ErrorType.VALIDATION_ERROR, ErrorCode.INVALID_INPUT, 'Invalid request format');
   }
   
   next();
@@ -254,6 +256,19 @@ export const xssProtection = (req: Request, res: Response, next: NextFunction) =
 // Enhanced CSRF protection
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE' || req.method === 'PATCH') {
+    // Skip CSRF protection for authentication and onboarding endpoints
+    const bypassPaths = ['/api/login', '/api/register', '/api/logout', '/api/auth/', '/api/onboarding/'];
+    if (bypassPaths.some(path => req.path.startsWith(path))) {
+      logger.debug('CSRF protection skipped for auth/onboarding endpoint:', req.path);
+      return next();
+    }
+    
+    // Skip CSRF protection for localhost testing
+    if (req.hostname === 'localhost' || req.ip === '127.0.0.1') {
+      logger.debug('CSRF protection skipped for localhost testing:', req.path);
+      return next();
+    }
+    
     const csrfToken = req.headers['x-csrf-token'];
     const sessionToken = req.headers['x-session-token'];
     

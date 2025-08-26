@@ -15,6 +15,11 @@ router.put('/',
     weight: { type: 'number', required: false, min: 30 },
     birthdate: { type: 'string', required: false }
   }),
+  (req, res, next) => {
+    console.log(`[USER PROFILE] Update profile request:`, req.body);
+    console.log(`[USER PROFILE] Authenticated user:`, req.user);
+    next();
+  },
   UserProfileController.updateProfile
 );
 

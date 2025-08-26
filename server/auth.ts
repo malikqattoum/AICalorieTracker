@@ -2,11 +2,11 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
+import bcrypt from "bcrypt";
 import { storage } from "./storage-provider";
-import { User as SelectUser } from "@shared/schema";
+import { User as SelectUser, insertUserSchema } from "@shared/schema";
 import { authRateLimiter, registerRateLimiter } from "./rate-limiter";
+import { z } from "zod";
 
 declare global {
   namespace Express {
@@ -14,22 +14,30 @@ declare global {
   }
 }
 
-const scryptAsync = promisify(scrypt);
-
 async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+  const salt = await bcrypt.genSalt(10);
+  return await bcrypt.hash(password, salt);
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  console.log('=== PASSWORD COMPARISON DEBUG ===');
+  console.log('Stored password length:', stored.length);
+  console.log('Stored password format:', stored.includes('$2b') ? 'bcrypt' : 'unknown');
+  console.log('Stored password preview:', stored.substring(0, 20) + '...');
+  
+  try {
+    const isValid = await bcrypt.compare(supplied, stored);
+    console.log('Password comparison result:', isValid ? 'VALID' : 'INVALID');
+    return isValid;
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    throw error;
+  }
 }
 
 export function setupAuth(app: Express) {
+  console.log('[AUTH] Setting up authentication...');
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "nutriscan-secret",
     resave: false,
@@ -38,7 +46,7 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
       httpOnly: true, // Prevent client-side access to cookie
-      secure: process.env.NODE_ENV === 'production', // Only send cookie over HTTPS in production
+      secure: process.env.NODE_ENV === 'production' && !process.env.LOCAL_DEV, // Only send cookie over HTTPS in production
       sameSite: 'strict' // Prevent CSRF attacks
     }
   };
@@ -47,17 +55,41 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+  
+  console.log('[AUTH] Authentication middleware set up');
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        console.log('=== AUTHENTICATION DEBUG ===');
+        console.log('Attempting to authenticate user:', username);
+        
+        // Try to find user by username first, then by email
+        let user = await storage.getUserByUsername(username);
+        if (!user) {
+          user = await storage.getUserByEmail(username);
+        }
+        
+        console.log('User found:', user ? 'YES' : 'NO');
+        
+        if (user) {
+          console.log('User ID:', user.id);
+          console.log('Username:', user.username);
+          console.log('Email:', user.email);
+          console.log('Password hash length:', user.password?.length || 0);
+          console.log('Password hash format:', user.password?.includes('$2b') ? 'bcrypt' : 'unknown');
+        }
+        
+        
+        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+          console.log('Authentication failed: invalid credentials');
           return done(null, false);
         } else {
+          console.log('Authentication successful');
           return done(null, user);
         }
       } catch (error) {
+        console.error('Authentication error:', error);
         return done(error);
       }
     }),
@@ -73,27 +105,8 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Apply rate limiting to authentication endpoints
-  app.post("/api/register", registerRateLimiter, async (req, res, next) => {
-    try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
+  // Registration endpoint is now handled in server/src/routes/auth/index.ts
+  // This prevents route conflicts and ensures proper error handling
 
   app.post("/api/login", authRateLimiter, (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
@@ -114,8 +127,4 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
-  });
 }

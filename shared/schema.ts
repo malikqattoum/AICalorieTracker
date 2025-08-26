@@ -1,407 +1,188 @@
-import { mysqlTable, varchar, int, boolean, datetime, text, json, decimal } from "drizzle-orm/mysql-core";
-import { sql } from "drizzle-orm";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+import { z } from 'zod';
 
-export interface MealAnalysisInput {
-  userId: number;
-  foodName: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber?: number;
-  imageData: string;
-  metadata?: string;
+export interface User {
+  id: number;
+  username: string;
+  email: string | null;
+  firstName: string;
+  lastName: string;
+  password?: string; // Optional for responses but required for creation
+  referredBy: number | null;
+  referralCode: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  subscriptionType: string | null;
+  subscriptionStatus: string | null;
+  subscriptionEndDate: Date | null;
+  isPremium: boolean | null;
+  nutritionGoals: any | null;
+  role: string | null;
+  age: number | null;
+  gender: string | null;
+  height: number | null;
+  weight: number | null;
+  activityLevel: string | null;
+  primaryGoal: string | null;
+  targetWeight: number | null;
+  timeline: string | null;
+  dietaryPreferences: any | null;
+  allergies: any | null;
+  aiMealSuggestions: boolean | null;
+  aiChatAssistantName: string | null;
+  notificationsEnabled: boolean | null;
+  onboardingCompleted: boolean | null;
+  onboardingCompletedAt: Date | null;
+  dailyCalorieTarget: number | null;
+  proteinTarget: string | null;
+  carbsTarget: string | null;
+  fatTarget: string | null;
+  measurementSystem: string | null;
+  profileImageUrl: string | null;
+  emailVerified: boolean | null;
+  emailVerificationToken: string | null;
+  resetPasswordToken: string | null;
+  resetPasswordExpiresAt: Date | null;
+  lastLoginAt: Date | null;
+  isActive: boolean | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
-
-// Users table schema
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  username: varchar("username", { length: 255 }).notNull().unique(),
-  password: varchar("password", { length: 255 }).notNull(),
-  firstName: varchar("first_name", { length: 255 }).notNull(),
-  lastName: varchar("last_name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }),
-  referredBy: int("referred_by"),
-  referralCode: varchar("referral_code", { length: 255 }).unique(),
-  // Stripe related fields
-  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-  subscriptionType: varchar("subscription_type", { length: 255 }),
-  subscriptionStatus: varchar("subscription_status", { length: 255 }),
-  subscriptionEndDate: datetime("subscription_end_date"),
-  isPremium: boolean("is_premium").default(false),
-  nutritionGoals: json("nutrition_goals"),
-  role: text("role").notNull().default('user'), // Add role field
-  // Onboarding fields
-  age: int("age"),
-  gender: varchar("gender", { length: 20 }),
-  height: int("height"), // in cm
-  weight: int("weight"), // in kg
-  activityLevel: varchar("activity_level", { length: 50 }),
-  primaryGoal: varchar("primary_goal", { length: 100 }),
-  targetWeight: int("target_weight"), // in kg
-  timeline: varchar("timeline", { length: 50 }),
-  dietaryPreferences: json("dietary_preferences"),
-  allergies: json("allergies"),
-  aiMealSuggestions: boolean("ai_meal_suggestions").default(true),
-  aiChatAssistantName: varchar("ai_chat_assistant_name", { length: 100 }),
-  notificationsEnabled: boolean("notifications_enabled").default(true),
-  onboardingCompleted: boolean("onboarding_completed").default(false),
-  onboardingCompletedAt: datetime("onboarding_completed_at"),
-});
-
-// Meal analysis schema
-export const mealAnalyses = mysqlTable("meal_analyses", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  foodName: varchar("food_name", { length: 255 }).notNull(),
-  calories: int("calories").notNull(),
-  protein: int("protein").notNull(),
-  carbs: int("carbs").notNull(),
-  fat: int("fat").notNull(),
-  fiber: int("fiber").notNull(),
-  imageData: text("image_data"), // Keep for backward compatibility, but will be deprecated
-  timestamp: datetime("timestamp").notNull(),
-  metadata: text("metadata"),
-  // New fields for optimized image storage
-  imageId: int("image_id"), // References meal_images table
-  thumbnailPath: varchar("thumbnail_path", { length: 500 }),
-  optimizedPath: varchar("optimized_path", { length: 500 }),
-  originalPath: varchar("original_path", { length: 500 }),
-  imageHash: varchar("image_hash", { length: 64 }),
-  // Audit fields
-  created_at: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updated_at: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  deleted_at: datetime("deleted_at"),
-});
-
-// Weekly stats schema
-export const weeklyStats = mysqlTable("weekly_stats", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  averageCalories: int("average_calories").notNull(),
-  mealsTracked: int("meals_tracked").notNull(),
-  averageProtein: int("average_protein").notNull(),
-  healthiestDay: varchar("healthiest_day", { length: 255 }).notNull(),
-  weekStarting: datetime("week_starting").notNull(),
-  caloriesByDay: json("calories_by_day").notNull(),
-  macrosByDay: json("macros_by_day"), // NEW: per-day macro data
-  caloriesBurned: int("calories_burned").default(0), // Add calories burned field
-});
-
-// Site content table for editable homepage, try-it, pricing content
-export const siteContent = mysqlTable("site_content", {
-  key: varchar("key", { length: 64 }).primaryKey(),
-  value: text("value").notNull(),
-});
-
-// App config table schema
-export const appConfig = mysqlTable("app_config", {
-  id: int("id").autoincrement().primaryKey(),
-  key: varchar("key", { length: 255 }).notNull().unique(),
-  value: text("value"),
-  description: text("description"),
-  type: varchar("type", { length: 50 }).notNull().default('string'),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-// Planned meals schema
-export const plannedMeals = mysqlTable("planned_meals", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  date: datetime("date").notNull(),
-  mealType: varchar("meal_type", { length: 50 }).notNull(),
-  mealName: varchar("meal_name", { length: 255 }).notNull(),
-  calories: int("calories").notNull().default(0),
-  protein: int("protein").notNull().default(0),
-  carbs: int("carbs").notNull().default(0),
-  fat: int("fat").notNull().default(0),
-  recipe: text("recipe"),
-  notes: text("notes"),
-});
-
-// Additional tables that are referenced in server routes
-export const nutritionGoals = mysqlTable("nutrition_goals", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  calories: int("calories").notNull(),
-  protein: int("protein").notNull(),
-  carbs: int("carbs").notNull(),
-  fat: int("fat").notNull(),
-  dailyCalories: int("daily_calories"), // Add missing field
-  weeklyWorkouts: int("weekly_workouts"),
-  waterIntake: int("water_intake"),
-  weight: int("weight"),
-  bodyFatPercentage: int("body_fat_percentage"),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const favoriteMeals = mysqlTable("favorite_meals", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  mealName: varchar("meal_name", { length: 255 }).notNull(),
-  mealId: int("meal_id"), // Add missing field
-  mealType: varchar("meal_type", { length: 50 }), // Add missing field
-  ingredients: json("ingredients"),
-  nutrition: json("nutrition"),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const importedRecipes = mysqlTable("imported_recipes", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(), // Add missing userId field
-  recipeName: varchar("recipe_name", { length: 255 }).notNull(),
-  ingredients: json("ingredients"),
-  instructions: text("instructions"),
-  parsedNutrition: json("parsed_nutrition"),
-  notes: text("notes"),
-  sourceUrl: varchar("source_url", { length: 500 }),
-  sourceImageUrl: varchar("source_image_url", { length: 500 }),
-  rawImageData: text("raw_image_data"),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const referralSettings = mysqlTable("referral_settings", {
-  id: int("id").autoincrement().primaryKey(),
-  commissionPercent: decimal("commission_percent", { precision: 5, scale: 2 }).notNull().default(sql`10.00`),
-  isRecurring: boolean("is_recurring").notNull().default(false),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const referralCommissions = mysqlTable("referral_commissions", {
-  id: int("id").autoincrement().primaryKey(),
-  referrerId: int("referrer_id").notNull().references(() => users.id),
-  refereeId: int("referee_id").notNull().references(() => users.id),
-  subscriptionId: varchar("subscription_id", { length: 255 }).notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull().default(sql`0.00`),
-  status: varchar("status", { length: 20 }).notNull().default('pending'),
-  isRecurring: boolean("is_recurring").notNull(),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  paidAt: datetime("paid_at"),
-});
-
-export const languages = mysqlTable("languages", {
-  id: int("id").autoincrement().primaryKey(),
-  code: varchar("code", { length: 10 }).notNull().unique(),
-  name: varchar("name", { length: 100 }).notNull(),
-  isDefault: boolean("is_default").default(false),
-  isActive: boolean("is_active").default(true),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const translations = mysqlTable("translations", {
-  id: int("id").autoincrement().primaryKey(),
-  languageId: int("language_id").notNull(),
-  key: varchar("key", { length: 255 }).notNull(),
-  value: text("value").notNull(),
-  isAutoTranslated: boolean("is_auto_translated").default(false), // Add missing field
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const workouts = mysqlTable("workouts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  duration: int("duration").notNull(), // in minutes
-  caloriesBurned: int("calories_burned").notNull(),
-  date: datetime("date").notNull(),
-  notes: text("notes"),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const wearableData = mysqlTable("wearable_data", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  deviceType: varchar("device_type", { length: 50 }).notNull(),
-  steps: int("steps"),
-  heartRate: int("heart_rate"),
-  caloriesBurned: int("calories_burned"),
-  sleepHours: int("sleep_hours"),
-  date: datetime("date").notNull(),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  deletedAt: datetime("deleted_at"),
-});
-
-// Meal images table for optimized image storage
-export const mealImages = mysqlTable("meal_images", {
-  id: int("id").autoincrement().primaryKey(),
-  mealAnalysisId: int("meal_analysis_id").notNull(),
-  filePath: varchar("file_path", { length: 500 }).notNull(),
-  fileSize: int("file_size").notNull(),
-  mimeType: varchar("mime_type", { length: 100 }).notNull(),
-  width: int("width"),
-  height: int("height"),
-  imageHash: varchar("image_hash", { length: 64 }).unique(),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  deletedAt: datetime("deleted_at"),
-});
-
-// Meal image archive table for old images
-export const mealImageArchive = mysqlTable("meal_image_archive", {
-  id: int("id").autoincrement().primaryKey(),
-  mealAnalysisId: int("meal_analysis_id").notNull(),
-  filePath: varchar("file_path", { length: 500 }).notNull(),
-  fileSize: int("file_size").notNull(),
-  mimeType: varchar("mime_type", { length: 100 }).notNull(),
-  archivedAt: datetime("archived_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-export const aiConfig = mysqlTable("ai_config", {
-  id: int("id").autoincrement().primaryKey(),
-  provider: varchar("provider", { length: 50 }).notNull().default('openai'),
-  apiKeyEncrypted: text("api_key_encrypted"),
-  modelName: varchar("model_name", { length: 100 }).default('gpt-4-vision-preview'),
-  temperature: int("temperature").default(70), // stored as int (70 = 0.7)
-  maxTokens: int("max_tokens").default(1000),
-  promptTemplate: text("prompt_template"),
-  isActive: boolean("is_active").default(true),
-  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: datetime("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-// Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-});
-
-export const insertMealAnalysisSchema = createInsertSchema(mealAnalyses).omit({
-  id: true,
-  timestamp: true,
-  created_at: true,
-  updated_at: true,
-  deleted_at: true,
-});
-
-export const insertWeeklyStatsSchema = createInsertSchema(weeklyStats).omit({
-  id: true,
-});
-
-export const insertAppConfigSchema = createInsertSchema(appConfig).omit({ id: true, createdAt: true, updatedAt: true });
-
-export const insertPlannedMealSchema = createInsertSchema(plannedMeals).omit({ id: true, userId: true });
-
-// Insert schemas for new tables
-export const insertNutritionGoalsSchema = createInsertSchema(nutritionGoals).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertImportedRecipeSchema = createInsertSchema(importedRecipes).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLanguageSchema = createInsertSchema(languages).omit({ id: true, createdAt: true });
-export const insertTranslationSchema = createInsertSchema(translations).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWorkoutSchema = createInsertSchema(workouts).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  deletedAt: true
-} as any);
-
-export const insertWearableDataSchema = createInsertSchema(wearableData).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  deletedAt: true
-});
-
-export const insertMealImageSchema = createInsertSchema(mealImages).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  deletedAt: true
-});
-
-export const insertMealImageArchiveSchema = createInsertSchema(mealImageArchive).omit({
-  id: true,
-  archivedAt: true
-});
-
-// Types
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertMealAnalysis = z.infer<typeof insertMealAnalysisSchema>;
-export type InsertWeeklyStats = z.infer<typeof insertWeeklyStatsSchema>;
-export type InsertAppConfig = z.infer<typeof insertAppConfigSchema>;
-export type User = typeof users.$inferSelect & { role?: string };
-export type MealAnalysis = typeof mealAnalyses.$inferSelect;
-export type WeeklyStats = typeof weeklyStats.$inferSelect & {
-  macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
-};
-export type AppConfig = typeof appConfig.$inferSelect;
-export type PlannedMeal = typeof plannedMeals.$inferSelect;
-export type InsertPlannedMeal = z.infer<typeof insertPlannedMealSchema>;
-
-// Types for new tables
-export type NutritionGoals = typeof nutritionGoals.$inferSelect;
-export type FavoriteMeal = typeof favoriteMeals.$inferSelect;
-export type Language = typeof languages.$inferSelect;
-export type Translation = typeof translations.$inferSelect;
-export type Workout = typeof workouts.$inferSelect;
-export type WearableData = typeof wearableData.$inferSelect;
-export type AIConfig = typeof aiConfig.$inferSelect;
-export type MealImage = typeof mealImages.$inferSelect;
-export type MealImageArchive = typeof mealImageArchive.$inferSelect;
-
-// Nutrition Analysis Types
-export interface NutritionData {
-  foodName: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber: number;
-  portionSize?: {
-    estimatedWeight: number;
-    referenceObject: string;
-  };
-  densityScore?: number;
+export interface InsertUser {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
 }
 
-export interface MultiFoodAnalysis {
-  foods: NutritionData[];
-  totalCalories: number;
-  totalProtein: number;
-  totalCarbs: number;
-  totalFat: number;
-  totalFiber: number;
-  densityAnalysis?: {
-    caloriesPerGram: number;
-    nutrientDensityScore: number;
-  };
-}
-
-// Meal Plan types for AI meal planning
-export interface ImportedRecipe {
+export interface MealAnalysis {
   id: number;
   userId: number;
-  recipeName: string;
-  ingredients: any;
-  instructions: string;
-  parsedNutrition: any;
-  notes?: string;
-  sourceUrl?: string;
-  sourceImageUrl?: string;
-  rawImageData?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  mealId: number;
+  foodName: string;
+  confidenceScore: string | null;
+  analysisDetails: unknown;
+  aiInsights: string | null;
+  suggestedPortionSize: string | null;
+  estimatedCalories: number | null;
+  estimatedProtein: string | null;
+  estimatedCarbs: string | null;
+  estimatedFat: string | null;
+  imageUrl: string | null;
+  imageHash: string | null;
+  analysisTimestamp: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  deletedAt: Date | null;
 }
 
-export interface InsertImportedRecipe {
+export interface InsertMealAnalysis {
   userId: number;
-  recipeName: string;
-  ingredients: any;
-  instructions: string;
-  parsedNutrition: any;
-  notes?: string;
-  sourceUrl?: string;
-  sourceImageUrl?: string;
-  rawImageData?: string;
+  mealId: number;
+  foodName: string;
+  confidenceScore?: string;
+  analysisDetails?: unknown;
+  aiInsights?: string;
+  suggestedPortionSize?: string;
+  estimatedCalories?: number;
+  estimatedProtein?: string;
+  estimatedCarbs?: string;
+  estimatedFat?: string;
+  imageUrl?: string;
+  imageHash?: string;
+  analysisTimestamp?: Date;
 }
+
+export interface WeeklyStats {
+  id: number;
+  userId: number;
+  averageCalories: number;
+  mealsTracked: number;
+  averageProtein: number;
+  healthiestDay: string;
+  weekStarting: Date;
+  caloriesByDay: Record<string, number>;
+  macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
+}
+
+export interface InsertWeeklyStats {
+  userId: number;
+  averageCalories: number;
+  mealsTracked: number;
+  averageProtein: number;
+  healthiestDay: string;
+  weekStarting: Date;
+  caloriesByDay: Record<string, number>;
+  macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
+}
+
+export interface NutritionGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface SiteContent {
+  id: number;
+  key: string;
+  value: string;
+}
+
+export interface AIConfig {
+  id: number;
+  provider: string;
+  apiKey: string;
+  model: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Re-export database table schemas from server-specific files
+// Note: This is a workaround for the schema organization issue
+export * from '../server/src/db/schemas/users';
+export * from '../server/src/db/schemas/mealAnalyses';
+export * from '../server/src/db/schemas/weeklyStats';
+export * from '../server/src/db/schemas/siteContent';
+export * from '../server/src/db/schemas/nutritionGoals';
+export * from '../server/src/db/schemas/aiConfig';
+export * from '../server/src/db/schemas/appConfig';
+export * from '../server/src/db/schemas/languages';
+export * from '../server/src/db/schemas/plannedMeals';
+export * from '../server/src/db/schemas/importedRecipes';
+export * from '../server/src/db/schemas/referralSettings';
+export * from '../server/src/db/schemas/referralCommissions';
+
+export const registerSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+export const insertUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+});
+
+export const insertMealAnalysisSchema = z.object({
+  userId: z.number(),
+  foodName: z.string().min(1, "Food name is required"),
+  estimatedCalories: z.number().min(0, "Calories must be positive"),
+  estimatedProtein: z.string().min(0, "Protein must be positive"),
+  estimatedCarbs: z.string().min(0, "Carbs must be positive"),
+  estimatedFat: z.string().min(0, "Fat must be positive"),
+  fiber: z.number().min(0, "Fiber must be positive").optional(),
+  imageData: z.string().optional(),
+  metadata: z.string().optional(),
+});

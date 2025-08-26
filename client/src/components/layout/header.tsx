@@ -34,28 +34,20 @@ export function Header() {
             <nav className="hidden md:flex space-x-8 items-center">
               {user ? (
                 <>
-                  <Link href="/dashboard">
-                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/dashboard' ? 'text-primary-600' : ''}`}>
-                      Dashboard
-                    </a>
+                  <Link href="/dashboard" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/dashboard' ? 'text-primary-600' : ''}`}>
+                    Dashboard
                   </Link>
-                  <Link href="/history">
-                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/history' ? 'text-primary-600' : ''}`}>
-                      History
-                    </a>
+                  <Link href="/history" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/history' ? 'text-primary-600' : ''}`}>
+                    History
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/try-it">
-                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/try-it' ? 'text-primary-600' : ''}`}>
-                      Try It
-                    </a>
+                  <Link href="/try-it" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/try-it' ? 'text-primary-600' : ''}`}>
+                    Try It
                   </Link>
-                  <Link href="/about">
-                    <a className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/about' ? 'text-primary-600' : ''}`}>
-                      About
-                    </a>
+                  <Link href="/about" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/about' ? 'text-primary-600' : ''}`}>
+                    About
                   </Link>
                 </>
               )}

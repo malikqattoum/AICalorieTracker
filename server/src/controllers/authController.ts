@@ -62,12 +62,23 @@ export default {
     try {
       const { email, password, username } = req.body;
       
+      logger.info('Registration attempt', { email, username, hasPassword: !!password });
+      
       if (!email || !password || !username) {
         throw new ValidationError('Email, password, and username are required');
       }
 
       if (password.length < 8) {
         throw new ValidationError('Password must be at least 8 characters long');
+      }
+
+      // Check database connection before proceeding
+      try {
+        const connectionTest = await UserService.testDatabaseConnection();
+        logger.info('Database connection test', { success: connectionTest });
+      } catch (dbError) {
+        logger.error('Database connection test failed', dbError);
+        throw new Error('Database connection failed');
       }
 
       const user = await UserService.createUser(email, password, username);
@@ -95,7 +106,7 @@ export default {
           timestamp: new Date()
         });
       } else {
-        res.status(400).json({
+        res.status(500).json({
           success: false,
           message: 'Registration failed',
           error: error instanceof Error ? error.message : 'Unknown error',

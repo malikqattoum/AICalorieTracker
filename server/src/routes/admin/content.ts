@@ -11,11 +11,22 @@ router.use(isAdmin);
 router.get('/:key', async (req, res) => {
   try {
     const key = req.params.key;
+    console.log(`[ADMIN CONTENT] Attempting to fetch content for key: ${key}`);
+    console.log(`[ADMIN CONTENT] Storage provider:`, storage.constructor.name);
+    console.log(`[ADMIN CONTENT] User object:`, req.user);
+    
     const value = await storage.getSiteContent(key);
-    res.json({ key, value }); 
+    console.log(`[ADMIN CONTENT] Successfully fetched content for key: ${key}, value:`, value);
+    res.json({ key, value });
   } catch (error) {
-    console.error(`Error fetching site content for key ${req.params.key}:`, error);
-    res.status(500).json({ message: 'Failed to fetch site content' });
+    console.error(`[ADMIN CONTENT] Error fetching site content for key ${req.params.key}:`, error);
+    console.error(`[ADMIN CONTENT] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+    console.error(`[ADMIN CONTENT] User object at error:`, req.user);
+    res.status(500).json({
+      message: 'Failed to fetch site content',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      key: req.params.key
+    });
   }
 });
 

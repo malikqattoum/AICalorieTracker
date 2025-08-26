@@ -1,29 +1,30 @@
-import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { Link, Redirect } from "wouter";
+import { useAuth } from "../hooks/use-auth";
+import { AuthErrorBoundary } from "../components/auth/auth-error-boundary";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Redirect } from "wouter";
-import { Leaf, Utensils, ChevronRight } from "lucide-react";
-import { Header } from "@/components/layout/header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
+import { Separator } from "../components/ui/separator";
+import { Mail, Lock, User, Apple, Leaf, Utensils, ChevronRight } from "lucide-react";
+import { Header } from "../components/layout/header";
 
-// Create schemas for login and registration
 const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  username: z.string().min(1, "Username or email is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Please enter a valid email address"),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -33,10 +34,9 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const { user, loginMutation, registerMutation } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>("login");
-  
-  // Login form
+
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -45,24 +45,39 @@ export default function AuthPage() {
     },
   });
 
-  // Register form
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
       username: "",
       password: "",
       confirmPassword: "",
-      firstName: "",
-      lastName: "",
     },
   });
 
-  const onLoginSubmit = (data: LoginFormValues) => {
-    loginMutation.mutate(data);
+  const onLoginSubmit = async (formData: LoginFormValues) => {
+    try {
+      await loginMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
   };
 
-  const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate(data);
+  const onRegisterSubmit = async (formData: RegisterFormValues) => {
+    try {
+      await registerMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error("Registration failed:", error);
+    }
+  };
+
+  const handleSocialAuth = (provider: 'google' | 'apple') => {
+    // Placeholder for social authentication
+    console.log(`${provider} auth not implemented yet`);
+    // For demo purposes, we'll simulate successful auth
+    // In real implementation, this would handle OAuth flow
   };
 
   // If user is already logged in, redirect to dashboard
@@ -71,6 +86,7 @@ export default function AuthPage() {
   }
 
   return (
+    <AuthErrorBoundary>
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header />
       {/* Left side - Forms */}
@@ -84,76 +100,111 @@ export default function AuthPage() {
             <p className="text-neutral-600 mt-2">AI-powered calorie estimation</p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Welcome back</CardTitle>
-                  <CardDescription>Enter your credentials to sign in</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                      <FormField
-                        control={loginForm.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Your username" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Your password" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <Button 
-                        type="submit" 
-                        className="w-full" 
-                        disabled={loginMutation.isPending}
-                      >
-                        {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create an account</CardTitle>
-                  <CardDescription>Enter your details to sign up</CardDescription>
-                </CardHeader>
-                <CardContent>
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex rounded-lg bg-neutral-100 p-1">
+                <button
+                  onClick={() => setActiveTab('login')}
+                  className={`flex-1 text-sm font-medium py-2 px-3 rounded-md transition-colors ${
+                    activeTab === 'login'
+                      ? 'bg-white text-neutral-900 shadow-sm'
+                      : 'text-neutral-600 hover:text-neutral-900'
+                  }`}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => setActiveTab('register')}
+                  className={`flex-1 text-sm font-medium py-2 px-3 rounded-md transition-colors ${
+                    activeTab === 'register'
+                      ? 'bg-white text-neutral-900 shadow-sm'
+                      : 'text-neutral-600 hover:text-neutral-900'
+                  }`}
+                >
+                  Register
+                </button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {activeTab === 'login' ? (
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="username"
+                      render={({ field }: { field: any }) => (
+                        <FormItem>
+                          <FormLabel>Username or Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="johndoe or john@example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }: { field: any }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="Your password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={loginMutation.isPending}
+                    >
+                      {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
+                    </Button>
+                  </form>
+                </Form>
+              ) : (
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialAuth('google')}
+                    className="w-full flex items-center justify-center gap-3 h-11"
+                    disabled
+                  >
+                    <Mail className="h-5 w-5 text-red-500" />
+                    Continue with Google
+                    <span className="text-xs text-neutral-400 ml-2">(Coming Soon)</span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSocialAuth('apple')}
+                    className="w-full flex items-center justify-center gap-3 h-11"
+                    disabled
+                  >
+                    <Apple className="h-5 w-5" />
+                    Continue with Apple
+                    <span className="text-xs text-neutral-400 ml-2">(Coming Soon)</span>
+                  </Button>
+
+                  <div className="relative my-6">
+                    <Separator />
+                    <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-neutral-500">
+                      or register with email
+                    </span>
+                  </div>
+
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={registerForm.control}
                           name="firstName"
-                          render={({ field }) => (
+                          render={({ field }: { field: any }) => (
                             <FormItem>
                               <FormLabel>First Name</FormLabel>
                               <FormControl>
@@ -167,7 +218,7 @@ export default function AuthPage() {
                         <FormField
                           control={registerForm.control}
                           name="lastName"
-                          render={({ field }) => (
+                          render={({ field }: { field: any }) => (
                             <FormItem>
                               <FormLabel>Last Name</FormLabel>
                               <FormControl>
@@ -181,12 +232,26 @@ export default function AuthPage() {
                       
                       <FormField
                         control={registerForm.control}
+                        name="email"
+                        render={({ field }: { field: any }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="john@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
                         name="username"
-                        render={({ field }) => (
+                        render={({ field }: { field: any }) => (
                           <FormItem>
                             <FormLabel>Username</FormLabel>
                             <FormControl>
-                              <Input placeholder="Choose a username" {...field} />
+                              <Input placeholder="johndoe" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -196,7 +261,7 @@ export default function AuthPage() {
                       <FormField
                         control={registerForm.control}
                         name="password"
-                        render={({ field }) => (
+                        render={({ field }: { field: any }) => (
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
@@ -210,7 +275,7 @@ export default function AuthPage() {
                       <FormField
                         control={registerForm.control}
                         name="confirmPassword"
-                        render={({ field }) => (
+                        render={({ field }: { field: any }) => (
                           <FormItem>
                             <FormLabel>Confirm Password</FormLabel>
                             <FormControl>
@@ -230,10 +295,14 @@ export default function AuthPage() {
                       </Button>
                     </form>
                   </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <p className="text-xs text-neutral-500 text-center">
+            By signing in or creating an account, you agree to our Terms of Service and Privacy Policy
+          </p>
         </div>
       </div>
       
@@ -282,5 +351,6 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+    </AuthErrorBoundary>
   );
 }

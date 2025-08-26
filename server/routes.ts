@@ -10,6 +10,9 @@ import { z } from "zod";
 import Stripe from "stripe";
 import { getNutritionCoachReply } from "./openai";
 import { aiCache } from "./ai-cache";
+import { db } from "./src/db";
+import { users, nutritionGoals } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -20,15 +23,76 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.log('[ROUTES] Registering routes...');
+  
   // Set up authentication routes
+  console.log('[ROUTES] Setting up auth routes...');
   setupAuth(app);
+  console.log('[ROUTES] Auth routes set up');
 
-  // Protected route middleware
-  const isAuthenticated = (req: Request, res: Response, next: Function) => {
-    if (req.isAuthenticated()) {
-      return next();
+  // Simple test endpoint for mobile app connectivity
+  app.get('/api/simple-test', (req, res) => {
+    console.log('=== SIMPLE TEST ENDPOINT HIT ===');
+    console.log('Request received from mobile app');
+    console.log('Sending connectivity test response');
+    
+    res.json({
+      success: true,
+      message: 'Mobile app connectivity test successful',
+      timestamp: new Date().toISOString(),
+      server: 'AI Calorie Tracker Production Backend',
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      ip: req.ip,
+      headers: {
+        'user-agent': req.get('User-Agent'),
+        'x-forwarded-for': req.get('X-Forwarded-For'),
+        'x-real-ip': req.get('X-Real-IP')
+      }
+    });
+  });
+
+  // Enhanced authentication middleware for onboarding endpoint
+  const isAuthenticated = async (req: Request, res: Response, next: Function) => {
+    try {
+      console.log(`[AUTH] Authentication check for onboarding endpoint`);
+      
+      // Check for JWT token
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        console.log(`[AUTH] JWT token received for onboarding`);
+        
+        // Verify JWT token
+        const jwt = require('jsonwebtoken');
+        const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+        
+        console.log(`[AUTH] Token decoded, userId: ${decoded.userId}`);
+        
+        // Get user from storage
+        const user = await storage.getUser(decoded.userId);
+        if (user && user.isActive) {
+          console.log(`[AUTH] User authenticated via JWT:`, user.id);
+          (req as any).user = user;
+          return next();
+        }
+      }
+      
+      console.log(`[AUTH] Authentication failed for onboarding endpoint`);
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+        error: "Valid authentication required"
+      });
+    } catch (error) {
+      console.error(`[AUTH] Authentication error:`, error);
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+        error: error instanceof Error ? error.message : "Authentication failed"
+      });
     }
-    return res.status(401).json({ message: "Unauthorized" });
   };
 
   // Get meal analyses for the current user
@@ -115,21 +179,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
         userId,
+        mealId: 0, // Will be set by database or can be updated later
         foodName: `Complex Meal (${analysisResults.length} items)`,
-        calories: combinedAnalysis.totalCalories,
-        protein: combinedAnalysis.totalProtein,
-        carbs: combinedAnalysis.totalCarbs,
-        fat: combinedAnalysis.totalFat,
-        fiber: analysisResults.reduce((sum, item) => sum + (item.fiber || 0), 0),
-        imageData: validatedData.images[0], // Store first image only
-        // Store complex meal metadata
-        metadata: JSON.stringify({
+        estimatedCalories: combinedAnalysis.totalCalories,
+        estimatedProtein: combinedAnalysis.totalProtein.toString(),
+        estimatedCarbs: combinedAnalysis.totalCarbs.toString(),
+        estimatedFat: combinedAnalysis.totalFat.toString(),
+        imageUrl: validatedData.images[0], // Store first image only
+        analysisDetails: {
           mealScore: combinedAnalysis.mealScore,
           nutritionalBalance: combinedAnalysis.nutritionalBalance,
           foodItems: analysisResults.length,
           isComplexMeal: true,
           referenceObject: analysisResults[0]?.referenceObject
-        })
+        }
       });
 
       res.status(201).json(mealAnalysis);
@@ -209,8 +272,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
         userId,
-        ...analysis,
-        imageData: validatedData.imageData
+        mealId: 0, // Will be set by database or can be updated later
+        foodName: analysis.foodName,
+        estimatedCalories: analysis.calories,
+        estimatedProtein: analysis.protein?.toString(),
+        estimatedCarbs: analysis.carbs?.toString(),
+        estimatedFat: analysis.fat?.toString(),
+        imageUrl: validatedData.imageData,
+        analysisDetails: analysis.analysisDetails
       });
 
       res.status(201).json(mealAnalysis);
@@ -488,61 +557,269 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Onboarding completion endpoint
-  app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const onboardingData = req.body;
-
-      // Update user with onboarding data
-      await storage.updateUserOnboarding(userId, {
-        age: onboardingData.age,
-        gender: onboardingData.gender,
-        height: onboardingData.height,
-        weight: onboardingData.weight,
-        activityLevel: onboardingData.activityLevel,
-        primaryGoal: onboardingData.primaryGoal,
-        targetWeight: onboardingData.targetWeight,
-        timeline: onboardingData.timeline,
-        dietaryPreferences: JSON.stringify(onboardingData.dietaryPreferences || []),
-        allergies: JSON.stringify(onboardingData.allergies || []),
-        aiMealSuggestions: onboardingData.aiMealSuggestions !== undefined ? onboardingData.aiMealSuggestions : true,
-        aiChatAssistantName: onboardingData.aiChatAssistantName || 'NutriBot',
-        notificationsEnabled: onboardingData.notificationsEnabled !== undefined ? onboardingData.notificationsEnabled : true,
-        onboardingCompleted: true,
-        onboardingCompletedAt: new Date(),
+// Onboarding completion endpoint with comprehensive error handling and transaction support
+app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
+  const startTime = Date.now();
+  const userId = req.user!.id;
+  
+  console.log(`[ONBOARDING] Starting onboarding process for user ${userId}`);
+  
+  try {
+    // Validate request body structure
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request body",
+        error: "Request body must be an object"
       });
+    }
 
-      // Calculate and create initial nutrition goals
-      const bmr = calculateBMR(onboardingData.weight, onboardingData.height, onboardingData.age, onboardingData.gender);
-      const activityMultiplier = getActivityMultiplier(onboardingData.activityLevel);
-      const tdee = bmr * activityMultiplier;
-      
-      let dailyCalories = tdee;
-      if (onboardingData.primaryGoal === 'lose-weight') {
-        dailyCalories = tdee - 500; // 500 calorie deficit for weight loss
-      } else if (onboardingData.primaryGoal === 'gain-muscle') {
-        dailyCalories = tdee + 300; // 300 calorie surplus for muscle gain
+    const onboardingData = req.body;
+
+    // Comprehensive validation schema
+    const validateOnboardingData = (data: any) => {
+      const errors: string[] = [];
+
+      // Required fields validation
+      const requiredFields = ['age', 'gender', 'height', 'weight', 'activityLevel', 'primaryGoal'];
+      for (const field of requiredFields) {
+        if (data[field] === undefined || data[field] === null || data[field] === '') {
+          errors.push(`${field} is required`);
+        }
       }
 
-      // Create nutrition goals
-      await storage.createNutritionGoals(userId, {
-        dailyCalories: Math.round(dailyCalories),
-        calories: Math.round(dailyCalories),
-        protein: Math.round(onboardingData.weight * 2.2), // 2.2g per kg body weight
-        carbs: Math.round((dailyCalories * 0.45) / 4), // 45% of calories from carbs
-        fat: Math.round((dailyCalories * 0.30) / 9), // 30% of calories from fat
-        weight: onboardingData.weight,
-        weeklyWorkouts: getWeeklyWorkoutsFromActivity(onboardingData.activityLevel),
-        waterIntake: 8, // 8 glasses per day default
-      });
+      // Numeric fields validation
+      const numericFields = ['age', 'height', 'weight'];
+      for (const field of numericFields) {
+        const value = Number(data[field]);
+        if (isNaN(value) || value <= 0) {
+          errors.push(`${field} must be a positive number`);
+        } else if (field === 'age' && (value < 13 || value > 120)) {
+          errors.push('age must be between 13 and 120');
+        } else if (field === 'height' && (value < 50 || value > 300)) {
+          errors.push('height must be between 50cm and 300cm');
+        } else if (field === 'weight' && (value < 20 || value > 500)) {
+          errors.push('weight must be between 20kg and 500kg');
+        }
+      }
 
-      res.json({ success: true, message: "Onboarding completed successfully" });
-    } catch (error) {
-      console.error("Error completing onboarding:", error);
-      res.status(500).json({ message: "Failed to complete onboarding" });
+      // Target weight validation
+      if (data.targetWeight !== undefined) {
+        const targetWeight = Number(data.targetWeight);
+        if (isNaN(targetWeight) || targetWeight <= 0) {
+          errors.push('targetWeight must be a positive number');
+        } else if (targetWeight < 20 || targetWeight > 500) {
+          errors.push('targetWeight must be between 20kg and 500kg');
+        }
+      }
+
+      // Activity level validation
+      const validActivityLevels = ['sedentary', 'light', 'moderate', 'active', 'extra-active'];
+      if (!validActivityLevels.includes(data.activityLevel)) {
+        errors.push('Invalid activity level. Must be one of: ' + validActivityLevels.join(', '));
+      }
+
+      // Primary goal validation
+      const validGoals = ['lose-weight', 'maintain-weight', 'gain-muscle'];
+      if (!validGoals.includes(data.primaryGoal)) {
+        errors.push('Invalid primary goal. Must be one of: ' + validGoals.join(', '));
+      }
+
+      // Gender validation
+      const validGenders = ['male', 'female', 'other'];
+      if (!validGenders.includes(data.gender)) {
+        errors.push('Invalid gender. Must be one of: ' + validGenders.join(', '));
+      }
+
+      // Timeline validation (if provided)
+      if (data.timeline !== undefined) {
+        const validTimelines = ['1-3 months', '3-6 months', '6-12 months', '1+ years'];
+        if (!validTimelines.includes(data.timeline)) {
+          errors.push('Invalid timeline. Must be one of: ' + validTimelines.join(', '));
+        }
+      }
+
+      // Ensure arrays for JSON fields
+      if (data.dietaryPreferences !== undefined && !Array.isArray(data.dietaryPreferences)) {
+        errors.push('dietaryPreferences must be an array');
+      }
+
+      if (data.allergies !== undefined && !Array.isArray(data.allergies)) {
+        errors.push('allergies must be an array');
+      }
+
+      // Boolean field validation
+      if (data.aiMealSuggestions !== undefined && typeof data.aiMealSuggestions !== 'boolean') {
+        errors.push('aiMealSuggestions must be a boolean');
+      }
+
+      if (data.notificationsEnabled !== undefined && typeof data.notificationsEnabled !== 'boolean') {
+        errors.push('notificationsEnabled must be a boolean');
+      }
+
+      return errors;
+    };
+
+    // Validate input data
+    const validationErrors = validateOnboardingData(onboardingData);
+    if (validationErrors.length > 0) {
+      console.log(`[ONBOARDING] Validation failed for user ${userId}:`, validationErrors);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validationErrors
+      });
     }
-  });
+
+    // Convert numeric fields to proper types
+    const processedData = {
+      ...onboardingData,
+      age: Number(onboardingData.age),
+      height: Number(onboardingData.height),
+      weight: Number(onboardingData.weight),
+      targetWeight: onboardingData.targetWeight ? Number(onboardingData.targetWeight) : null,
+      aiMealSuggestions: onboardingData.aiMealSuggestions !== undefined ? Boolean(onboardingData.aiMealSuggestions) : true,
+      aiChatAssistantName: onboardingData.aiChatAssistantName || 'NutriBot',
+      notificationsEnabled: onboardingData.notificationsEnabled !== undefined ? Boolean(onboardingData.notificationsEnabled) : true,
+    };
+
+    // Ensure arrays for JSON fields
+    const dietaryPreferences = Array.isArray(processedData.dietaryPreferences) ? processedData.dietaryPreferences : [];
+    const allergies = Array.isArray(processedData.allergies) ? processedData.allergies : [];
+
+    console.log(`[ONBOARDING] Processing onboarding data for user ${userId}`);
+
+    // Use transaction for data consistency with better error handling
+    try {
+      await db.transaction(async (tx) => {
+        // Check if user exists first
+        const existingUser = await tx.select().from(users).where(eq(users.id, userId));
+        if (!existingUser || existingUser.length === 0) {
+          throw new Error(`User with ID ${userId} not found`);
+        }
+
+        // Update user with onboarding data
+        await tx.update(users)
+          .set({
+            age: processedData.age,
+            gender: processedData.gender,
+            height: processedData.height,
+            weight: processedData.weight,
+            activityLevel: processedData.activityLevel,
+            primaryGoal: processedData.primaryGoal,
+            targetWeight: processedData.targetWeight,
+            timeline: processedData.timeline,
+            dietaryPreferences: JSON.stringify(dietaryPreferences),
+            allergies: JSON.stringify(allergies),
+            aiMealSuggestions: processedData.aiMealSuggestions,
+            aiChatAssistantName: processedData.aiChatAssistantName,
+            notificationsEnabled: processedData.notificationsEnabled,
+            onboardingCompleted: true,
+            onboardingCompletedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, userId));
+
+        // Calculate and create initial nutrition goals
+        const bmr = calculateBMR(processedData.weight, processedData.height, processedData.age, processedData.gender);
+        const activityMultiplier = getActivityMultiplier(processedData.activityLevel);
+        const tdee = bmr * activityMultiplier;
+
+        let dailyCalories = tdee;
+        if (processedData.primaryGoal === 'lose-weight') {
+          dailyCalories = tdee - 500; // 500 calorie deficit for weight loss
+        } else if (processedData.primaryGoal === 'gain-muscle') {
+          dailyCalories = tdee + 300; // 300 calorie surplus for muscle gain
+        }
+
+        // Check if nutrition goals already exist for this user
+        const existingGoals = await tx.select().from(nutritionGoals).where(eq(nutritionGoals.userId, userId));
+        
+        if (existingGoals && existingGoals.length > 0) {
+          // Update existing nutrition goals
+          await tx.update(nutritionGoals)
+            .set({
+              dailyCalories: Math.round(dailyCalories),
+              calories: Math.round(dailyCalories),
+              protein: Math.round(processedData.weight * 2.2), // 2.2g per kg body weight
+              carbs: Math.round((dailyCalories * 0.45) / 4), // 45% of calories from carbs
+              fat: Math.round((dailyCalories * 0.30) / 9), // 30% of calories from fat
+              weight: processedData.weight,
+              weeklyWorkouts: getWeeklyWorkoutsFromActivity(processedData.activityLevel),
+              waterIntake: 8, // 8 glasses per day default
+              updatedAt: new Date(),
+            })
+            .where(eq(nutritionGoals.userId, userId));
+        } else {
+          // Create new nutrition goals
+          await tx.insert(nutritionGoals).values({
+            userId,
+            dailyCalories: Math.round(dailyCalories),
+            calories: Math.round(dailyCalories),
+            protein: Math.round(processedData.weight * 2.2), // 2.2g per kg body weight
+            carbs: Math.round((dailyCalories * 0.45) / 4), // 45% of calories from carbs
+            fat: Math.round((dailyCalories * 0.30) / 9), // 30% of calories from fat
+            weight: processedData.weight,
+            weeklyWorkouts: getWeeklyWorkoutsFromActivity(processedData.activityLevel),
+            waterIntake: 8, // 8 glasses per day default
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      });
+    } catch (dbError) {
+      console.error(`[ONBOARDING] Database transaction failed for user ${userId}:`, dbError);
+      throw new Error(`Database operation failed: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`[ONBOARDING] Onboarding completed successfully for user ${userId} in ${duration}ms`);
+
+    // Calculate nutrition goals for response
+    const bmr = calculateBMR(processedData.weight, processedData.height, processedData.age, processedData.gender);
+    const activityMultiplier = getActivityMultiplier(processedData.activityLevel);
+    const tdee = bmr * activityMultiplier;
+    let dailyCalories = tdee;
+    if (processedData.primaryGoal === 'lose-weight') {
+      dailyCalories = tdee - 500;
+    } else if (processedData.primaryGoal === 'gain-muscle') {
+      dailyCalories = tdee + 300;
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Onboarding completed successfully",
+      data: {
+        userId,
+        nutritionGoals: {
+          dailyCalories: Math.round(dailyCalories),
+          calories: Math.round(dailyCalories),
+          protein: Math.round(processedData.weight * 2.2),
+          carbs: Math.round((dailyCalories * 0.45) / 4),
+          fat: Math.round((dailyCalories * 0.30) / 9),
+        },
+        completedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[ONBOARDING] Error completing onboarding for user ${userId} after ${duration}ms:`, error);
+    
+    // Provide more detailed error information in development
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    res.status(500).json({
+      success: false,
+      message: "Failed to complete onboarding",
+      error: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
+      ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
+      duration,
+      userId
+    });
+  }
+});
 
   // AI Configuration Admin Routes
   app.get("/api/admin/ai-config", isAuthenticated, async (req, res) => {
@@ -655,6 +932,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.use('/api/wearable', wearableRouter);
   } catch (error) {
     console.error('Error loading wearable routes:', error);
+  }
+
+  // Set up authentication routes after public routes are defined
+  // Import and mount auth routes
+  try {
+    const authRouter = require('./src/routes/auth').default;
+    app.use('/api/auth', authRouter);
+    console.log('✓ Auth routes mounted at /api/auth');
+  } catch (error) {
+    console.error('Error loading auth routes:', error);
   }
 
   const httpServer = createServer(app);

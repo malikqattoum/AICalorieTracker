@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Logger } from '../utils/logger';
-import { securityUtils } from '../config/security';
+import { securityUtils } from './security';
 
 const logger = new Logger('SecureSession');
 

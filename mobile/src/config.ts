@@ -6,14 +6,17 @@ const ENV = {
     apiUrl: 'http://localhost:3002',
     enableLogging: true,
     useMockData: false, // Changed to false for real backend integration
+    testApiUrl: 'http://localhost:3003', // Test server for connectivity checks
   },
   staging: {
     apiUrl: 'https://staging-api.aicalorietracker.com',
+    testApiUrl: 'https://staging-api.aicalorietracker.com',
     enableLogging: true,
     useMockData: false,
   },
   production: {
     apiUrl: 'https://api.aicalorietracker.com',
+    testApiUrl: 'https://api.aicalorietracker.com',
     enableLogging: false,
     useMockData: false,
   },
@@ -33,6 +36,7 @@ const currentEnv = getEnvironment();
 
 // API configuration
 export const API_URL = Constants.expoConfig?.extra?.apiUrl || ENV[currentEnv].apiUrl;
+export const TEST_API_URL = Constants.expoConfig?.extra?.testApiUrl || ENV[currentEnv].testApiUrl;
 export const ENABLE_LOGGING = Constants.expoConfig?.extra?.enableLogging ?? ENV[currentEnv].enableLogging;
 export const USE_MOCK_DATA = Constants.expoConfig?.extra?.useMockData ?? ENV[currentEnv].useMockData;
 export const SENTRY_DSN = Constants.expoConfig?.extra?.sentryDsn || '';

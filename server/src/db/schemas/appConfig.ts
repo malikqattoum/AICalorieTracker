@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { int, varchar, timestamp, text, mysqlTable } from 'drizzle-orm/mysql-core';
+import { z } from 'zod';
 
 // App Config Table
 export const appConfig = mysqlTable('app_config', {
@@ -10,6 +11,14 @@ export const appConfig = mysqlTable('app_config', {
   type: varchar('type', { length: 50 }).notNull().default('string'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Zod schema for app config validation
+export const insertAppConfigSchema = z.object({
+  key: z.string().min(1, "Key is required").max(255, "Key must be less than 255 characters"),
+  value: z.string().optional(),
+  description: z.string().optional(),
+  type: z.string().min(1, "Type is required").default('string'),
 });
 
 // Create indexes for better performance
