@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { useAuth } from "../../hooks/use-auth";
+import { apiRequest } from "../../lib/queryClient";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Separator } from "../ui/separator";
 import { CheckCircle, Sparkles, User, Target, Utensils, Bell, Loader2 } from "lucide-react";
-import { OnboardingData } from "@/pages/onboarding-page";
+import { OnboardingData } from "../../pages/onboarding-page";
 import { useLocation } from "wouter";
 
 interface FinalSummaryStepProps {
@@ -30,22 +30,28 @@ export default function FinalSummaryStep({
     setIsCompleting(true);
     
     try {
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
       // Validate required fields before sending
       const requiredFields = ['age', 'gender', 'height', 'weight', 'activityLevel', 'primaryGoal'];
-      const missingFields = requiredFields.filter(field => !data[field]);
+      const missingFields = requiredFields.filter(field => !(data as any)[field]);
       
       if (missingFields.length > 0) {
         throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
       }
 
       // Validate numeric fields
-      if (data.age && (data.age < 13 || data.age > 120)) {
+      if ((data as any).age && ((data as any).age < 13 || (data as any).age > 120)) {
         throw new Error('Age must be between 13 and 120');
       }
-      if (data.height && (data.height < 100 || data.height > 250)) {
+      if ((data as any).height && ((data as any).height < 100 || (data as any).height > 250)) {
         throw new Error('Height must be between 100cm and 250cm');
       }
-      if (data.weight && (data.weight < 30 || data.weight > 300)) {
+      if ((data as any).weight && ((data as any).weight < 30 || (data as any).weight > 300)) {
         throw new Error('Weight must be between 30kg and 300kg');
       }
 
@@ -53,10 +59,10 @@ export default function FinalSummaryStep({
       const validActivityLevels = ['sedentary', 'light', 'moderate', 'active', 'extra-active'];
       const validGoals = ['lose-weight', 'maintain-weight', 'gain-muscle'];
       
-      if (!validActivityLevels.includes(data.activityLevel || '')) {
+      if (!validActivityLevels.includes((data as any).activityLevel || '')) {
         throw new Error('Invalid activity level selected');
       }
-      if (!validGoals.includes(data.primaryGoal || '')) {
+      if (!validGoals.includes((data as any).primaryGoal || '')) {
         throw new Error('Invalid primary goal selected');
       }
 
@@ -84,7 +90,17 @@ export default function FinalSummaryStep({
       }
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      
+      // Handle authentication errors specifically
+      if (error instanceof Error && error.message.includes('401')) {
+        alert('Authentication failed. Please log in again.');
+        // Clear token and redirect to login
+        localStorage.removeItem('authToken');
+        setLocation('/login');
+      } else {
+        alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      }
+      
       setIsCompleting(false);
     }
   };

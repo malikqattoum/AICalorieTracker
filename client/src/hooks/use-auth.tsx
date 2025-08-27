@@ -68,16 +68,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/auth/login", credentials);
-      const data = await res.json();
+      const responseData = await res.json();
       
-      // Extract JWT token from response if available
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-        // Add token to user object
-        data.token = data.token;
+      // Handle new response format with user and tokens
+      if (responseData.tokens && responseData.user) {
+        // Store the access token
+        localStorage.setItem('authToken', responseData.tokens.accessToken);
+        // Return user data
+        return responseData.user;
+      } else if (responseData.token) {
+        // Fallback for old format
+        localStorage.setItem('authToken', responseData.token);
+        return responseData;
       }
       
-      return data;
+      return responseData;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/auth/me"], user);
@@ -102,11 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/auth/register", credentials);
       const responseData = await res.json();
       
-      // Extract JWT token from response if available
-      if (responseData.token) {
+      // Handle new response format with user and tokens
+      if (responseData.tokens && responseData.user) {
+        // Store the access token
+        localStorage.setItem('authToken', responseData.tokens.accessToken);
+        // Return user data
+        return responseData.user;
+      } else if (responseData.token) {
+        // Fallback for old format
         localStorage.setItem('authToken', responseData.token);
-        // Add token to user object
-        responseData.token = responseData.token;
+        return responseData;
       }
       
       return responseData;

@@ -92,6 +92,10 @@ export default function AccountCreationStep({
       onNext();
     } catch (error) {
       console.error('Registration failed:', error);
+      // Handle authentication errors specifically
+      if (error instanceof Error && error.message.includes('401')) {
+        alert('Authentication failed. Please try again.');
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 // API Configuration for Web App
 const API_CONFIG = {
   // Development API URL
-  development: 'http://localhost:5001',
+  development: 'http://localhost:3000',
   
   // Production API URL
   production: 'https://api.aicalorietracker.com',

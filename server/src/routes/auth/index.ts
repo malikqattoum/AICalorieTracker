@@ -3,6 +3,7 @@ import { registerRateLimiter } from '../../../rate-limiter';
 import { z } from 'zod';
 import { storage } from '../../../storage-provider';
 import bcrypt from 'bcrypt';
+import JWTService from '../../services/jwtService';
 
 const router = Router();
 
@@ -91,11 +92,20 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
       return res.status(500).json({ message: "Error creating user account" });
     }
     
+    // Generate JWT tokens for the newly created user
+    console.log('[REGISTER] Generating JWT tokens...');
+    const tokens = JWTService.generateTokens(user);
+    console.log('[REGISTER] Tokens generated successfully');
+    
     // Remove password from response
     const { password, ...userWithoutPassword } = user;
     console.log('[REGISTER] User creation completed successfully');
     
-    res.status(201).json(userWithoutPassword);
+    // Return user data with tokens
+    res.status(201).json({
+      user: userWithoutPassword,
+      tokens
+    });
   } catch (error) {
     console.error('=== [REGISTER] ERROR DEBUG ===');
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -146,10 +156,18 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
+    // Generate JWT tokens for the authenticated user
+    console.log('[LOGIN] Generating JWT tokens...');
+    const tokens = JWTService.generateTokens(user);
+    console.log('[LOGIN] Tokens generated successfully');
+    
     // Remove password from response
     const { password, ...userWithoutPassword } = user;
     
-    res.json(userWithoutPassword);
+    res.json({
+      user: userWithoutPassword,
+      tokens
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Invalid request data", errors: error.errors });
