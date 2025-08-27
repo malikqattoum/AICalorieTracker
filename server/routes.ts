@@ -1,7 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage-provider";
-import { setupAuth } from "./auth";
 import { analyzeFoodImage, getNutritionTips, getSmartMealSuggestions } from "./openai";
 import { analyzeMultiFoodImage } from "./openai";
 import { aiService } from "./ai-service";
@@ -13,7 +12,8 @@ import { aiCache } from "./ai-cache";
 import { db } from "./src/db";
 import { users, nutritionGoals } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { authenticate } from "./src/middleware/auth";
+// import { authenticate } from "./src/middleware/auth";
+import jwt from "jsonwebtoken";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -26,10 +26,6 @@ if (process.env.STRIPE_SECRET_KEY) {
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('[ROUTES] Registering routes...');
   
-  // Set up authentication routes
-  console.log('[ROUTES] Setting up auth routes...');
-  setupAuth(app);
-  console.log('[ROUTES] Auth routes set up');
 
   // Simple test endpoint for mobile app connectivity
   app.get('/api/simple-test', (req, res) => {
@@ -519,8 +515,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 // Onboarding completion endpoint with comprehensive error handling and transaction support
 app.post("/api/onboarding/complete", authenticate, async (req, res) => {
   const startTime = Date.now();
-  const userId = req.user!.id;
   
+  // Get user ID from authenticated request
+  const userId = req.user!.id;
   console.log(`[ONBOARDING] Starting onboarding process for user ${userId}`);
   
   try {
@@ -765,6 +762,7 @@ app.post("/api/onboarding/complete", authenticate, async (req, res) => {
     });
   }
 });
+
 
   // AI Configuration Admin Routes
   app.get("/api/admin/ai-config", authenticate, async (req, res) => {

@@ -14,6 +14,7 @@ import { sessionMiddleware, validateSession, refreshSession } from "./src/middle
 import { securityAuditService, securityAuditMiddleware } from "./src/services/securityAuditService";
 import { PORT } from "./config";
 import { createServer, type Server } from "http";
+import jwt from "jsonwebtoken";
 
 export const app = express();
 
@@ -84,71 +85,6 @@ app.post('/api/test-minimal-middleware', (req, res) => {
   }
 });
 
-// Test onboarding endpoint without authentication - placed at the very beginning
-app.post('/api/test-onboarding-no-auth', express.json({ limit: '50mb' }), (req, res) => {
-  log('=== ONBOARDING NO AUTH TEST ENDPOINT HIT ===');
-  log('Request received for onboarding no auth test');
-  log('Request body:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    // Simulate the onboarding endpoint logic without authentication
-    const onboardingData = req.body;
-    
-    // Validate required fields
-    const requiredFields = ['age', 'gender', 'height', 'weight', 'activityLevel', 'primaryGoal'];
-    for (const field of requiredFields) {
-      if (onboardingData[field] === undefined || onboardingData[field] === null || onboardingData[field] === '') {
-        return res.status(400).json({ message: `${field} is required` });
-      }
-    }
-
-    // Validate numeric fields
-    const numericFields = ['age', 'height', 'weight'];
-    for (const field of numericFields) {
-      const value = Number(onboardingData[field]);
-      if (isNaN(value) || value <= 0) {
-        return res.status(400).json({ message: `${field} must be a positive number` });
-      }
-      onboardingData[field] = value;
-    }
-
-    // Validate targetWeight if provided
-    if (onboardingData.targetWeight) {
-      const targetWeight = Number(onboardingData.targetWeight);
-      if (isNaN(targetWeight) || targetWeight <= 0) {
-        return res.status(400).json({ message: "targetWeight must be a positive number" });
-      }
-      onboardingData.targetWeight = targetWeight;
-    }
-
-    // Validate activity level
-    const validActivityLevels = ['sedentary', 'light', 'moderate', 'active', 'extra-active'];
-    if (!validActivityLevels.includes(onboardingData.activityLevel)) {
-      return res.status(400).json({ message: "Invalid activity level" });
-    }
-
-    // Validate primary goal
-    const validGoals = ['lose-weight', 'maintain-weight', 'gain-muscle'];
-    if (!validGoals.includes(onboardingData.primaryGoal)) {
-      return res.status(400).json({ message: "Invalid primary goal" });
-    }
-
-    log('Onboarding validation successful:', onboardingData);
-    
-    res.json({
-      success: true,
-      message: "Onboarding test completed successfully",
-      data: onboardingData,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    log('Error in onboarding no auth test:', error instanceof Error ? error.message : String(error));
-    res.status(500).json({
-      message: "Failed to complete onboarding test",
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
 
 // Test JSON parsing with minimal middleware
 app.post('/api/test-minimal-json', (req, res) => {

@@ -4,34 +4,11 @@ import { Express } from "express";
 import session from "express-session";
 import bcrypt from "bcrypt";
 import { storage } from "./storage-provider";
-import { User as SelectUser, insertUserSchema } from "@shared/schema";
-import { authRateLimiter, registerRateLimiter } from "./rate-limiter";
-import { z } from "zod";
+import { User as SelectUser } from "@shared/schema";
 
 declare global {
   namespace Express {
     interface User extends SelectUser {}
-  }
-}
-
-async function hashPassword(password: string) {
-  const salt = await bcrypt.genSalt(10);
-  return await bcrypt.hash(password, salt);
-}
-
-async function comparePasswords(supplied: string, stored: string) {
-  console.log('=== PASSWORD COMPARISON DEBUG ===');
-  console.log('Stored password length:', stored.length);
-  console.log('Stored password format:', stored.includes('$2b') ? 'bcrypt' : 'unknown');
-  console.log('Stored password preview:', stored.substring(0, 20) + '...');
-  
-  try {
-    const isValid = await bcrypt.compare(supplied, stored);
-    console.log('Password comparison result:', isValid ? 'VALID' : 'INVALID');
-    return isValid;
-  } catch (error) {
-    console.error('Password comparison error:', error);
-    throw error;
   }
 }
 
@@ -81,7 +58,7 @@ export function setupAuth(app: Express) {
         }
         
         
-        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+        if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
           console.log('Authentication failed: invalid credentials');
           return done(null, false);
         } else {
@@ -108,23 +85,5 @@ export function setupAuth(app: Express) {
   // Registration endpoint is now handled in server/src/routes/auth/index.ts
   // This prevents route conflicts and ensures proper error handling
 
-  app.post("/api/login", authRateLimiter, (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).json({ message: "Invalid username or password" });
-      
-      req.login(user, (err) => {
-        if (err) return next(err);
-        return res.status(200).json(user);
-      });
-    })(req, res, next);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
 
 }

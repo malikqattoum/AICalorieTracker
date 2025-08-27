@@ -257,7 +257,7 @@ export const xssProtection = (req: Request, res: Response, next: NextFunction) =
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE' || req.method === 'PATCH') {
     // Skip CSRF protection for authentication and onboarding endpoints
-    const bypassPaths = ['/api/login', '/api/register', '/api/logout', '/api/auth/', '/api/onboarding/'];
+    const bypassPaths = ['/api/auth/', '/api/onboarding/'];
     if (bypassPaths.some(path => req.path.startsWith(path))) {
       logger.debug('CSRF protection skipped for auth/onboarding endpoint:', req.path);
       return next();

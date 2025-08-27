@@ -276,7 +276,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
   // For APIs, we'll use a token-based approach
   if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE' || req.method === 'PATCH') {
     // Skip CSRF protection for authentication and onboarding endpoints
-    const bypassPaths = ['/api/login', '/api/register', '/api/logout', '/api/auth/', '/api/onboarding/'];
+    const bypassPaths = ['/api/auth/', '/api/onboarding/'];
     if (bypassPaths.some(path => req.path.startsWith(path))) {
       console.log('CSRF protection skipped for auth/onboarding endpoint:', req.path);
       return next();
