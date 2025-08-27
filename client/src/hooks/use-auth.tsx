@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 import {
   useQuery,
   useMutation,
@@ -15,6 +15,7 @@ interface User {
   lastName: string;
   createdAt: Date;
   updatedAt: Date;
+  token?: string; // Optional JWT token for authentication
 }
 import { useLocation } from "wouter";
 import { z } from "zod";
@@ -67,7 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/auth/login", credentials);
-      return await res.json();
+      const data = await res.json();
+      
+      // Extract JWT token from response if available
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+        // Add token to user object
+        data.token = data.token;
+      }
+      
+      return data;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/auth/me"], user);
@@ -90,7 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Omit confirmPassword before sending to API
       const { confirmPassword, ...credentials } = data;
       const res = await apiRequest("POST", "/api/auth/register", credentials);
-      return await res.json();
+      const responseData = await res.json();
+      
+      // Extract JWT token from response if available
+      if (responseData.token) {
+        localStorage.setItem('authToken', responseData.token);
+        // Add token to user object
+        responseData.token = responseData.token;
+      }
+      
+      return responseData;
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/auth/me"], user);
@@ -116,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/me"], null);
+      // Clear token from localStorage
+      localStorage.removeItem('authToken');
       toast({
         title: "Logged out",
         description: "You have been logged out successfully",
@@ -129,6 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+
+  // Check for existing token on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token && !user) {
+      // Token exists but no user data, try to fetch user profile
+      // This will be handled by the existing query
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider

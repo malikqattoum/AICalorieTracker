@@ -72,7 +72,24 @@ export default {
   },
 
   async getUserById(id: number): Promise<User | null> {
-    const [users] = await db.execute('SELECT id, email, username FROM users WHERE id = ?', [id]);
-    return users.length ? users[0] : null;
+    const [users] = await db.execute(`
+      SELECT id, username, email, first_name as firstName, last_name as lastName, created_at as createdAt, updated_at as updatedAt
+      FROM users
+      WHERE id = ? AND is_active = true`,
+      [id]
+    );
+    
+    if (!users.length) return null;
+    
+    const user = users[0];
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      createdAt: new Date(user.createdAt),
+      updatedAt: new Date(user.updatedAt)
+    };
   }
 };

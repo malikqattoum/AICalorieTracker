@@ -13,6 +13,7 @@ import { aiCache } from "./ai-cache";
 import { db } from "./src/db";
 import { users, nutritionGoals } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { authenticate } from "./src/middleware/auth";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -52,51 +53,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Enhanced authentication middleware for onboarding endpoint
-  const isAuthenticated = async (req: Request, res: Response, next: Function) => {
-    try {
-      console.log(`[AUTH] Authentication check for onboarding endpoint`);
-      
-      // Check for JWT token
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.split(' ')[1];
-        console.log(`[AUTH] JWT token received for onboarding`);
-        
-        // Verify JWT token
-        const jwt = require('jsonwebtoken');
-        const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-        
-        console.log(`[AUTH] Token decoded, userId: ${decoded.userId}`);
-        
-        // Get user from storage
-        const user = await storage.getUser(decoded.userId);
-        if (user && user.isActive) {
-          console.log(`[AUTH] User authenticated via JWT:`, user.id);
-          (req as any).user = user;
-          return next();
-        }
-      }
-      
-      console.log(`[AUTH] Authentication failed for onboarding endpoint`);
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-        error: "Valid authentication required"
-      });
-    } catch (error) {
-      console.error(`[AUTH] Authentication error:`, error);
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-        error: error instanceof Error ? error.message : "Authentication failed"
-      });
-    }
-  };
 
   // Get meal analyses for the current user
-  app.get("/api/meal-analyses", isAuthenticated, async (req, res) => {
+  app.get("/api/meal-analyses", authenticate, async (req, res) => {
     try {
       const userId = req.user!.id;
       const analyses = await storage.getMealAnalyses(userId);
@@ -108,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a specific meal analysis
-  app.get("/api/meal-analyses/:id", isAuthenticated, async (req, res) => {
+  app.get("/api/meal-analyses/:id", authenticate, async (req, res) => {
     try {
       const analysisId = parseInt(req.params.id);
       if (isNaN(analysisId)) {
@@ -133,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analyze complex meal with multiple food items
-  app.post("/api/analyze-complex-meal", isAuthenticated, async (req, res) => {
+  app.post("/api/analyze-complex-meal", authenticate, async (req, res) => {
     try {
       const requestSchema = z.object({
         images: z.array(z.string()).min(1).max(10)
@@ -244,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analyze food image and create meal analysis
-  app.post("/api/analyze-food", isAuthenticated, async (req, res) => {
+  app.post("/api/analyze-food", authenticate, async (req, res) => {
     try {
       const requestSchema = z.object({
         imageData: z.string()
@@ -294,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get weekly stats for the current user
-  app.get("/api/weekly-stats", isAuthenticated, async (req, res) => {
+  app.get("/api/weekly-stats", authenticate, async (req, res) => {
     try {
       const userId = req.user!.id;
       const medicalCondition = req.query.medicalCondition as string | undefined;
@@ -312,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate meal plan
-  app.post("/api/meal-plan", isAuthenticated, async (req, res) => {
+  app.post("/api/meal-plan", authenticate, async (req, res) => {
     try {
       const { goal, medicalCondition } = req.body;
 
@@ -329,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get nutrition tips  
-  app.get("/api/nutrition-tips", isAuthenticated, async (req, res) => {
+  app.get("/api/nutrition-tips", authenticate, async (req, res) => {
     try {
       const userId = req.user!.id;
       const tips = await getNutritionTips(userId);
@@ -341,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- Smart Meal Suggestions Endpoint ---
-  app.get("/api/smart-meal-suggestions", isAuthenticated, async (req, res) => {
+  app.get("/api/smart-meal-suggestions", authenticate, async (req, res) => {
     try {
       const userId = req.user!.id;
       // Optionally, you could pass recent meal analyses for more context
@@ -356,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe payment integration
   if (stripe) {
     // Create a payment intent
-    app.post("/api/create-payment-intent", isAuthenticated, async (req, res) => {
+    app.post("/api/create-payment-intent", authenticate, async (req, res) => {
       try {
         const { amount, currency = "usd" } = req.body;
 
@@ -381,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     // Create a subscription
-    app.post("/api/create-subscription", isAuthenticated, async (req, res) => {
+    app.post("/api/create-subscription", authenticate, async (req, res) => {
       try {
         const { priceId, billingInterval = "monthly" } = req.body;
 
@@ -440,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     // Get subscription status
-    app.get("/api/subscription", isAuthenticated, async (req, res) => {
+    app.get("/api/subscription", authenticate, async (req, res) => {
       try {
         const user = req.user!;
 
@@ -471,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     // Cancel subscription
-    app.post("/api/cancel-subscription", isAuthenticated, async (req, res) => {
+    app.post("/api/cancel-subscription", authenticate, async (req, res) => {
       try {
         const user = req.user!;
 
@@ -504,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import admin auth middleware
   const { isAdmin } = require("./admin-auth");
 
-  app.get("/api/admin/content/:key", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/admin/content/:key", authenticate, isAdmin, async (req, res) => {
     try {
       const key = req.params.key;
       const value = await storage.getSiteContent(key);
@@ -514,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/content/:key", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/admin/content/:key", authenticate, isAdmin, async (req, res) => {
     try {
       const key = req.params.key;
       const value = req.body.value;
@@ -526,7 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // --- Personalized Nutrition Goals Endpoints ---
-  app.get("/api/user/goals", isAuthenticated, async (req, res) => {
+  app.get("/api/user/goals", authenticate, async (req, res) => {
     try {
       const user = await storage.getUserById(req.user!.id);
       res.json(user.nutritionGoals || {});
@@ -534,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch nutrition goals" });
     }
   });
-  app.post("/api/user/goals", isAuthenticated, async (req, res) => {
+  app.post("/api/user/goals", authenticate, async (req, res) => {
     try {
       const { calories, protein, carbs, fat } = req.body;
       await storage.updateUserNutritionGoals(req.user!.id, { calories, protein, carbs, fat });
@@ -545,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Nutrition Coach Chatbot endpoint
-  app.post("/api/nutrition-coach-chat", isAuthenticated, async (req, res) => {
+  app.post("/api/nutrition-coach-chat", authenticate, async (req, res) => {
     try {
       const { messages } = req.body;
       // Use OpenAI-powered nutrition coach
@@ -558,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 // Onboarding completion endpoint with comprehensive error handling and transaction support
-app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
+app.post("/api/onboarding/complete", authenticate, async (req, res) => {
   const startTime = Date.now();
   const userId = req.user!.id;
   
@@ -567,11 +526,7 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
   try {
     // Validate request body structure
     if (!req.body || typeof req.body !== 'object') {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid request body",
-        error: "Request body must be an object"
-      });
+      return res.status(400).json({ error: "Invalid request body" });
     }
 
     const onboardingData = req.body;
@@ -664,11 +619,7 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     const validationErrors = validateOnboardingData(onboardingData);
     if (validationErrors.length > 0) {
       console.log(`[ONBOARDING] Validation failed for user ${userId}:`, validationErrors);
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors
-      });
+      return res.status(400).json({ error: "Validation failed: " + validationErrors.join(', ') });
     }
 
     // Convert numeric fields to proper types
@@ -787,8 +738,6 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     }
 
     res.status(201).json({
-      success: true,
-      message: "Onboarding completed successfully",
       data: {
         userId,
         nutritionGoals: {
@@ -811,18 +760,14 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     const errorStack = error instanceof Error ? error.stack : undefined;
     
     res.status(500).json({
-      success: false,
-      message: "Failed to complete onboarding",
       error: process.env.NODE_ENV === 'development' ? errorMessage : 'Internal server error',
-      ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
-      duration,
-      userId
+      ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
     });
   }
 });
 
   // AI Configuration Admin Routes
-  app.get("/api/admin/ai-config", isAuthenticated, async (req, res) => {
+  app.get("/api/admin/ai-config", authenticate, async (req, res) => {
     try {
       if (req.user!.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -843,7 +788,7 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     }
   });
 
-  app.put("/api/admin/ai-config/:id", isAuthenticated, async (req, res) => {
+  app.put("/api/admin/ai-config/:id", authenticate, async (req, res) => {
     try {
       if (req.user!.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
@@ -860,7 +805,7 @@ app.post("/api/onboarding/complete", isAuthenticated, async (req, res) => {
     }
   });
 
-  app.post("/api/admin/ai-config/:id/activate", isAuthenticated, async (req, res) => {
+  app.post("/api/admin/ai-config/:id/activate", authenticate, async (req, res) => {
     try {
       if (req.user!.role !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });

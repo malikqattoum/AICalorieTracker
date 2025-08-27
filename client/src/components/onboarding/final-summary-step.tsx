@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,49 +62,23 @@ export default function FinalSummaryStep({
 
       console.log('Submitting onboarding data:', data);
 
-      // Save onboarding data to the server
-      const response = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add authentication header if available
-          ...(user?.token && { Authorization: `Bearer ${user.token}` })
-        },
-        body: JSON.stringify(data),
-        credentials: 'include' // Important for session-based auth
-      });
+      // Save onboarding data to the server using standardized apiRequest
+      const response = await apiRequest("POST", "/api/onboarding/complete", data);
 
-      const responseText = await response.text();
-      console.log('Onboarding response status:', response.status);
-      console.log('Onboarding response body:', responseText);
+      const responseData = await response.json();
+      console.log('Onboarding response:', responseData);
 
       if (response.ok) {
-        try {
-          const responseData = JSON.parse(responseText);
-          console.log('Onboarding successful:', responseData);
-          onStepCompleted();
-          // Simulate background loading of AI features
-          setTimeout(() => {
-            setLocation('/dashboard');
-          }, 2000);
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
-          // If response isn't JSON but status is OK, still proceed
-          onStepCompleted();
-          setTimeout(() => {
-            setLocation('/dashboard');
-          }, 2000);
-        }
+        console.log('Onboarding successful:', responseData);
+        onStepCompleted();
+        // Simulate background loading of AI features
+        setTimeout(() => {
+          setLocation('/dashboard');
+        }, 2000);
       } else {
         let errorMessage = 'Failed to complete onboarding';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorMessage;
-          if (errorData.errors) {
-            errorMessage += ': ' + errorData.errors.join(', ');
-          }
-        } catch {
-          errorMessage = responseText || errorMessage;
+        if (responseData.error) {
+          errorMessage = responseData.error;
         }
         throw new Error(errorMessage);
       }
