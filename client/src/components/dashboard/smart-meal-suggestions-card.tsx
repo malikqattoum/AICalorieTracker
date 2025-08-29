@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Zap } from "lucide-react";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface SuggestionsResponse {
   suggestions: string[];
@@ -8,8 +9,8 @@ interface SuggestionsResponse {
 
 export function SmartMealSuggestionsCard() {
   const { data, isLoading, error } = useQuery<SuggestionsResponse>({
-    queryKey: ["smart-meal-suggestions"],
-    queryFn: () => fetch("/api/smart-meal-suggestions").then(res => res.json())
+    queryKey: ["/api/smart-meal-suggestions"],
+    queryFn: getQueryFn({ on401: "returnNull" })
   });
 
   // Fallback suggestions in case API fails

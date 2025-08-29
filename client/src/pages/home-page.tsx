@@ -14,47 +14,45 @@ import { MealTrendsCard } from "@/components/dashboard/meal-trends-card";
 import { NutritionCoachChatbot } from "@/components/dashboard/nutrition-coach-chatbot";
 import ReferralCommissionsCard from "@/components/dashboard/referral-commissions-card";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { WeeklyStats } from "@shared/schema";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
 
 export default function HomePage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
   // Medical Diet AI Assistant state
   const [medicalCondition, setMedicalCondition] = useState<string>("none");
   // AI Meal Plan state (moved from StatsCard)
-  const [mealPlan, setMealPlan] = useState<any | null>(null);
-  const [isMealPlanLoading, setIsMealPlanLoading] = useState(false);
-  const [mealPlanError, setMealPlanError] = useState<string | null>(null);
   const [goal, setGoal] = useState<string>("");
-  const fetchMealPlan = async () => {
-    setIsMealPlanLoading(true);
-    setMealPlanError(null);
-    try {
-      const res = await fetch("/api/meal-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal, medicalCondition }),
-      });
-      if (!res.ok) throw new Error("Failed to generate meal plan");
-      const data = await res.json();
-      setMealPlan(data);
-    } catch (e: any) {
-      setMealPlanError(e.message || "Unknown error");
-    } finally {
-      setIsMealPlanLoading(false);
-    }
-  };
-  // Updated stats query to include medicalCondition in the queryKey
-  const { data: stats } = useQuery<WeeklyStats>({
-    queryKey: ["/api/weekly-stats", medicalCondition],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/weekly-stats?medicalCondition=${medicalCondition}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch stats");
+
+  // Replace direct fetch with React Query mutation
+  const mealPlanMutation = useMutation({
+    mutationFn: async ({ goal, medicalCondition }: { goal: string; medicalCondition: string }) => {
+      const res = await apiRequest("POST", "/api/meal-plan", { goal, medicalCondition });
       return res.json();
     },
+    onSuccess: (data) => {
+      // Update meal plan data in query cache
+      queryClient.setQueryData(["meal-plan", goal, medicalCondition], data);
+    },
+    onError: (error: any) => {
+      console.error("Meal plan generation failed:", error);
+    },
+  });
+
+  // Get meal plan data from React Query cache
+  const { data: mealPlan } = useQuery({
+    queryKey: ["meal-plan", goal, medicalCondition],
+    queryFn: () => null, // This will be populated by the mutation
+    enabled: false, // Don't fetch automatically, only when mutation succeeds
+  });
+  // Updated stats query to include medicalCondition in the queryKey
+  const { data: stats } = useQuery<WeeklyStats>({
+    queryKey: [`/api/weekly-stats?medicalCondition=${medicalCondition}`],
+    queryFn: getQueryFn({ on401: "returnNull" }),
   });
   const daysOfWeek = [
     "Sunday",
@@ -66,9 +64,12 @@ export default function HomePage() {
     "Saturday",
   ];
   useEffect(() => {
-    fetchMealPlan();
+    // Trigger meal plan generation when goal or medical condition changes
+    if (goal && medicalCondition) {
+      mealPlanMutation.mutate({ goal, medicalCondition });
+    }
     // eslint-disable-next-line
-  }, []);
+  }, [goal, medicalCondition]);
 
   if (!user) return <div>Loading...</div>;
 
@@ -103,9 +104,9 @@ export default function HomePage() {
                 <AiInsightsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <MealPlanCard
                   mealPlan={mealPlan}
-                  isMealPlanLoading={isMealPlanLoading}
-                  mealPlanError={mealPlanError}
-                  fetchMealPlan={fetchMealPlan}
+                  isMealPlanLoading={mealPlanMutation.isPending}
+                  mealPlanError={mealPlanMutation.error?.message || null}
+                  fetchMealPlan={() => mealPlanMutation.mutate({ goal, medicalCondition })}
                   goal={goal}
                   daysOfWeek={daysOfWeek}
                   medicalCondition={medicalCondition}

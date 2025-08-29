@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface ReferralCommission {
   id: number;
@@ -14,12 +15,8 @@ interface ReferralCommission {
 
 export default function ReferralCommissionsCard() {
   const { data: commissions, isLoading, refetch } = useQuery<ReferralCommission[]>({
-    queryKey: ['referral-commissions'],
-    queryFn: async () => {
-      const response = await fetch('/api/user/referrals/commissions');
-      if (!response.ok) throw new Error('Failed to fetch commissions');
-      return response.json();
-    }
+    queryKey: ['/api/user/referrals/commissions'],
+    queryFn: getQueryFn({ on401: "returnNull" })
   });
 
   const totalEarned = commissions?.reduce((sum, c) => sum + (c.status === 'paid' ? c.amount : 0), 0) || 0;

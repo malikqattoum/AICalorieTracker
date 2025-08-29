@@ -3,7 +3,8 @@ import { registerRateLimiter } from '../../../rate-limiter';
 import { z } from 'zod';
 import { storage } from '../../../storage-provider';
 import bcrypt from 'bcrypt';
-import JWTService from '../../services/jwtService';
+import jwt from 'jsonwebtoken';
+import { JWTService } from '../../services/auth/jwt.service';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
   console.log('[REGISTER] Content-Type:', req.get('content-type'));
   
   try {
+    console.log('[REGISTER] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
     console.log('[REGISTER] Starting validation...');
     const validatedData = registerSchema.parse(req.body);
     console.log('[REGISTER] Validation successful:', validatedData);
@@ -94,7 +96,8 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
     
     // Generate JWT tokens for the newly created user
     console.log('[REGISTER] Generating JWT tokens...');
-    const tokens = JWTService.generateTokens(user);
+    const tokens = await JWTService.generateTokens(user);
+    console.log('[REGISTER] Tokens value after generateTokens call:', tokens, 'Type:', typeof tokens);
     console.log('[REGISTER] Tokens generated successfully');
     
     // Remove password from response
@@ -102,6 +105,7 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
     console.log('[REGISTER] User creation completed successfully');
     
     // Return user data with tokens
+    console.log('[REGISTER] About to send response with tokens:', tokens);
     res.status(201).json({
       user: userWithoutPassword,
       tokens
@@ -144,6 +148,7 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
   try {
+    console.log('[LOGIN] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
     const validatedData = loginSchema.parse(req.body);
     
     // Find user by username
@@ -155,12 +160,14 @@ router.post('/login', async (req, res, next) => {
 
     // Generate JWT tokens for the authenticated user
     console.log('[LOGIN] Generating JWT tokens...');
-    const tokens = JWTService.generateTokens(user);
+    const tokens = await JWTService.generateTokens(user);
+    console.log('[LOGIN] Tokens value after generateTokens call:', tokens, 'Type:', typeof tokens);
     console.log('[LOGIN] Tokens generated successfully');
     
     // Remove password from response
     const { password, ...userWithoutPassword } = user;
     
+    console.log('[LOGIN] About to send response with tokens:', tokens);
     res.json({
       user: userWithoutPassword,
       tokens
@@ -192,13 +199,11 @@ router.get('/me', async (req, res) => {
     const token = authHeader.split(' ')[1];
 
     // Verify JWT token
-    const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-here-1234567890123456';
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number, id: number };
     const userId = decoded.userId || decoded.id;
 
     // Get user from database
-    const { storage } = require('../../../storage-provider');
     const user = await storage.getUserById(userId);
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -225,6 +230,7 @@ router.get('/me', async (req, res) => {
 // POST /api/auth/refresh
 router.post('/refresh', async (req, res, next) => {
   try {
+    console.log('[REFRESH] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
     const { refreshToken } = req.body;
     
     if (!refreshToken) {
@@ -232,8 +238,10 @@ router.post('/refresh', async (req, res, next) => {
     }
     
     // Verify refresh token and get new access token
-    const result = JWTService.refreshAccessToken(refreshToken);
-    
+    const result = await JWTService.refreshAccessToken(refreshToken);
+    console.log('[REFRESH] Result after refreshAccessToken:', result, 'Type:', typeof result);
+
+    console.log('[REFRESH] About to send response with result:', result);
     res.json(result);
   } catch (error) {
     if (error instanceof Error && error.message === 'Invalid refresh token') {

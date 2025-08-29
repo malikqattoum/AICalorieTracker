@@ -222,7 +222,7 @@ export const SECURITY_CONFIG = {
     maxLength: 2048,
     requireBearerPrefix: false,
     allowRefreshTokens: true,
-    maxTokenAge: 30 * 60 * 1000, // 30 minutes
+    maxTokenAge: 15 * 60 * 1000, // 15 minutes
     refreshBuffer: 5 * 60 * 1000, // 5 minutes before expiry
   },
   

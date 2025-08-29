@@ -48,77 +48,106 @@ export const addSecurityHeaders = (headers: Record<string, string> = {}): Record
 // Utility function to add Authorization header to fetch requests
 export const addAuthHeader = (headers: Record<string, string> = {}): Record<string, string> => {
   const token = getAccessToken();
-  
-  // Validate token before adding to header
-  if (token && validateTokenForRequest()) {
+
+  console.log('[DEBUG] Retrieved token:', token ? 'Token exists' : 'No token');
+
+  // Simplified validation: only check if token exists and is not expired
+  if (token && !isTokenExpired(token)) {
+    console.log('[DEBUG] Adding authorization header with token');
     headers["Authorization"] = `Bearer ${token}`;
-  } else if (token) {
-    // Token exists but is invalid, attempt cleanup
-    logWarning('Invalid token detected, attempting cleanup');
-    try {
-      cleanupExpiredTokens();
-    } catch (cleanupError) {
-      logError('Failed to cleanup invalid token', cleanupError);
+  } else {
+    console.log('[DEBUG] Not adding authorization header:', token ? 'Token expired' : 'No token');
+    if (token) {
+      // Token exists but is expired, attempt cleanup
+      logWarning('Expired token detected, attempting cleanup');
+      try {
+        cleanupExpiredTokens();
+      } catch (cleanupError) {
+        logError('Failed to cleanup expired token', cleanupError);
+      }
     }
   }
-  
+
   return headers;
 };
 
 // Enhanced token validation with format checks
 export const validateTokenFormat = (token: string): boolean => {
-  if (!token) return false;
-  
+  console.log('[TOKEN DEBUG] Starting token format validation');
+
+  if (!token) {
+    console.log('[TOKEN DEBUG] Token is null or empty');
+    return false;
+  }
+
+  console.log('[TOKEN DEBUG] Token length:', token.length);
+
   const config = CONFIG.security.tokenValidation;
-  
+
   // Check length requirements
   if (token.length < config.minLength || token.length > config.maxLength) {
+    console.log(`[TOKEN DEBUG] Token length validation failed: ${token.length} characters (min: ${config.minLength}, max: ${config.maxLength})`);
     logWarning(`Token length validation failed: ${token.length} characters`);
     return false;
   }
-  
+
   // Check for Bearer prefix if required
   if (config.requireBearerPrefix && !token.startsWith('Bearer ')) {
+    console.log('[TOKEN DEBUG] Token missing required Bearer prefix');
     logWarning('Token missing required Bearer prefix');
     return false;
   }
-  
+
   // Basic JWT structure validation
   const parts = token.split('.');
+  console.log('[TOKEN DEBUG] Token parts after split:', parts.length);
+
   if (parts.length !== 3) {
+    console.log('[TOKEN DEBUG] Invalid JWT structure - not 3 parts');
     logWarning('Invalid JWT token structure');
     return false;
   }
-  
+
   // Check header and payload are valid base64
   try {
+    console.log('[TOKEN DEBUG] Attempting to parse JWT header and payload');
     const header = JSON.parse(atob(parts[0]));
     const payload = JSON.parse(atob(parts[1]));
-    
+
+    console.log('[TOKEN DEBUG] JWT header:', header);
+    console.log('[TOKEN DEBUG] JWT payload exp:', payload.exp, 'iat:', payload.iat);
+
     // Check required JWT claims
     if (!header.typ || header.typ !== 'JWT') {
+      console.log('[TOKEN DEBUG] Invalid JWT header type:', header.typ);
       logWarning('Invalid JWT header type');
       return false;
     }
-    
+
     if (!payload.exp || !payload.iat) {
+      console.log('[TOKEN DEBUG] JWT missing required claims - exp:', payload.exp, 'iat:', payload.iat);
       logWarning('JWT missing required expiration or issued at claims');
       return false;
     }
-    
+
     // Check token age
     const now = Math.floor(Date.now() / 1000);
     const tokenAge = now - payload.iat;
+    console.log('[TOKEN DEBUG] Token age:', tokenAge, 'seconds, max allowed:', config.maxTokenAge / 1000);
+
     if (tokenAge > config.maxTokenAge / 1000) {
+      console.log('[TOKEN DEBUG] Token too old');
       logWarning(`Token too old: ${tokenAge} seconds`);
       return false;
     }
-    
+
   } catch (error) {
+    console.log('[TOKEN DEBUG] JWT parsing failed:', error);
     logWarning('JWT token parsing failed', error);
     return false;
   }
-  
+
+  console.log('[TOKEN DEBUG] Token format validation passed');
   return true;
 };
 
@@ -244,30 +273,30 @@ export async function apiRequest(
   } catch (cleanupError) {
     logError('Failed to cleanup expired tokens before request', cleanupError);
   }
-  
+
   // HTTPS enforcement check
   if (!validateHttpsUrl(url)) {
     throw new Error('HTTPS is required for all API requests. Please use a secure connection.');
   }
-  
+
   // Get token from token manager
   const token = getAccessToken();
-  
+
   // Check if token exists for protected routes
   if (!token && !url.includes('/auth/login') && !url.includes('/auth/register') && !url.includes('/auth/refresh')) {
     throw new Error('Authentication required. Please log in to continue.');
   }
-  
+
   const headers: Record<string, string> = {};
-  
+
   // Add security headers
   addSecurityHeaders(headers);
-  
+
   // Add content-type for requests with data
   if (data) {
     headers["Content-Type"] = "application/json";
   }
-  
+
   // Add authorization header if token exists and is valid
   if (token) {
     // Enhanced token format validation
@@ -280,11 +309,24 @@ export async function apiRequest(
       }
       throw new Error('Authentication token format is invalid. Please log in again.');
     }
-    
-    if (validateTokenForRequest()) {
+
+    // Add retry logic for token validation
+    let retryCount = 0;
+    const maxRetries = 1;
+    let tokenValid = false;
+    while (retryCount <= maxRetries && !tokenValid) {
+      if (validateTokenForRequest()) {
+        tokenValid = true;
+      } else if (retryCount < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retryCount++;
+      }
+    }
+
+    if (tokenValid) {
       headers["Authorization"] = `Bearer ${token}`;
     } else {
-      // Token is invalid, throw error immediately
+      // Token is invalid after retry, throw error
       throw new Error('Authentication token is invalid. Please log in again.');
     }
   }
@@ -367,13 +409,14 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async (context: QueryFunctionContext) => {
     const { queryKey } = context;
+
     // Cleanup expired tokens before making query
     try {
       cleanupExpiredTokens();
     } catch (cleanupError) {
       logError('Failed to cleanup expired tokens before query', cleanupError);
     }
-    
+
     // HTTPS enforcement check for queries
     if (typeof queryKey[0] === 'string' && !validateHttpsUrl(queryKey[0])) {
       if (unauthorizedBehavior === "returnNull") {
@@ -381,15 +424,15 @@ export const getQueryFn: <T>(options: {
       }
       throw new Error('HTTPS is required for all API requests. Please use a secure connection.');
     }
-    
+
     // Get token from token manager
     const token = getAccessToken();
-    
+
     const headers: Record<string, string> = {};
-    
+
     // Add security headers for queries
     addSecurityHeaders(headers);
-    
+
     // Add authorization header if token exists and is valid
     if (token) {
       // Enhanced token format validation for queries
@@ -405,7 +448,7 @@ export const getQueryFn: <T>(options: {
         }
         throw new Error('Authentication token format is invalid. Please log in again.');
       }
-      
+
       if (validateTokenForRequest()) {
         headers["Authorization"] = `Bearer ${token}`;
       } else {

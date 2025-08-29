@@ -24,7 +24,7 @@ export const setAccessToken = (token: string): void => {
     localStorage.setItem(TOKEN_STORAGE_KEYS.ACCESS_TOKEN, token);
     // Store metadata for expiration tracking
     const metadata: TokenMetadata = {
-      expiresAt: Date.now() + (30 * 60 * 1000), // Assume 30 minutes expiry
+      expiresAt: Date.now() + (14 * 60 * 1000), // Assume 14 minutes expiry
       issuedAt: Date.now(),
       lastChecked: Date.now(),
     };
@@ -92,15 +92,27 @@ export const clearTokens = (): void => {
  * Check if user has valid access token
  */
 export const hasValidAccessToken = (): boolean => {
+  console.log('[TOKEN DEBUG] Checking if user has valid access token');
+
   const token = getAccessToken();
-  if (!token) return false;
-  
+  console.log('[TOKEN DEBUG] Retrieved access token:', token ? 'Token exists' : 'No token');
+
+  if (!token) {
+    console.log('[TOKEN DEBUG] No access token found');
+    return false;
+  }
+
   // Check if token is expired
-  if (isTokenExpired()) {
+  const isExpired = isTokenExpired();
+  console.log('[TOKEN DEBUG] Token expired check:', isExpired);
+
+  if (isExpired) {
+    console.log('[TOKEN DEBUG] Access token is expired');
     logWarning('Access token is expired');
     return false;
   }
-  
+
+  console.log('[TOKEN DEBUG] Access token is valid');
   return true;
 };
 
@@ -116,19 +128,29 @@ export const hasRefreshToken = (): boolean => {
  */
 export const updateTokensFromResponse = (responseData: any): void => {
   try {
+    console.log('[TOKEN DEBUG] Updating tokens from response:', {
+      hasTokens: !!responseData.tokens,
+      hasToken: !!responseData.token,
+      responseKeys: Object.keys(responseData)
+    });
+
     if (responseData.tokens && responseData.tokens.accessToken && responseData.tokens.refreshToken) {
+      console.log('[TOKEN DEBUG] Storing new format tokens - access token length:', responseData.tokens.accessToken.length);
       setAccessToken(responseData.tokens.accessToken);
       setRefreshToken(responseData.tokens.refreshToken);
       logInfo('Tokens updated from response with new format');
     } else if (responseData.token) {
+      console.log('[TOKEN DEBUG] Storing old format token - token length:', responseData.token.length);
       // Fallback for old format
       setAccessToken(responseData.token);
       logInfo('Token updated from response with old format');
     } else {
+      console.log('[TOKEN DEBUG] No valid tokens found in response');
       logWarning('No valid tokens found in response data');
       throw new Error('No valid tokens received from server');
     }
   } catch (error) {
+    console.log('[TOKEN DEBUG] Failed to update tokens from response:', error);
     logError('Failed to update tokens from response', error);
     throw new Error('Failed to store authentication tokens');
   }
@@ -233,34 +255,49 @@ export const isTokenExpiringSoon = (bufferMinutes: number = 5): boolean => {
  * Validate token before including in requests
  */
 export const validateTokenForRequest = (): boolean => {
+  console.log('[TOKEN DEBUG] Starting token validation for request');
+
   if (!hasValidAccessToken()) {
+    console.log('[TOKEN DEBUG] hasValidAccessToken() returned false');
     logWarning('Invalid access token for request');
     return false;
   }
 
   // Enhanced validation with browser-compatible checks
   const token = getAccessToken();
-  if (!token) return false;
+  console.log('[TOKEN DEBUG] Retrieved token from storage:', token ? 'Token exists' : 'No token');
+
+  if (!token) {
+    console.log('[TOKEN DEBUG] No token found in storage');
+    return false;
+  }
 
   // Check if token is revoked
   if (isTokenRevoked(token)) {
+    console.log('[TOKEN DEBUG] Token is revoked');
     logWarning('Token has been revoked');
     return false;
   }
 
   // Validate token structure (signature verification handled server-side)
   const secret = process.env.JWT_SECRET || 'fallback-secret-key';
+  console.log('[TOKEN DEBUG] Checking token signature with secret length:', secret.length);
+
   if (!verifyTokenSignature(token, secret)) {
+    console.log('[TOKEN DEBUG] Token signature validation failed');
     logWarning('Token structure validation failed');
     return false;
   }
 
   // Validate secure storage
+  console.log('[TOKEN DEBUG] Checking secure storage validation');
   if (!validateSecureStorage()) {
+    console.log('[TOKEN DEBUG] Secure storage validation failed');
     logWarning('Secure storage validation failed');
     return false;
   }
 
+  console.log('[TOKEN DEBUG] Token validation passed successfully');
   return true;
 };
 

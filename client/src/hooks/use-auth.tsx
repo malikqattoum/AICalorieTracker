@@ -110,21 +110,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const res = await apiRequest("POST", "/api/auth/login", credentials);
         const responseData = await res.json();
-        
-        // Handle new response format with user and tokens
-        if (responseData.tokens && responseData.user) {
-          // Store the access and refresh tokens using token manager
+
+        console.log('[LOGIN DEBUG] Login response received:', {
+          hasTokens: !!responseData.tokens,
+          hasUser: !!responseData.user,
+          hasToken: !!responseData.token,
+          responseKeys: Object.keys(responseData)
+        });
+
+        // Enhanced response parsing with robust format handling
+        if (!responseData) {
+          throw new Error('Empty response received from login');
+        }
+
+        // Check for new format with tokens and user
+        if (responseData.tokens && typeof responseData.tokens === 'object') {
+          if (responseData.tokens.accessToken && responseData.tokens.refreshToken) {
+            console.log('[LOGIN DEBUG] Valid new token format detected');
+
+            // Validate token formats before storing
+            if (!responseData.tokens.accessToken || typeof responseData.tokens.accessToken !== 'string') {
+              throw new Error('Invalid access token format in response');
+            }
+            if (!responseData.tokens.refreshToken || typeof responseData.tokens.refreshToken !== 'string') {
+              throw new Error('Invalid refresh token format in response');
+            }
+
+            updateTokensFromResponse(responseData);
+
+            if (responseData.user) {
+              return responseData.user;
+            } else {
+              // Tokens present but no user data - this might be an error
+              console.log('[LOGIN DEBUG] Tokens received but no user data');
+              throw new Error('Login successful but user data missing from response');
+            }
+          } else {
+            console.log('[LOGIN DEBUG] Tokens object present but missing required tokens');
+            throw new Error('Incomplete token data in response');
+          }
+        } else if (responseData.token && typeof responseData.token === 'string') {
+          console.log('[LOGIN DEBUG] Old token format detected');
+
+          // Validate old format token
+          if (responseData.token.length < 10) { // Basic length check
+            throw new Error('Invalid token format in response');
+          }
+
           updateTokensFromResponse(responseData);
-          // Return user data
+          // For old format, return the response data as user (assuming it contains user info)
+          return responseData;
+        } else if (responseData.user) {
+          console.log('[LOGIN DEBUG] User data present but no tokens');
+          // User data without tokens - might be a partial response
+          // This could be valid if tokens are handled separately
           return responseData.user;
-        } else if (responseData.token) {
-          // Fallback for old format
-          updateTokensFromResponse(responseData);
+        } else {
+          console.log('[LOGIN DEBUG] No recognizable format in response');
+          // Fallback - return raw data but log warning
+          logWarning('Unrecognized login response format', responseData);
           return responseData;
         }
-        
-        return responseData;
       } catch (error) {
+        console.log('[LOGIN DEBUG] Login failed with error:', error);
         // Convert error to AuthError and handle it
         const authError = parseApiError(error);
         await handleError(authError);

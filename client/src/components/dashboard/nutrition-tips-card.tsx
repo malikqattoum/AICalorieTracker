@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Check } from "lucide-react";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface TipsResponse {
   tips: string[];
@@ -8,8 +9,8 @@ interface TipsResponse {
 
 export function NutritionTipsCard() {
   const { data, isLoading, error } = useQuery<TipsResponse>({
-    queryKey: ["nutrition-tips"],
-    queryFn: () => fetch("/api/nutrition-tips").then(res => res.json())
+    queryKey: ["/api/nutrition-tips"],
+    queryFn: getQueryFn({ on401: "returnNull" })
   });
 
   // Fallback tips in case API fails

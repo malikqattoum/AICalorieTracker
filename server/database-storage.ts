@@ -335,16 +335,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Weekly stats methods
-  async getWeeklyStats(userId: number): Promise<WeeklyStats | undefined> {
+  async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
     const [stats] = await db.select()
       .from(weeklyStats)
       .where(eq(weeklyStats.userId, userId));
     if (!stats) return undefined;
+
     // Parse JSON fields to correct types
-    return {
+    const parsedStats = {
       ...stats,
       caloriesByDay: typeof stats.caloriesByDay === 'string' ? JSON.parse(stats.caloriesByDay) : stats.caloriesByDay,
       macrosByDay: stats.macrosByDay ? (typeof stats.macrosByDay === 'string' ? JSON.parse(stats.macrosByDay) : stats.macrosByDay) : undefined
+    };
+
+    // If medicalCondition is set, adjust stats here
+    if (medicalCondition && medicalCondition !== 'none') {
+      // Apply medical condition adjustments
+      const adjustedStats = this.applyMedicalConditionAdjustments(parsedStats, medicalCondition);
+      return adjustedStats;
+    }
+
+    // Ensure macrosByDay is always present and correct type
+    return {
+      ...parsedStats,
+      macrosByDay: parsedStats.macrosByDay || {
+        Sunday: { protein: 0, carbs: 0, fat: 0 },
+        Monday: { protein: 0, carbs: 0, fat: 0 },
+        Tuesday: { protein: 0, carbs: 0, fat: 0 },
+        Wednesday: { protein: 0, carbs: 0, fat: 0 },
+        Thursday: { protein: 0, carbs: 0, fat: 0 },
+        Friday: { protein: 0, carbs: 0, fat: 0 },
+        Saturday: { protein: 0, carbs: 0, fat: 0 }
+      }
     };
   }
 
@@ -433,5 +455,41 @@ export class DatabaseStorage implements IStorage {
   async deactivateAllAIConfigs(): Promise<void> {
     await db.update(aiConfig)
       .set({ isActive: false, updatedAt: new Date() });
+  }
+
+  /**
+   * Apply medical condition adjustments to stats
+   */
+  private applyMedicalConditionAdjustments(stats: WeeklyStats, medicalCondition: string): WeeklyStats {
+    const adjustedStats = { ...stats };
+
+    switch (medicalCondition.toLowerCase()) {
+      case 'diabetes':
+        // Adjust for diabetic needs - lower carbs, higher protein
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.9);
+        adjustedStats.averageProtein = Math.round(stats.averageProtein * 1.2);
+        break;
+
+      case 'hypertension':
+        // Adjust for hypertension - lower sodium, heart-healthy fats
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.85);
+        break;
+
+      case 'heart_disease':
+        // Adjust for heart disease - very low sodium, healthy fats
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.8);
+        break;
+
+      case 'obesity':
+        // Adjust for weight loss - lower calories
+        adjustedStats.averageCalories = Math.round(stats.averageCalories * 0.8);
+        break;
+
+      default:
+        // Default adjustments for general health
+        break;
+    }
+
+    return adjustedStats;
   }
 }
