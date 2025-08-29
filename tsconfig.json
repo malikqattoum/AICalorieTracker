@@ -1,6 +1,6 @@
 {
   "include": ["client/src/**/*", "shared/**/*", "server/**/*", "mobile/__tests__/**/*"],
-  "exclude": ["node_modules", "build", "dist"],
+  "exclude": ["node_modules", "build", "dist", "**/node_modules/**"],
   "compilerOptions": {
     "types": ["jest", "node", "vite/client"],
     "incremental": true,

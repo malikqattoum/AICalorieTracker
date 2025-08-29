@@ -12,7 +12,8 @@ import { aiCache } from "./ai-cache";
 import { db } from "./src/db";
 import { users, nutritionGoals } from "@shared/schema";
 import { eq } from "drizzle-orm";
-// import { authenticate } from "./src/middleware/auth";
+// Import authentication middleware
+import { authenticate } from "./src/middleware/auth";
 import jwt from "jsonwebtoken";
 
 // Initialize Stripe client if secret key is available

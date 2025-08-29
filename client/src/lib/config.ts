@@ -1,7 +1,7 @@
 // API Configuration for Web App
 const API_CONFIG = {
-  // Development API URL
-  development: 'http://localhost:3000',
+  // Development API URL - Force HTTPS for security
+  development: 'https://localhost:3000',
   
   // Production API URL
   production: 'https://api.aicalorietracker.com',
@@ -211,12 +211,96 @@ export const ENHANCED_FOOD_RECOGNITION_CONFIG = {
   }
 };
 
+// Security configuration
+export const SECURITY_CONFIG = {
+  // HTTPS enforcement
+  enforceHTTPS: true,
+  
+  // Token validation
+  tokenValidation: {
+    minLength: 10,
+    maxLength: 2048,
+    requireBearerPrefix: true,
+    allowRefreshTokens: true,
+    maxTokenAge: 30 * 60 * 1000, // 30 minutes
+    refreshBuffer: 5 * 60 * 1000, // 5 minutes before expiry
+  },
+  
+  // Rate limiting
+  rateLimit: {
+    api: {
+      max: 100,
+      windowMs: 15 * 60 * 1000, // 15 minutes
+    },
+    auth: {
+      max: 5,
+      windowMs: 15 * 60 * 1000, // 15 minutes
+    }
+  },
+  
+  // Security headers
+  headers: {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.openai.com https://generativelanguage.googleapis.com; font-src 'self'; object-src 'none'; media-src 'self'; frame-src 'self'; worker-src 'self'; child-src 'self'; frame-ancestors 'none'; form-action 'self'; manifest-src 'self'; base-uri 'self'",
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  },
+  
+  // CORS configuration
+  cors: {
+    allowedOrigins: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'https://aicalorietracker.com',
+      'https://www.aicalorietracker.com',
+      'https://staging.aicalorietracker.com'
+    ],
+    allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization',
+      'X-API-Key', 'X-CSRF-Token', 'X-Session-ID'
+    ],
+    exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining'],
+    credentials: true,
+    maxAge: 86400 // 24 hours
+  },
+  
+  // Request validation
+  requestValidation: {
+    maxBodySize: '10mb',
+    maxUploadSize: '5mb',
+    allowedFileTypes: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+    sanitizeInput: true,
+    validateTokenFormat: true,
+    checkForSQLInjection: true,
+    checkForXSS: true
+  },
+  
+  // Security logging
+  logging: {
+    enableSecurityLogging: true,
+    logAuthenticationAttempts: true,
+    logSecurityViolations: true,
+    logSuspiciousActivity: true,
+    logTokenValidation: true,
+    logRequestValidation: true
+  }
+};
+
 // Export all configurations
 export const CONFIG = {
   api: API_URL,
   features: FEATURES,
   camera: CAMERA_CONFIG,
-  enhancedFoodRecognition: ENHANCED_FOOD_RECOGNITION_CONFIG
+  enhancedFoodRecognition: ENHANCED_FOOD_RECOGNITION_CONFIG,
+  security: SECURITY_CONFIG
 };
 
 // Utility functions

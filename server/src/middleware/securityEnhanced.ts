@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Logger } from '../utils/logger';
 import { AppError, AuthenticationError, AuthorizationError, ErrorType, ErrorCode } from './errorHandler';
 import { securityConfig } from '../config/security';
+import { validateCORS, logSecurityEvent, validateRequest, validateJWTEnhanced, apiRateLimiter, authRateLimiter } from '../lib/securityUtils';
 
 const logger = new Logger('SecurityEnhanced');
 
@@ -47,6 +48,18 @@ export const createRateLimiter = (windowMs: number, max: number, message: string
     // Check if limit exceeded
     if (entry.count > max) {
       logger.warn(`Rate limit exceeded for IP: ${clientIp}, Count: ${entry.count}`);
+      
+      // Log security event for rate limit exceeded
+      logSecurityEvent({
+        type: 'SECURITY_VIOLATION',
+        level: 'WARNING',
+        message: 'Rate limit exceeded',
+        details: { ip: clientIp, count: entry.count, limit: max },
+        ip: clientIp,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
+      
       return res.status(429).json({
         success: false,
         error: message,
@@ -85,22 +98,62 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
       throw new AuthenticationError('Invalid token format');
     }
     
-    // Verify JWT token
+    // Use enhanced JWT validation
+    const validation = validateJWTEnhanced(token);
+    if (!validation.valid) {
+      throw new AuthenticationError(`Invalid token: ${validation.errors.join(', ')}`);
+    }
+    
+    // Verify JWT token with proper signature
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key') as any;
     
     // Add user to request object
     (req as any).user = decoded;
+    
+    // Log token validation
+    logSecurityEvent({
+      type: 'TOKEN_VALIDATION',
+      level: 'INFO',
+      message: 'Token validated successfully',
+      details: { userId: decoded.id, tokenLength: token.length },
+      userId: decoded.id,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      endpoint: req.path
+    });
     
     // Check if token is about to expire (within 1 hour)
     const now = Date.now();
     const exp = decoded.exp * 1000;
     if (exp - now < 60 * 60 * 1000) {
       logger.warn('Token expiring soon for user:', decoded.id);
+      logSecurityEvent({
+        type: 'TOKEN_VALIDATION',
+        level: 'WARNING',
+        message: 'Token expiring soon',
+        details: { userId: decoded.id, expiresAt: new Date(exp).toISOString() },
+        userId: decoded.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
     }
     
     next();
   } catch (error) {
     logger.error('JWT validation failed:', error);
+    
+    // Log security event for failed token validation
+    logSecurityEvent({
+      type: 'TOKEN_VALIDATION',
+      level: 'ERROR',
+      message: 'Token validation failed',
+      details: { error: error instanceof Error ? error.message : 'Unknown error' },
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      endpoint: req.path
+    });
+    
     if (error instanceof AuthenticationError) {
       return res.status(401).json({
         success: false,
@@ -147,6 +200,32 @@ export const sessionSecurity = (req: Request, res: Response, next: NextFunction)
 
 // Enhanced input validation and sanitization
 export const inputValidation = (req: Request, res: Response, next: NextFunction) => {
+  // Use enhanced request validation
+  const validation = validateRequest(req);
+  
+  if (!validation.valid) {
+    logger.warn('Request validation failed:', validation.errors);
+    
+    // Log security event for validation failure
+    logSecurityEvent({
+      type: 'SECURITY_VIOLATION',
+      level: 'WARNING',
+      message: 'Request validation failed',
+      details: { errors: validation.errors, method: req.method, url: req.url },
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      endpoint: req.path
+    });
+    
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid request format',
+      code: 'INVALID_REQUEST',
+      details: validation.errors
+    });
+  }
+  
+  // Sanitize input
   const sanitize = (value: any): any => {
     if (typeof value === 'string') {
       return value
@@ -360,6 +439,17 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const suspicious = checkSuspicious(bodyStr);
     if (suspicious.length > 0) {
       logger.warn(`Suspicious activity detected in body from ${req.ip}:`, suspicious);
+      
+      // Log security event for suspicious activity
+      logSecurityEvent({
+        type: 'SUSPICIOUS_ACTIVITY',
+        level: 'WARNING',
+        message: 'Suspicious activity detected in request body',
+        details: { patterns: suspicious, method: req.method, url: req.url },
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
     }
   }
   
@@ -369,6 +459,17 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const suspicious = checkSuspicious(queryStr);
     if (suspicious.length > 0) {
       logger.warn(`Suspicious activity detected in query from ${req.ip}:`, suspicious);
+      
+      // Log security event for suspicious activity
+      logSecurityEvent({
+        type: 'SUSPICIOUS_ACTIVITY',
+        level: 'WARNING',
+        message: 'Suspicious activity detected in query parameters',
+        details: { patterns: suspicious, method: req.method, url: req.url },
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
     }
   }
   
@@ -377,6 +478,35 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const duration = Date.now() - startTime;
     if (duration > 10000) { // 10 seconds
       logger.warn(`Slow request detected: ${req.method} ${req.url} took ${duration}ms`);
+      
+      // Log security event for slow request
+      logSecurityEvent({
+        type: 'SUSPICIOUS_ACTIVITY',
+        level: 'WARNING',
+        message: 'Slow request detected',
+        details: { method: req.method, url: req.url, duration: duration },
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
+    }
+    
+    // Log authentication attempts
+    if (req.path.includes('/login') || req.path.includes('/auth')) {
+      logSecurityEvent({
+        type: 'AUTH_ATTEMPT',
+        level: res.statusCode === 200 ? 'INFO' : 'WARNING',
+        message: `Authentication attempt ${res.statusCode === 200 ? 'succeeded' : 'failed'}`,
+        details: {
+          method: req.method,
+          url: req.url,
+          statusCode: res.statusCode,
+          userAgent: req.get('User-Agent')
+        },
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.path
+      });
     }
   });
   

@@ -193,4 +193,25 @@ router.get('/me', (req, res) => {
   res.json(userWithoutPassword);
 });
 
+// POST /api/auth/refresh
+router.post('/refresh', async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'Refresh token is required' });
+    }
+    
+    // Verify refresh token and get new access token
+    const result = JWTService.refreshAccessToken(refreshToken);
+    
+    res.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Invalid refresh token') {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+    next(error);
+  }
+});
+
 export default router;

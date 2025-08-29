@@ -30,12 +30,6 @@ export default function FinalSummaryStep({
     setIsCompleting(true);
     
     try {
-      // Check if user is authenticated
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('Authentication required. Please log in again.');
-      }
-
       // Validate required fields before sending
       const requiredFields = ['age', 'gender', 'height', 'weight', 'activityLevel', 'primaryGoal'];
       const missingFields = requiredFields.filter(field => !(data as any)[field]);
@@ -95,12 +89,13 @@ export default function FinalSummaryStep({
       if (error instanceof Error && error.message.includes('401')) {
         alert('Authentication failed. Please log in again.');
         // Clear token and redirect to login
-        localStorage.removeItem('authToken');
+        const { clearTokens } = await import('../../lib/tokenManager');
+        clearTokens();
         setLocation('/login');
       } else {
         alert(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
       }
-      
+
       setIsCompleting(false);
     }
   };
