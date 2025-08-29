@@ -15,7 +15,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1),
   password: z.string().min(8)
 });
 
@@ -146,14 +146,11 @@ router.post('/login', async (req, res, next) => {
   try {
     const validatedData = loginSchema.parse(req.body);
     
-    // Try to find user by username first, then by email
-    let user = await storage.getUserByUsername(validatedData.email);
-    if (!user) {
-      user = await storage.getUserByEmail(validatedData.email);
-    }
+    // Find user by username
+    const user = await storage.getUserByUsername(validatedData.username);
     
     if (!user || !user.password || !(await bcrypt.compare(validatedData.password, user.password))) {
-      return res.status(401).json({ message: "Invalid username or password" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Generate JWT tokens for the authenticated user
