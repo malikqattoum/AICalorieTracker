@@ -10,13 +10,29 @@ const logger = new Logger('AuthController');
 export default {
   async login(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        throw new ValidationError('Email and password are required');
+      logger.info('Login attempt received', {
+        bodyKeys: Object.keys(req.body),
+        hasEmail: !!req.body.email,
+        hasUsername: !!req.body.username,
+        emailValue: req.body.email,
+        usernameValue: req.body.username
+      });
+
+      // Handle both username and email fields for backward compatibility
+      const { email, username, password } = req.body;
+      const loginIdentifier = email || username;
+
+      if (!loginIdentifier || !password) {
+        logger.warn('Login validation failed - missing login identifier or password', {
+          email: !!email,
+          username: !!username,
+          loginIdentifier: !!loginIdentifier,
+          password: !!password
+        });
+        throw new ValidationError('Email/Username and password are required');
       }
 
-      const user = await UserService.authenticate(email, password);
+      const user = await UserService.authenticate(loginIdentifier, password);
       
       if (!user) {
         throw new AuthenticationError('Invalid credentials');

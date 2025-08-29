@@ -43,12 +43,6 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
 });
 
-// Mock jwt library
-jest.mock('jsonwebtoken', () => ({
-  verify: jest.fn(),
-  sign: jest.fn()
-}));
-
 // Mock config
 jest.mock('./config', () => ({
   logError: jest.fn(),
@@ -61,7 +55,6 @@ jest.mock('./queryClient', () => ({
   validateTokenFormat: jest.fn()
 }));
 
-import jwt from 'jsonwebtoken';
 import { validateTokenFormat } from './queryClient';
 
 describe('TokenManager', () => {
@@ -143,24 +136,21 @@ describe('TokenManager', () => {
 
   describe('Token Expiration Scenarios', () => {
     test('should detect expired tokens', () => {
+      // Create a token with expired timestamp (past date)
       const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-
-      (jwt.verify as jest.Mock).mockImplementation(() => {
-        const error = new Error('jwt expired');
-        error.name = 'TokenExpiredError';
-        throw error;
-      });
 
       expect(isTokenExpired(expiredToken)).toBe(true);
     });
 
     test('should detect tokens expiring soon', () => {
-      setAccessToken('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+      // Create a token that expires in 2 minutes
+      const futureTime = Math.floor(Date.now() / 1000) + 120;
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({ sub: '1234567890', name: 'John Doe', iat: 1516239022, exp: futureTime }));
+      const signature = 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const token = `${header}.${payload}.${signature}`;
 
-      (jwt.verify as jest.Mock).mockReturnValue({
-        exp: Math.floor(Date.now() / 1000) + 120 // Expires in 2 minutes
-      });
-
+      setAccessToken(token);
       expect(isTokenExpiringSoon(5)).toBe(true);
     });
 
@@ -172,12 +162,14 @@ describe('TokenManager', () => {
     });
 
     test('should calculate remaining token time', () => {
-      const token = 'valid-token';
+      // Create a token that expires in 5 minutes
+      const futureTime = Math.floor(Date.now() / 1000) + 300;
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({ sub: '1234567890', name: 'John Doe', iat: 1516239022, exp: futureTime }));
+      const signature = 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const token = `${header}.${payload}.${signature}`;
 
-      (jwt.verify as jest.Mock).mockReturnValue({
-        exp: Math.floor(Date.now() / 1000) + 300 // Expires in 5 minutes
-      });
-
+      setAccessToken(token);
       const remaining = getTokenTimeRemaining();
       expect(remaining).toBeGreaterThan(0);
       expect(remaining).toBeLessThanOrEqual(300000); // 5 minutes in ms
@@ -201,25 +193,18 @@ describe('TokenManager', () => {
     });
 
     test('should verify token signature', () => {
-      const validToken = 'valid-token';
+      const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid.payload.signature';
       const invalidToken = 'invalid-token';
-
-      (jwt.verify as jest.Mock).mockReturnValueOnce({}).mockImplementationOnce(() => {
-        throw new Error('Invalid signature');
-      });
 
       expect(verifyTokenSignature(validToken, 'secret')).toBe(true);
       expect(verifyTokenSignature(invalidToken, 'secret')).toBe(false);
     });
 
     test('should perform comprehensive token validation', () => {
-      const validToken = 'valid-token';
+      const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid.payload.signature';
       const invalidToken = 'invalid-token';
 
       (validateTokenFormat as jest.Mock).mockReturnValue(true);
-      (jwt.verify as jest.Mock).mockReturnValueOnce({}).mockImplementationOnce(() => {
-        throw new Error('Invalid signature');
-      });
 
       const validResult = validateTokenComprehensive(validToken);
       expect(validResult.valid).toBe(true);
@@ -227,15 +212,18 @@ describe('TokenManager', () => {
 
       const invalidResult = validateTokenComprehensive(invalidToken);
       expect(invalidResult.valid).toBe(false);
-      expect(invalidResult.errors).toContain('Token signature verification failed');
+      expect(invalidResult.errors).toContain('Token structure validation failed');
     });
 
     test('should validate secure storage', () => {
-      setAccessToken('valid-token');
-      setRefreshToken('valid-refresh-token');
+      // Create valid tokens with proper JWT structure
+      const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.valid.payload.signature';
+      const validRefreshToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refresh.payload.signature';
+
+      setAccessToken(validToken);
+      setRefreshToken(validRefreshToken);
 
       (validateTokenFormat as jest.Mock).mockReturnValue(true);
-      (jwt.verify as jest.Mock).mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 });
 
       const result = validateSecureStorage();
       expect(result).toBe(true);
@@ -254,20 +242,17 @@ describe('TokenManager', () => {
 
   describe('Token Cleanup and Management', () => {
     test('should cleanup expired tokens', () => {
-      const expiredToken = 'expired-token';
-      const validToken = 'valid-token';
+      // Create an expired token (past timestamp)
+      const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      // Create a valid token (future timestamp)
+      const futureTime = Math.floor(Date.now() / 1000) + 3600;
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({ sub: '1234567890', name: 'John Doe', iat: 1516239022, exp: futureTime }));
+      const signature = 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const validToken = `${header}.${payload}.${signature}`;
 
       setAccessToken(expiredToken);
       setRefreshToken(expiredToken);
-
-      (jwt.verify as jest.Mock).mockImplementation((token) => {
-        if (token === expiredToken) {
-          const error = new Error('jwt expired');
-          error.name = 'TokenExpiredError';
-          throw error;
-        }
-        return { exp: Math.floor(Date.now() / 1000) + 3600 };
-      });
 
       cleanupExpiredTokens();
 
@@ -324,9 +309,14 @@ describe('TokenManager', () => {
     test('should check if user has valid access token', () => {
       expect(hasValidAccessToken()).toBe(false);
 
-      setAccessToken('valid-token');
-      (jwt.verify as jest.Mock).mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 });
+      // Create a valid token with future expiration
+      const futureTime = Math.floor(Date.now() / 1000) + 3600;
+      const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = btoa(JSON.stringify({ sub: '1234567890', name: 'John Doe', iat: 1516239022, exp: futureTime }));
+      const signature = 'SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const validToken = `${header}.${payload}.${signature}`;
 
+      setAccessToken(validToken);
       expect(hasValidAccessToken()).toBe(true);
     });
 

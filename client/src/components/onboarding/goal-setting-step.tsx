@@ -208,11 +208,10 @@ export default function GoalSettingStep({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="1-month">1 Month</SelectItem>
-                            <SelectItem value="3-months">3 Months</SelectItem>
-                            <SelectItem value="6-months">6 Months</SelectItem>
-                            <SelectItem value="1-year">1 Year</SelectItem>
-                            <SelectItem value="no-rush">No rush</SelectItem>
+                            <SelectItem value="1-3 months">1-3 Months</SelectItem>
+                            <SelectItem value="3-6 months">3-6 Months</SelectItem>
+                            <SelectItem value="6-12 months">6-12 Months</SelectItem>
+                            <SelectItem value="1+ years">1+ Years</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

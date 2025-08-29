@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { getQueryFn, apiRequest, queryClient, performTokenRefresh } from "../lib/queryClient";
 import { useToast } from "./use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import {
   updateTokensFromResponse,
   clearTokens,
@@ -101,6 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       try {
+        console.log('[LOGIN DEBUG] Sending login request with credentials:', {
+          username: credentials.username,
+          hasPassword: !!credentials.password,
+          passwordLength: credentials.password?.length
+        });
+
         const res = await apiRequest("POST", "/api/auth/login", credentials);
         const responseData = await res.json();
         
@@ -142,10 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Login failed",
         description: authError.userMessage,
         variant: "destructive",
-        action: authError.recovery === 'RELOGIN' ? {
-          label: "Retry",
-          onClick: () => loginMutation.mutateAsync(loginMutation.variables as LoginData)
-        } : undefined
+        action: authError.recovery === 'RELOGIN' ? (
+          <ToastAction altText="Retry login" onClick={() => loginMutation.mutateAsync(loginMutation.variables as LoginData)}>
+            Retry
+          </ToastAction>
+        ) : undefined
       });
     },
   });
@@ -292,10 +300,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           title: "Session expired",
           description: authError.userMessage,
           variant: "destructive",
-          action: {
-            label: "Login",
-            onClick: () => navigate("/login"),
-          },
+          action: (
+            <ToastAction altText="Go to login" onClick={() => navigate("/login")}>
+              Login
+            </ToastAction>
+          ),
         });
         navigate("/login");
       } catch (cleanupError) {
@@ -305,37 +314,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Check for existing tokens on component mount
+  // Enhanced session recovery mechanism
   useEffect(() => {
-    const accessToken = getAccessToken();
-    const refreshToken = getRefreshToken();
-    
-    if (accessToken && !user) {
-      // Token exists but no user data, try to fetch user profile
-      // This will be handled by the existing query
-      logInfo("Access token found, fetching user profile");
-    }
-    
-    // Ensure refresh token is stored if it exists
-    if (!getRefreshToken() && refreshToken) {
-      // This case should be handled by updateTokensFromResponse
-      // but we add this as a safety measure
-      setRefreshToken(refreshToken);
-    }
-    
-    // Check for auth errors and show toast notification
-    if (authError) {
-      const authErrorObj = createAuthError(AuthErrorType.SESSION_EXPIRED, authError);
-      showErrorNotification(authErrorObj);
-      
-      toast({
-        title: "Authentication Error",
-        description: authError,
-        variant: "destructive",
-      });
-      setAuthError(null); // Clear after showing toast
-    }
-  }, [user, authError, toast]);
+    const initializeSession = async () => {
+      const accessToken = getAccessToken();
+      const refreshToken = getRefreshToken();
+
+      // If we have tokens but no user data, attempt session recovery
+      if (accessToken && !user) {
+        logInfo("Access token found, attempting session recovery");
+
+        try {
+          // Validate token format and expiration
+          if (!isTokenExpired(accessToken)) {
+            logInfo("Valid access token found, user profile should load automatically");
+            // The existing query will handle fetching user data
+          } else if (refreshToken && !isTokenExpired(refreshToken)) {
+            logInfo("Access token expired but refresh token valid, attempting refresh");
+            // Attempt to refresh token silently
+            try {
+              await performTokenRefresh();
+              logInfo("Silent token refresh successful during session recovery");
+            } catch (refreshError) {
+              logWarning("Silent token refresh failed during session recovery", refreshError);
+              // Don't throw here, let the normal flow handle it
+            }
+          } else {
+            logWarning("Both tokens expired or invalid, clearing session");
+            cleanupAllAuthData();
+            setAuthError("Your session has expired. Please log in again.");
+          }
+        } catch (error) {
+          logError("Session recovery failed", error);
+          // Don't block the app, just log the error
+        }
+      }
+
+      // Ensure refresh token consistency
+      if (!getRefreshToken() && refreshToken) {
+        logInfo("Refresh token found in memory but not in storage, restoring");
+        setRefreshToken(refreshToken);
+      }
+
+      // Handle auth errors with improved user feedback
+      if (authError) {
+        const authErrorObj = createAuthError(AuthErrorType.SESSION_EXPIRED, authError);
+        showErrorNotification(authErrorObj);
+
+        toast({
+          title: "Authentication Error",
+          description: authError,
+          variant: "destructive",
+          action: authError.includes("expired") ? (
+            <ToastAction altText="Go to login" onClick={() => navigate("/login")}>
+              Login
+            </ToastAction>
+          ) : undefined
+        });
+        setAuthError(null); // Clear after showing toast
+      }
+    };
+
+    // Run session initialization
+    initializeSession();
+  }, [user, authError, toast, navigate]);
 
   // Automatic token cleanup and expiration handling
   useEffect(() => {
@@ -360,10 +402,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               title: "Session Expired",
               description: sessionError.userMessage,
               variant: "destructive",
-              action: {
-                label: "Login",
-                onClick: () => navigate("/login"),
-              },
+              action: (
+                <ToastAction altText="Go to login" onClick={() => navigate("/login")}>
+                  Login
+                </ToastAction>
+              ),
             });
             // Don't navigate immediately to allow user to see the message
           }

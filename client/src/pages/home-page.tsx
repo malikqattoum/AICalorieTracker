@@ -12,6 +12,7 @@ import { NutritionTipsCard } from "@/components/dashboard/nutrition-tips-card";
 import { SmartMealSuggestionsCard } from "@/components/dashboard/smart-meal-suggestions-card";
 import { MealTrendsCard } from "@/components/dashboard/meal-trends-card";
 import { NutritionCoachChatbot } from "@/components/dashboard/nutrition-coach-chatbot";
+import ReferralCommissionsCard from "@/components/dashboard/referral-commissions-card";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -98,7 +99,6 @@ export default function HomePage() {
                   selectedCondition={medicalCondition}
                   onConditionChange={setMedicalCondition}
                 />
-                <StatsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <AchievementsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <AiInsightsCard stats={stats} daysOfWeek={daysOfWeek} />
                 <MealPlanCard

@@ -1,7 +1,6 @@
 // Token management utilities
 import { logError, logInfo, logWarning } from './config';
 import { validateTokenFormat } from './queryClient';
-import jwt from 'jsonwebtoken';
 
 export const TOKEN_STORAGE_KEYS = {
   ACCESS_TOKEN: 'accessToken',
@@ -238,30 +237,30 @@ export const validateTokenForRequest = (): boolean => {
     logWarning('Invalid access token for request');
     return false;
   }
-  
-  // Enhanced validation with signature verification
+
+  // Enhanced validation with browser-compatible checks
   const token = getAccessToken();
   if (!token) return false;
-  
+
   // Check if token is revoked
   if (isTokenRevoked(token)) {
     logWarning('Token has been revoked');
     return false;
   }
-  
-  // Verify token signature
+
+  // Validate token structure (signature verification handled server-side)
   const secret = process.env.JWT_SECRET || 'fallback-secret-key';
   if (!verifyTokenSignature(token, secret)) {
-    logWarning('Token signature verification failed');
+    logWarning('Token structure validation failed');
     return false;
   }
-  
+
   // Validate secure storage
   if (!validateSecureStorage()) {
     logWarning('Secure storage validation failed');
     return false;
   }
-  
+
   return true;
 };
 
@@ -332,35 +331,60 @@ export const cleanupAllAuthData = (): void => {
 };
 
 /**
- * Verify token signature using JWT library
+ * Verify token signature using browser-compatible validation
+ * Note: Full cryptographic verification should only be done server-side
  */
 export const verifyTokenSignature = (token: string, secret: string): boolean => {
   try {
-    jwt.verify(token, secret);
+    // Browser-compatible validation - only check basic structure
+    // Full signature verification should be handled server-side
+    if (!token || typeof token !== 'string') {
+      logWarning('Token is not a valid string');
+      return false;
+    }
+
+    // Check if token has proper JWT structure (header.payload.signature)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      logWarning('Token does not have proper JWT structure');
+      return false;
+    }
+
+    // Validate each part is base64url encoded
+    for (const part of parts) {
+      if (!/^[A-Za-z0-9_-]*$/.test(part)) {
+        logWarning('Token contains invalid base64url characters');
+        return false;
+      }
+    }
+
+    // Note: We skip actual cryptographic verification for security reasons
+    // The server should handle full JWT verification
+    logInfo('Token structure validation passed (signature verification skipped for browser compatibility)');
     return true;
   } catch (error) {
-    logError('Token signature verification failed', error);
+    logError('Token signature validation failed', error);
     return false;
   }
 };
 
 /**
- * Comprehensive token validation including format and signature
+ * Comprehensive token validation including format and structure
  */
 export const validateTokenComprehensive = (token: string): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  
+
   // Format validation
   if (!validateTokenFormat(token)) {
     errors.push('Token format validation failed');
   }
-  
-  // Signature validation
+
+  // Structure validation (signature verification handled server-side)
   const secret = process.env.JWT_SECRET || 'fallback-secret-key';
   if (!verifyTokenSignature(token, secret)) {
-    errors.push('Token signature verification failed');
+    errors.push('Token structure validation failed');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors

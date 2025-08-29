@@ -26,13 +26,33 @@ export default {
     }
   },
 
-  async authenticate(email: string, password: string): Promise<User | null> {
+  async authenticate(identifier: string, password: string): Promise<User | null> {
     try {
-      const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-      if (!users.length) return null;
-      
+      // Check if identifier is an email (contains @) or username
+      const isEmail = identifier.includes('@');
+      const queryField = isEmail ? 'email' : 'username';
+
+      console.log('[USER SERVICE] Authenticating user', {
+        identifier,
+        isEmail,
+        queryField
+      });
+
+      const [users] = await db.execute(`SELECT * FROM users WHERE ${queryField} = ?`, [identifier]);
+      if (!users.length) {
+        console.log('[USER SERVICE] No user found with identifier:', identifier);
+        return null;
+      }
+
       const user = users[0];
       const isValid = await bcrypt.compare(password, user.password);
+
+      console.log('[USER SERVICE] Authentication result', {
+        userId: user.id,
+        isValid,
+        identifier
+      });
+
       return isValid ? user : null;
     } catch (error) {
       console.error('Authentication failed:', error);
@@ -56,7 +76,13 @@ export default {
         [email, hashedPassword, username, username.split(' ')[0] || 'User', username.split(' ')[1] || 'Account']
       );
       
-      return { id: result.insertId, email, username };
+      return {
+        id: result.insertId,
+        email,
+        username,
+        firstName: username.split(' ')[0] || 'User',
+        lastName: username.split(' ')[1] || 'Account'
+      };
     } catch (error) {
       console.error('User creation failed:', error);
       throw error;

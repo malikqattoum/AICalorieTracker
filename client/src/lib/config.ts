@@ -1,11 +1,11 @@
 // API Configuration for Web App
 const API_CONFIG = {
-  // Development API URL - Force HTTPS for security
-  development: 'https://localhost:3000',
-  
+  // Development API URL - Use HTTP for development, HTTPS for security in production
+  development: 'http://localhost:3002',
+
   // Production API URL
   production: 'https://api.aicalorietracker.com',
-  
+
   // Staging API URL
   staging: 'https://staging-api.aicalorietracker.com',
 };
@@ -213,14 +213,14 @@ export const ENHANCED_FOOD_RECOGNITION_CONFIG = {
 
 // Security configuration
 export const SECURITY_CONFIG = {
-  // HTTPS enforcement
-  enforceHTTPS: true,
+  // HTTPS enforcement - environment-aware
+  enforceHTTPS: currentEnv !== 'development',
   
   // Token validation
   tokenValidation: {
     minLength: 10,
     maxLength: 2048,
-    requireBearerPrefix: true,
+    requireBearerPrefix: false,
     allowRefreshTokens: true,
     maxTokenAge: 30 * 60 * 1000, // 30 minutes
     refreshBuffer: 5 * 60 * 1000, // 5 minutes before expiry

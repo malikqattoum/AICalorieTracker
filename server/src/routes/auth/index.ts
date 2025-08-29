@@ -177,20 +177,52 @@ router.post('/login', async (req, res, next) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', (req, res, next) => {
-  req.logout((err) => {
-    if (err) return next(err);
-    res.sendStatus(200);
-  });
+router.post('/logout', (req, res) => {
+  // For JWT-based authentication, logout is handled client-side
+  // by removing the token from storage. Server doesn't need to do anything special.
+  res.json({ message: 'Logged out successfully' });
 });
 
 // GET /api/auth/me
-router.get('/me', (req, res) => {
-  if (!req.isAuthenticated()) return res.sendStatus(401);
-  
-  // Remove password from response
-  const { password, ...userWithoutPassword } = req.user as any;
-  res.json(userWithoutPassword);
+router.get('/me', async (req, res) => {
+  try {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verify JWT token
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-here-1234567890123456';
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number, id: number };
+    const userId = decoded.userId || decoded.id;
+
+    // Get user from database
+    const { storage } = require('../../../storage-provider');
+    const user = await storage.getUserById(userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Remove password from response
+    const { password, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error in /api/auth/me:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check for JWT-specific errors
+    if (errorMessage.includes('invalid') || errorMessage.includes('malformed')) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (errorMessage.includes('expired') || errorMessage.includes('TokenExpiredError')) {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    res.status(401).json({ error: 'Authentication failed' });
+  }
 });
 
 // POST /api/auth/refresh

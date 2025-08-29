@@ -22,33 +22,13 @@ import {
 const fetchMock = jest.fn();
 global.fetch = fetchMock;
 
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-
-  return {
-    getItem: (key: string) => store[key] || null,
-    setItem: (key: string, value: string) => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string) => {
-      delete store[key];
-    },
-    clear: () => {
-      store = {};
-    },
-  };
-})();
-
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
-});
+// localStorage is now mocked in jest.setup.js
 
 // Mock config
 jest.mock('./config', () => ({
   CONFIG: {
     security: {
-      enforceHTTPS: true,
+      enforceHTTPS: false, // Default to false for development testing
       headers: {
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY'
@@ -80,13 +60,27 @@ jest.mock('./tokenManager', () => ({
 
 describe('QueryClient', () => {
   beforeEach(() => {
-    localStorageMock.clear();
+    localStorage.clear();
     jest.clearAllMocks();
     fetchMock.mockClear();
   });
 
   describe('HTTPS URL Validation', () => {
-    test('should validate HTTPS URLs when enforcement is enabled', () => {
+    test('should allow HTTP URLs when enforcement is disabled (development)', () => {
+      // Mock HTTPS enforcement as disabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = false;
+
+      expect(validateHttpsUrl('http://localhost:3002')).toBe(true);
+      expect(validateHttpsUrl('https://api.example.com')).toBe(true);
+      expect(validateHttpsUrl('invalid-url')).toBe(false);
+    });
+
+    test('should validate HTTPS URLs when enforcement is enabled (production)', () => {
+      // Mock HTTPS enforcement as enabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = true;
+
       expect(validateHttpsUrl('https://api.example.com')).toBe(true);
       expect(validateHttpsUrl('http://api.example.com')).toBe(false);
       expect(validateHttpsUrl('invalid-url')).toBe(false);
@@ -95,6 +89,25 @@ describe('QueryClient', () => {
     test('should handle invalid URLs gracefully', () => {
       expect(validateHttpsUrl('')).toBe(false);
       expect(validateHttpsUrl('not-a-url')).toBe(false);
+    });
+
+    test('should log appropriate messages for HTTPS enforcement', () => {
+      const mockConfig = jest.requireMock('./config');
+      const logInfo = jest.requireMock('./config').logInfo;
+      const logWarning = jest.requireMock('./config').logWarning;
+
+      // Test with HTTPS enforcement disabled
+      mockConfig.CONFIG.security.enforceHTTPS = false;
+      validateHttpsUrl('http://localhost:3002');
+      expect(logInfo).toHaveBeenCalledWith('HTTPS enforcement disabled - allowing HTTP URLs for development');
+
+      // Reset mocks
+      jest.clearAllMocks();
+
+      // Test with HTTPS enforcement enabled and HTTP URL
+      mockConfig.CONFIG.security.enforceHTTPS = true;
+      validateHttpsUrl('http://api.example.com');
+      expect(logWarning).toHaveBeenCalledWith('HTTPS required but HTTP URL detected: http://api.example.com');
     });
   });
 
@@ -209,10 +222,35 @@ describe('QueryClient', () => {
       await expect(apiRequest('GET', '/api/protected')).rejects.toThrow('Authentication required');
     });
 
-    test('should handle HTTPS enforcement', async () => {
+    test('should handle HTTPS enforcement when enabled', async () => {
+      // Mock HTTPS enforcement as enabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = true;
+
       (getAccessToken as jest.Mock).mockReturnValue('token');
 
       await expect(apiRequest('GET', 'http://insecure-api.com')).rejects.toThrow('HTTPS is required');
+    });
+
+    test('should allow HTTP URLs when HTTPS enforcement is disabled', async () => {
+      // Mock HTTPS enforcement as disabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = false;
+
+      const mockResponse = { data: 'success' };
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+        status: 200
+      });
+
+      (getAccessToken as jest.Mock).mockReturnValue('token');
+      (validateTokenForRequest as jest.Mock).mockReturnValue(true);
+
+      const result = await apiRequest('GET', 'http://localhost:3002/api/test');
+
+      expect(fetchMock).toHaveBeenCalledWith('http://localhost:3002/api/test', expect.any(Object));
+      expect(result).toEqual(mockResponse);
     });
 
     test('should handle request errors', async () => {
@@ -450,7 +488,11 @@ describe('QueryClient', () => {
       expect(result).toBeNull();
     });
 
-    test('should handle HTTPS validation in queries', async () => {
+    test('should handle HTTPS validation in queries when enabled', async () => {
+      // Mock HTTPS enforcement as enabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = true;
+
       (getAccessToken as jest.Mock).mockReturnValue('token');
 
       const queryFn = getQueryFn({ on401: 'throw' });
@@ -461,6 +503,32 @@ describe('QueryClient', () => {
         signal: new AbortController().signal,
         meta: {}
       })).rejects.toThrow('HTTPS is required');
+    });
+
+    test('should allow HTTP URLs in queries when HTTPS enforcement is disabled', async () => {
+      // Mock HTTPS enforcement as disabled
+      const mockConfig = jest.requireMock('./config');
+      mockConfig.CONFIG.security.enforceHTTPS = false;
+
+      const mockResponse = { data: 'success' };
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+        status: 200
+      });
+
+      (getAccessToken as jest.Mock).mockReturnValue('token');
+      (validateTokenForRequest as jest.Mock).mockReturnValue(true);
+
+      const queryFn = getQueryFn({ on401: 'throw' });
+      const result = await queryFn({
+        queryKey: ['http://localhost:3002/api/test'],
+        client: queryClient,
+        signal: new AbortController().signal,
+        meta: {}
+      });
+
+      expect(result).toEqual(mockResponse);
     });
   });
 

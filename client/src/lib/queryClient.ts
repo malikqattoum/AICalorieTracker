@@ -13,12 +13,23 @@ import { CONFIG, logError, logInfo, logWarning } from './config';
 
 // Utility function to validate URL for HTTPS enforcement
 export const validateHttpsUrl = (url: string): boolean => {
-  if (!CONFIG.security.enforceHTTPS) return true;
-  
+  // Allow HTTP in development environment for local development
+  if (!CONFIG.security.enforceHTTPS) {
+    logInfo('HTTPS enforcement disabled - allowing HTTP URLs for development');
+    return true;
+  }
+
   try {
     const parsedUrl = new URL(url);
-    return parsedUrl.protocol === 'https:';
-  } catch {
+    const isHttps = parsedUrl.protocol === 'https:';
+
+    if (!isHttps) {
+      logWarning(`HTTPS required but HTTP URL detected: ${url}`);
+    }
+
+    return isHttps;
+  } catch (error) {
+    logError('Invalid URL format for HTTPS validation', error);
     return false;
   }
 };
@@ -111,13 +122,17 @@ export const validateTokenFormat = (token: string): boolean => {
   return true;
 };
 
-// Constants for token refresh handling
+// Enhanced constants for token refresh handling
 const MAX_REFRESH_ATTEMPTS = 3;
-const REFRESH_RETRY_DELAY = 1000; // 1 second
+const BASE_RETRY_DELAY = 1000; // 1 second base delay
+const MAX_RETRY_DELAY = 10000; // 10 seconds max delay
+const JITTER_FACTOR = 0.1; // 10% jitter to prevent thundering herd
 
 // Track refresh attempts to prevent infinite loops
 let refreshAttemptCount = 0;
 let isRefreshing = false;
+let lastRefreshTime = 0;
+const MIN_REFRESH_INTERVAL = 5000; // 5 seconds minimum between refresh attempts
 
 // Helper function to refresh access token with retry logic
 export const refreshAccessToken = async (): Promise<string | null> => {
@@ -160,12 +175,29 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   }
 };
 
-// Helper function to handle token refresh with retry limit
+// Calculate exponential backoff delay with jitter
+const calculateBackoffDelay = (attemptNumber: number): number => {
+  const exponentialDelay = BASE_RETRY_DELAY * Math.pow(2, attemptNumber - 1);
+  const jitter = exponentialDelay * JITTER_FACTOR * Math.random();
+  return Math.min(exponentialDelay + jitter, MAX_RETRY_DELAY);
+};
+
+// Enhanced helper function to handle token refresh with retry limit and backoff
 export const performTokenRefresh = async (): Promise<string | null> => {
+  const now = Date.now();
+
+  // Prevent too frequent refresh attempts
+  if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+    const waitTime = MIN_REFRESH_INTERVAL - (now - lastRefreshTime);
+    logInfo(`Waiting ${waitTime}ms before next refresh attempt`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+
   if (isRefreshing) {
     logInfo('Token refresh already in progress, waiting...');
-    // Wait for current refresh to complete
-    await new Promise(resolve => setTimeout(resolve, REFRESH_RETRY_DELAY));
+    // Wait for current refresh to complete with backoff
+    const waitDelay = calculateBackoffDelay(refreshAttemptCount);
+    await new Promise(resolve => setTimeout(resolve, waitDelay));
     return getAccessToken();
   }
 
@@ -176,10 +208,19 @@ export const performTokenRefresh = async (): Promise<string | null> => {
 
   isRefreshing = true;
   refreshAttemptCount++;
+  lastRefreshTime = now;
 
   try {
     const newToken = await refreshAccessToken();
+    // Reset counter on successful refresh
+    refreshAttemptCount = 0;
     return newToken;
+  } catch (error) {
+    // Add exponential backoff delay before next attempt
+    const backoffDelay = calculateBackoffDelay(refreshAttemptCount);
+    logWarning(`Token refresh failed, waiting ${backoffDelay}ms before retry`, error);
+    await new Promise(resolve => setTimeout(resolve, backoffDelay));
+    throw error;
   } finally {
     isRefreshing = false;
   }
@@ -255,17 +296,17 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  // Handle 401 errors by attempting to refresh the token
+  // Enhanced 401 error handling with better error categorization
   if (res.status === 401 && !url.includes('/auth/refresh')) {
     logInfo(`Received 401 error for ${method} ${url}, attempting token refresh`);
-    
+
     try {
       const newToken = await performTokenRefresh();
       if (newToken) {
         // Retry the original request with the new token
         const retryHeaders = { ...headers };
         retryHeaders["Authorization"] = `Bearer ${newToken}`;
-        
+
         logInfo(`Retrying ${method} ${url} with new token`);
         res = await fetch(url, {
           method,
@@ -277,7 +318,15 @@ export async function apiRequest(
         // If retry still fails with 401, it means the refresh token is also expired
         if (res.status === 401) {
           logError('Token refresh succeeded but retry still failed with 401 - session likely expired');
+          clearTokens(); // Clear invalid tokens
           throw new Error('Session expired. Please log in again.');
+        }
+
+        // Handle other retry errors (network issues, server errors)
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => 'Unknown error');
+          logError(`Retry failed with status ${res.status} for ${method} ${url}: ${errorText}`);
+          throw new Error(`Request failed after token refresh: ${res.status} ${res.statusText}`);
         }
 
         logInfo(`Retry successful for ${method} ${url}`);
@@ -285,10 +334,25 @@ export async function apiRequest(
         return res;
       }
     } catch (refreshError) {
-      // If refresh fails, throw a more informative error
-      const errorMessage = refreshError instanceof Error ? refreshError.message : 'Token refresh failed';
-      logError(`Token refresh failed for ${method} ${url}: ${errorMessage}`, refreshError);
-      throw new Error('Session expired. Please log in again.');
+      // Categorize refresh errors
+      if (refreshError instanceof Error) {
+        if (refreshError.message.includes('Maximum refresh attempts exceeded')) {
+          logError(`Token refresh failed for ${method} ${url}: Max attempts exceeded`);
+          clearTokens();
+          throw new Error('Session expired. Please log in again.');
+        } else if (refreshError.message.includes('Network') || refreshError.message.includes('fetch')) {
+          logError(`Token refresh failed for ${method} ${url}: Network error`, refreshError);
+          throw new Error('Network error during authentication. Please check your connection and try again.');
+        } else {
+          logError(`Token refresh failed for ${method} ${url}: ${refreshError.message}`, refreshError);
+          clearTokens();
+          throw new Error('Session expired. Please log in again.');
+        }
+      } else {
+        logError(`Token refresh failed for ${method} ${url}: Unknown error`, refreshError);
+        clearTokens();
+        throw new Error('Session expired. Please log in again.');
+      }
     }
   }
 
@@ -358,41 +422,75 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    // Handle 401 errors by attempting to refresh the token
+    // Enhanced 401 error handling for queries with better error categorization
     if (res.status === 401 && typeof queryKey[0] === 'string' && !queryKey[0].includes('/auth/refresh')) {
       logInfo(`Received 401 error for query ${queryKey[0]}, attempting token refresh`);
-      
+
       try {
         const newToken = await performTokenRefresh();
         if (newToken) {
           // Retry the original query with the new token
           const retryHeaders = { ...headers };
           retryHeaders["Authorization"] = `Bearer ${newToken}`;
-          
+
           logInfo(`Retrying query ${queryKey[0]} with new token`);
           res = await fetch(queryKey[0] as string, {
             headers: retryHeaders,
             credentials: "include",
           });
-          
+
           // If retry still fails with 401, it means the refresh token is also expired
           if (res.status === 401) {
             logError(`Token refresh succeeded but query retry still failed with 401 for ${queryKey[0]}`);
+            clearTokens(); // Clear invalid tokens
             if (unauthorizedBehavior === "returnNull") {
               return null;
             }
             throw new Error('Session expired. Please log in again.');
           }
+
+          // Handle other retry errors (network issues, server errors)
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => 'Unknown error');
+            logError(`Query retry failed with status ${res.status} for ${queryKey[0]}: ${errorText}`);
+            if (unauthorizedBehavior === "returnNull") {
+              return null;
+            }
+            throw new Error(`Query failed after token refresh: ${res.status} ${res.statusText}`);
+          }
         }
       } catch (refreshError) {
-        // If refresh fails, handle according to unauthorizedBehavior
-        const errorMessage = refreshError instanceof Error ? refreshError.message : 'Token refresh failed';
-        logError(`Token refresh failed for query ${queryKey[0]}: ${errorMessage}`, refreshError);
-        
-        if (unauthorizedBehavior === "returnNull") {
-          return null;
+        // Categorize refresh errors for queries
+        if (refreshError instanceof Error) {
+          if (refreshError.message.includes('Maximum refresh attempts exceeded')) {
+            logError(`Token refresh failed for query ${queryKey[0]}: Max attempts exceeded`);
+            clearTokens();
+            if (unauthorizedBehavior === "returnNull") {
+              return null;
+            }
+            throw new Error('Session expired. Please log in again.');
+          } else if (refreshError.message.includes('Network') || refreshError.message.includes('fetch')) {
+            logError(`Token refresh failed for query ${queryKey[0]}: Network error`, refreshError);
+            if (unauthorizedBehavior === "returnNull") {
+              return null;
+            }
+            throw new Error('Network error during authentication. Please check your connection and try again.');
+          } else {
+            logError(`Token refresh failed for query ${queryKey[0]}: ${refreshError.message}`, refreshError);
+            clearTokens();
+            if (unauthorizedBehavior === "returnNull") {
+              return null;
+            }
+            throw new Error('Session expired. Please log in again.');
+          }
+        } else {
+          logError(`Token refresh failed for query ${queryKey[0]}: Unknown error`, refreshError);
+          clearTokens();
+          if (unauthorizedBehavior === "returnNull") {
+            return null;
+          }
+          throw new Error('Session expired. Please log in again.');
         }
-        throw new Error('Session expired. Please log in again.');
       }
     }
 

@@ -50,6 +50,36 @@ export type PersonalizedRecommendations = {
   }[];
 };
 
+// API Response Types
+type AskQuestionResponse = {
+  id?: string;
+  questionId?: string;
+  answer?: string;
+  confidence?: number;
+  sources?: string[];
+  relatedTopics?: string[];
+  timestamp?: string;
+};
+
+type GetHistoryResponse = {
+  questions?: NutritionQuestion[];
+  answers?: NutritionAnswer[];
+  totalQuestions?: number;
+  totalHelpfulAnswers?: number;
+};
+
+// Error Types
+type ApiError = {
+  message: string;
+  code?: string;
+  status?: number;
+};
+
+type ServiceError = Error & {
+  code?: string;
+  statusCode?: number;
+};
+
 // Real nutrition coach service implementation
 class NutritionCoachService {
   private mockTips: NutritionTip[] = [
@@ -137,8 +167,8 @@ class NutritionCoachService {
         showErrorToast: false,
       });
 
-      const result = response.data;
-      
+      const result = response.data as AskQuestionResponse;
+
       return {
         id: result.id || `answer-${Date.now()}`,
         questionId: result.questionId || `question-${Date.now()}`,
@@ -149,13 +179,19 @@ class NutritionCoachService {
         timestamp: result.timestamp || new Date().toISOString(),
         helpful: undefined,
       };
-    } catch (error) {
-      console.error('Nutrition coach API error:', error);
+    } catch (error: unknown) {
+      const serviceError = error as ServiceError;
+      console.error('Nutrition coach API error:', {
+        message: serviceError.message || 'Unknown error',
+        code: serviceError.code,
+        statusCode: serviceError.statusCode,
+      });
       // Fallback to mock response if API fails
       return this.generateEnhancedMockAnswer(question);
     }
   }
-private generateEnhancedMockAnswer(question: string): NutritionAnswer {
+
+  private generateEnhancedMockAnswer(question: string): NutritionAnswer {
     const questionLower = question.toLowerCase();
     
     // Enhanced keyword-based responses
@@ -259,7 +295,7 @@ private generateEnhancedMockAnswer(question: string): NutritionAnswer {
       timestamp: new Date().toISOString(),
       helpful: undefined,
     };
-  },
+  }
 
   async getHistory(): Promise<NutritionCoachHistory> {
     try {
@@ -268,16 +304,21 @@ private generateEnhancedMockAnswer(question: string): NutritionAnswer {
         showErrorToast: false,
       });
 
-      const result = response.data;
-      
+      const result = response.data as GetHistoryResponse;
+
       return {
         questions: result.questions || [],
         answers: result.answers || [],
         totalQuestions: result.totalQuestions || 0,
         totalHelpfulAnswers: result.totalHelpfulAnswers || 0,
       };
-    } catch (error) {
-      console.error('Failed to fetch nutrition coach history:', error);
+    } catch (error: unknown) {
+      const serviceError = error as ServiceError;
+      console.error('Failed to fetch nutrition coach history:', {
+        message: serviceError.message || 'Unknown error',
+        code: serviceError.code,
+        statusCode: serviceError.statusCode,
+      });
       // Return empty history if API fails
       return {
         questions: [],
