@@ -334,12 +334,61 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Helper method to create default weekly stats for new users
+  private async createDefaultWeeklyStats(userId: number): Promise<any> {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const defaultStats = {
+      userId,
+      averageCalories: 0,
+      mealsTracked: 0,
+      averageProtein: 0,
+      healthiestDay: 'Sunday',
+      weekStarting: startOfWeek,
+      caloriesByDay: {
+        Sunday: 0,
+        Monday: 0,
+        Tuesday: 0,
+        Wednesday: 0,
+        Thursday: 0,
+        Friday: 0,
+        Saturday: 0
+      },
+      macrosByDay: {
+        Sunday: { protein: 0, carbs: 0, fat: 0 },
+        Monday: { protein: 0, carbs: 0, fat: 0 },
+        Tuesday: { protein: 0, carbs: 0, fat: 0 },
+        Wednesday: { protein: 0, carbs: 0, fat: 0 },
+        Thursday: { protein: 0, carbs: 0, fat: 0 },
+        Friday: { protein: 0, carbs: 0, fat: 0 },
+        Saturday: { protein: 0, carbs: 0, fat: 0 }
+      }
+    };
+
+    const result = await db.insert(weeklyStats).values(defaultStats);
+    // @ts-ignore drizzle-orm/mysql2 returns insertId
+    const insertId = result.insertId || result[0]?.insertId;
+    if (!insertId) throw new Error('Failed to get inserted weekly stats id');
+
+    const [stats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, insertId));
+    return stats;
+  }
+
   // Weekly stats methods
   async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
-    const [stats] = await db.select()
+    let [stats] = await db.select()
       .from(weeklyStats)
       .where(eq(weeklyStats.userId, userId));
-    if (!stats) return undefined;
+
+    // If no stats exist, create default stats
+    if (!stats) {
+      console.log(`[DATABASE STORAGE] No weekly stats found for user ${userId}, creating default stats`);
+      const defaultStats = await this.createDefaultWeeklyStats(userId);
+      stats = defaultStats;
+    }
 
     // Parse JSON fields to correct types
     const parsedStats = {
