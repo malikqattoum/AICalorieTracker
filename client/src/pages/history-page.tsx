@@ -16,11 +16,22 @@ export default function HistoryPage() {
 
   // Group analyses by date
   const groupedAnalyses = analyses?.reduce<Record<string, MealAnalysis[]>>((groups, analysis) => {
-    const date = format(new Date(analysis.timestamp), 'yyyy-MM-dd');
-    if (!groups[date]) {
-      groups[date] = [];
+    // Check if analysisTimestamp exists and is valid
+    if (!analysis.analysisTimestamp) {
+      console.warn('Meal analysis missing timestamp:', analysis.id);
+      return groups;
     }
-    groups[date].push(analysis);
+
+    try {
+      const date = format(new Date(analysis.analysisTimestamp), 'yyyy-MM-dd');
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(analysis);
+    } catch (error) {
+      console.error('Invalid timestamp for meal analysis:', analysis.id, analysis.analysisTimestamp, error);
+    }
+
     return groups;
   }, {}) || {};
 
@@ -76,11 +87,17 @@ export default function HistoryPage() {
                         <CardContent className="p-0">
                           <div className="flex flex-col md:flex-row">
                             <div className="w-full md:w-48 h-48 bg-neutral-200">
-                              <img 
-                                src={analysis.imageData} 
-                                alt={analysis.foodName} 
-                                className="w-full h-full object-cover"
-                              />
+                              {analysis.imageUrl ? (
+                                <img
+                                  src={analysis.imageUrl}
+                                  alt={analysis.foodName}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-neutral-500">
+                                  No image
+                                </div>
+                              )}
                             </div>
 
                             <div className="p-6 flex-grow">
@@ -88,57 +105,46 @@ export default function HistoryPage() {
                                 <div>
                                   <h3 className="text-xl font-medium text-neutral-900">{analysis.foodName}</h3>
                                   <p className="text-sm text-neutral-500">
-                                    {format(new Date(analysis.timestamp), 'h:mm a')}
+                                    {analysis.analysisTimestamp ? format(new Date(analysis.analysisTimestamp), 'h:mm a') : 'Unknown time'}
                                   </p>
                                 </div>
                                 <div className="mt-2 md:mt-0 flex items-center bg-primary-50 text-primary-800 py-1 px-3 rounded-full text-sm font-medium">
-                                  <span>{analysis.calories} calories</span>
+                                  <span>{analysis.estimatedCalories || 0} calories</span>
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-sm font-medium text-neutral-700">Protein</span>
-                                    <span className="text-sm text-neutral-600">{analysis.protein}g</span>
+                                    <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedProtein || '0')}g</span>
                                   </div>
-                                  <NutritionChart 
-                                    value={analysis.protein} 
-                                    maxValue={50} 
-                                    color="bg-chart-1" 
+                                  <NutritionChart
+                                    value={parseFloat(analysis.estimatedProtein || '0')}
+                                    maxValue={50}
+                                    color="bg-chart-1"
                                   />
                                 </div>
                                 <div>
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-sm font-medium text-neutral-700">Carbs</span>
-                                    <span className="text-sm text-neutral-600">{analysis.carbs}g</span>
+                                    <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedCarbs || '0')}g</span>
                                   </div>
-                                  <NutritionChart 
-                                    value={analysis.carbs} 
-                                    maxValue={100} 
-                                    color="bg-chart-2" 
+                                  <NutritionChart
+                                    value={parseFloat(analysis.estimatedCarbs || '0')}
+                                    maxValue={100}
+                                    color="bg-chart-2"
                                   />
                                 </div>
                                 <div>
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-sm font-medium text-neutral-700">Fat</span>
-                                    <span className="text-sm text-neutral-600">{analysis.fat}g</span>
+                                    <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedFat || '0')}g</span>
                                   </div>
-                                  <NutritionChart 
-                                    value={analysis.fat} 
-                                    maxValue={40} 
-                                    color="bg-chart-3" 
-                                  />
-                                </div>
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm font-medium text-neutral-700">Fiber</span>
-                                    <span className="text-sm text-neutral-600">{analysis.fiber}g</span>
-                                  </div>
-                                  <NutritionChart 
-                                    value={analysis.fiber} 
-                                    maxValue={20} 
-                                    color="bg-chart-4" 
+                                  <NutritionChart
+                                    value={parseFloat(analysis.estimatedFat || '0')}
+                                    maxValue={40}
+                                    color="bg-chart-3"
                                   />
                                 </div>
                               </div>

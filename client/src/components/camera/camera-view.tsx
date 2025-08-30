@@ -71,22 +71,25 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
     if ((multiMode && capturedFoods.length > 0) || (!multiMode && capturedImage)) {
       try {
         setIsProcessing(true);
-        
-        // Convert captured image to base64
+
+        // Get the captured image data (already a data URL)
         const imageData = capturedImage || capturedFoods[0];
-        const base64Data = await fetch(imageData)
-          .then(res => res.blob())
-          .then(blob => new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          }));
+
+        // Validate the data URL format
+        if (!imageData || !imageData.startsWith('data:image/')) {
+          throw new Error('Invalid image data format');
+        }
+
+        // Ensure proper MIME type
+        if (!imageData.includes('data:image/jpeg') && !imageData.includes('data:image/png')) {
+          throw new Error('Unsupported image format. Please use JPEG or PNG images.');
+        }
 
         // Call enhanced API based on mode
         const endpoint = multiMode
           ? '/api/user/enhanced-food-recognition/analyze-multi'
           : '/api/user/enhanced-food-recognition/analyze-single';
-        
+
         const options = {
           enablePortionEstimation: true,
           enable3DEstimation: false,
@@ -100,7 +103,7 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ imageData: base64Data, options }),
+          body: JSON.stringify({ imageData, options }),
         });
 
         if (!response.ok) {
@@ -136,10 +139,25 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
         }
       } catch (error) {
         console.error('Enhanced food analysis failed:', error);
+
+        // Provide more specific error messages
+        let errorMessage = 'Analysis failed';
+        if (error instanceof Error) {
+          if (error.message.includes('Invalid image data format')) {
+            errorMessage = 'Invalid image format. Please try capturing the image again.';
+          } else if (error.message.includes('Unsupported image format')) {
+            errorMessage = 'Unsupported image format. Please use JPEG or PNG images.';
+          } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
         // Fallback to original capture with error message
         const fallbackData = multiMode ? capturedFoods : capturedImage;
         onCapture({
-          error: error instanceof Error ? error.message : 'Analysis failed',
+          error: errorMessage,
           fallbackData: capturedFoods.length > 0 ? capturedFoods : capturedImage || null
         });
       } finally {

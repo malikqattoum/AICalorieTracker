@@ -81,8 +81,36 @@ export async function getNutritionTips(userId: number): Promise<string[]> {
       max_tokens: 500,
     });
 
-    const result = JSON.parse(response.choices[0].message.content ?? '{}');
-    return result.tips || [];
+    const rawContent = response.choices[0].message.content ?? '{}';
+    console.log('[NUTRITION TIPS] Raw OpenAI response:', rawContent);
+
+    const result = JSON.parse(rawContent);
+    console.log('[NUTRITION TIPS] Parsed result:', result);
+
+    // Normalize the response to ensure we always return string[]
+    let tips = result.tips || [];
+
+    // Ensure tips is an array
+    if (!Array.isArray(tips)) {
+      console.warn('[NUTRITION TIPS] Tips is not an array, converting to array');
+      tips = [String(tips)];
+    }
+
+    // Handle mixed types and objects with 'tip' key
+    tips = tips.map((item: any, index: number) => {
+      if (typeof item === 'string') {
+        return item;
+      } else if (typeof item === 'object' && item !== null && 'tip' in item) {
+        console.log(`[NUTRITION TIPS] Converting object at index ${index} to string`);
+        return String(item.tip || '');
+      } else {
+        console.warn(`[NUTRITION TIPS] Unexpected item type at index ${index}, converting to string:`, item);
+        return String(item || '');
+      }
+    }).filter((tip: string) => tip.trim().length > 0); // Filter out empty tips
+
+    console.log('[NUTRITION TIPS] Final normalized tips array:', tips);
+    return tips;
   } catch (error) {
     console.error("Error getting nutrition tips:", error);
     return [

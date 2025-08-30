@@ -37,10 +37,10 @@ export function RecentResultsCard() {
             {analyses.slice(0, 3).map((analysis) => (
               <div key={analysis.id} className="p-6 flex flex-col md:flex-row">
                 <div className="flex-shrink-0 w-full md:w-32 h-24 md:h-32 mb-4 md:mb-0 md:mr-6 bg-neutral-200 rounded-lg overflow-hidden relative">
-                  <img 
-                    src={analysis.imageData} 
-                    alt={analysis.foodName} 
-                    className="w-full h-full object-cover" 
+                  <img
+                    src={analysis.imageUrl || '/placeholder-food.jpg'}
+                    alt={analysis.foodName}
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="flex-grow">
@@ -48,11 +48,11 @@ export function RecentResultsCard() {
                     <div>
                       <h3 className="text-lg font-medium text-neutral-900">{analysis.foodName}</h3>
                       <p className="text-sm text-neutral-500">
-                        {formatDistanceToNow(new Date(analysis.timestamp), { addSuffix: true })}
+                        {analysis.analysisTimestamp ? formatDistanceToNow(new Date(analysis.analysisTimestamp), { addSuffix: true }) : 'No date available'}
                       </p>
                     </div>
                     <div className="mt-2 md:mt-0 flex items-center bg-primary-50 text-primary-800 py-1 px-3 rounded-full text-sm font-medium">
-                      <span>{analysis.calories} calories</span>
+                      <span>{analysis.estimatedCalories || 0} calories</span>
                     </div>
                   </div>
                   
@@ -60,45 +60,45 @@ export function RecentResultsCard() {
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium text-neutral-700">Protein</span>
-                        <span className="text-sm text-neutral-600">{analysis.protein}g</span>
+                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedProtein || '0')}g</span>
                       </div>
-                      <NutritionChart 
-                        value={analysis.protein} 
-                        maxValue={50} 
-                        color="bg-chart-1" 
+                      <NutritionChart
+                        value={parseFloat(analysis.estimatedProtein || '0')}
+                        maxValue={50}
+                        color="bg-chart-1"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium text-neutral-700">Carbs</span>
-                        <span className="text-sm text-neutral-600">{analysis.carbs}g</span>
+                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedCarbs || '0')}g</span>
                       </div>
-                      <NutritionChart 
-                        value={analysis.carbs} 
-                        maxValue={100} 
-                        color="bg-chart-2" 
+                      <NutritionChart
+                        value={parseFloat(analysis.estimatedCarbs || '0')}
+                        maxValue={100}
+                        color="bg-chart-2"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium text-neutral-700">Fat</span>
-                        <span className="text-sm text-neutral-600">{analysis.fat}g</span>
+                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedFat || '0')}g</span>
                       </div>
-                      <NutritionChart 
-                        value={analysis.fat} 
-                        maxValue={40} 
-                        color="bg-chart-3" 
+                      <NutritionChart
+                        value={parseFloat(analysis.estimatedFat || '0')}
+                        maxValue={40}
+                        color="bg-chart-3"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium text-neutral-700">Fiber</span>
-                        <span className="text-sm text-neutral-600">{analysis.fiber}g</span>
+                        <span className="text-sm text-neutral-600">0g</span>
                       </div>
-                      <NutritionChart 
-                        value={analysis.fiber} 
-                        maxValue={20} 
-                        color="bg-chart-4" 
+                      <NutritionChart
+                        value={0}
+                        maxValue={20}
+                        color="bg-chart-4"
                       />
                     </div>
                   </div>

@@ -1,7 +1,9 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "baseUrl": "../"
+    "ignoreDeprecations": "6.0",
+    "baseUrl": "../",
+    "skipLibCheck": true
   },
   "include": ["src"]
 }

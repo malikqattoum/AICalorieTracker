@@ -21,8 +21,25 @@ export function NutritionTipsCard() {
     "Choose whole grains over refined carbohydrates when possible"
   ];
 
+  // Log received data for monitoring
+  console.log('[NUTRITION TIPS CLIENT] Received data:', data);
+
   // Use fallback if data is missing, not an array, or empty
-  const tips = Array.isArray(data?.tips) && data.tips.length > 0 ? data.tips : fallbackTips;
+  let tips = Array.isArray(data?.tips) && data.tips.length > 0 ? data.tips : fallbackTips;
+
+  // Handle case where tips might be objects with 'tip' key (defensive programming)
+  if (Array.isArray(tips) && tips.length > 0 && typeof tips[0] === 'object' && tips[0] !== null && 'tip' in tips[0]) {
+    console.log('[NUTRITION TIPS CLIENT] Converting objects with tip keys to strings');
+    tips = tips.map(item => {
+      if (typeof item === 'object' && item !== null && 'tip' in item) {
+        return (item as {tip: string}).tip;
+      }
+      return String(item);
+    });
+  }
+
+  // Log final processed tips
+  console.log('[NUTRITION TIPS CLIENT] Final processed tips:', tips);
 
   return (
     <Card className="card-gradient hover-effect rounded-xl overflow-hidden">

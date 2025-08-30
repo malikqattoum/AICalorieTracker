@@ -153,6 +153,7 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                       const { cx, cy, payload } = props;
                       return payload.clinicalFlag ? (
                         <circle
+                          key={props.payload.day}
                           cx={cx}
                           cy={cy}
                           r={7}
@@ -214,6 +215,7 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                     const { cx, cy, payload } = props;
                     return payload.clinicalMacroFlag ? (
                       <circle
+                        key={props.payload.name}
                         cx={cx}
                         cy={cy}
                         r={7}

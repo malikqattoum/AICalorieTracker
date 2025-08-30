@@ -16,7 +16,7 @@ const router = Router();
  */
 
 // POST /api/user/enhanced-food-recognition/analyze-single
-router.post('/analyze-single', 
+router.post('/analyze-single',
   ValidationService.validate({
     imageData: { type: 'string', required: true },
     options: { type: 'string' } // Simplified validation for complex object
@@ -31,8 +31,16 @@ router.post('/analyze-single',
       // Initialize the service if needed
       await enhancedFoodRecognitionService.initialize();
 
+      // Convert base64 data URL to Buffer
+      const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
       // Analyze the food image
-      const result = await enhancedFoodRecognitionService.analyzeFoodImage(imageData, options);
+      const result = await enhancedFoodRecognitionService.analyzeFoodImage({
+        imageBuffer,
+        userId,
+        ...options
+      });
 
       res.json({
         success: true,
@@ -63,11 +71,16 @@ router.post('/analyze-multi',
 
       log(`Starting enhanced multi-food analysis for user ${userId}`);
 
-      // Initialize the service if needed
-      await enhancedFoodRecognitionService.initialize();
+      // Convert base64 data URL to Buffer
+      const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
 
-      // Analyze multiple food items
-      const result = await enhancedFoodRecognitionService.analyzeMultiFoodImage(imageData, options);
+      // Analyze multiple food items (for now, treat as single analysis)
+      const result = await enhancedFoodRecognitionService.analyzeFoodImage({
+        imageBuffer,
+        userId,
+        ...options
+      });
 
       res.json({
         success: true,
@@ -99,11 +112,14 @@ router.post('/analyze-restaurant-menu',
 
       log(`Starting restaurant menu analysis for ${restaurantName} by user ${userId}`);
 
-      // Initialize the service if needed
-      await enhancedFoodRecognitionService.initialize();
+      // Convert base64 data URL to Buffer
+      const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
 
       // Analyze restaurant menu with specialized restaurant mode
-      const result = await enhancedFoodRecognitionService.analyzeMultiFoodImage(imageData, {
+      const result = await enhancedFoodRecognitionService.analyzeFoodImage({
+        imageBuffer,
+        userId,
         ...options,
         restaurantMode: true
       });
@@ -138,12 +154,12 @@ router.post('/analyze-restaurant-menu',
 router.get('/status', async (req, res) => {
   try {
     const userId = (req as any).user.id;
-    const status = enhancedFoodRecognitionService.getStatus();
+    const availableProviders = enhancedFoodRecognitionService.getAvailableProviders();
 
     res.json({
       success: true,
       data: {
-        ...status,
+        availableProviders,
         userId,
         timestamp: new Date().toISOString()
       },
@@ -173,9 +189,6 @@ router.post('/portion-estimate',
       const userId = (req as any).user.id;
 
       log(`Starting portion size estimation for ${foodName} by user ${userId}`);
-
-      // Initialize the service if needed
-      await enhancedFoodRecognitionService.initialize();
 
       // Estimate portion size
       // Simplified portion estimation - in real implementation would use portionSizeService

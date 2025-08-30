@@ -38,6 +38,15 @@ export class EnhancedFoodRecognitionService {
     this.initializeProviders();
   }
 
+  /**
+   * Initialize the service (public method for external initialization)
+   */
+  async initialize(): Promise<void> {
+    // Service is already initialized in constructor
+    // This method allows for external initialization calls
+    return Promise.resolve();
+  }
+
   private initializeProviders() {
     // This would normally initialize the actual AI service providers
     // For now, we'll create mock implementations
