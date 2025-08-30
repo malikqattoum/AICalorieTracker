@@ -71,17 +71,29 @@ export class DatabaseStorage implements IStorage {
   // User methods
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    if (!user) return undefined;
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    if (!user) return undefined;
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    if (!user) return undefined;
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -128,9 +140,12 @@ export class DatabaseStorage implements IStorage {
         console.error('[DATABASE STORAGE] Failed to fetch inserted user');
         throw new Error('Failed to fetch inserted user');
       }
-      
+
       console.log('[DATABASE STORAGE] User created successfully:', { id: user.id, username: user.username });
-      return user;
+      return {
+        ...user,
+        nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+      };
     } catch (error) {
       console.error('[DATABASE STORAGE] Error creating user:', error);
       console.error('[DATABASE STORAGE] Error details:', {
@@ -141,8 +156,8 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateUserStripeInfo(userId: number, stripeInfo: { 
-    stripeCustomerId?: string; 
+  async updateUserStripeInfo(userId: number, stripeInfo: {
+    stripeCustomerId?: string;
     stripeSubscriptionId?: string;
     subscriptionType?: string;
     subscriptionStatus?: string;
@@ -156,12 +171,19 @@ export class DatabaseStorage implements IStorage {
     if (!user) {
       throw new Error(`User with ID ${userId} not found`);
     }
-    return user;
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async getUserById(userId: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    return user;
+    if (!user) return undefined;
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void> {
@@ -478,9 +500,15 @@ export class DatabaseStorage implements IStorage {
     await db.update(users)
       .set(onboardingData)
       .where(eq(users.id, userId));
-    
+
     const [user] = await db.select().from(users).where(eq(users.id, userId));
-    return user;
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    return {
+      ...user,
+      nutritionGoals: user.nutritionGoals ? (typeof user.nutritionGoals === 'string' ? JSON.parse(user.nutritionGoals) : user.nutritionGoals) as NutritionGoals : null
+    };
   }
 
   async createNutritionGoals(userId: number, goals: any): Promise<void> {

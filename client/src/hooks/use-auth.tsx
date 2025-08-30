@@ -31,6 +31,7 @@ import {
   handleAuthError
 } from "../lib/errorHandling";
 import { useErrorHandler, useErrorContext } from "../contexts/ErrorContext";
+import { NutritionGoals } from "../../../shared/schema";
 
 interface User {
   id: number;
@@ -41,6 +42,7 @@ interface User {
   createdAt: Date;
   updatedAt: Date;
   token?: string; // Optional JWT token for authentication
+  nutritionGoals: NutritionGoals | null;
 }
 import { useLocation } from "wouter";
 import { z } from "zod";

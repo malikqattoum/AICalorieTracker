@@ -571,12 +571,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Nutrition Coach Chatbot endpoint
   app.post("/api/nutrition-coach-chat", authenticate, async (req, res) => {
     try {
+      console.log(`[NUTRITION-COACH] Request received for user: ${req.user!.id}`);
+      console.log(`[NUTRITION-COACH] Request body:`, req.body);
+
       const { messages } = req.body;
+
+      if (!messages || !Array.isArray(messages)) {
+        console.log(`[NUTRITION-COACH] Invalid messages format:`, messages);
+        return res.status(400).json({ error: "Messages array is required" });
+      }
+
+      console.log(`[NUTRITION-COACH] Processing ${messages.length} messages`);
+      console.log(`[NUTRITION-COACH] First message:`, messages[0]);
+
       // Use OpenAI-powered nutrition coach
       const reply = await getNutritionCoachReply(messages, req.user!.id);
+      console.log(`[NUTRITION-COACH] OpenAI reply received:`, reply.substring(0, 100) + '...');
+
       res.json({ reply });
     } catch (error) {
-      console.error("Error in nutrition coach chat:", error);
+      console.error("[NUTRITION-COACH] Error in nutrition coach chat:", error);
       res.status(500).json({ reply: "Sorry, I couldn't process your request." });
     }
   });

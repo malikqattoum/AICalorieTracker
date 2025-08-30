@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Sparkles, Settings, Key, CheckCircle, AlertCircle, Save } from "lucide-react";
+import { apiRequest } from "@/lib/apiRequest";
 
 interface AIConfig {
   id: number;
@@ -37,7 +38,7 @@ export default function AIConfigPanel() {
   const { data: aiConfigs, isLoading } = useQuery({
     queryKey: ['ai-configs'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/ai-config');
+      const response = await apiRequest('/api/admin/ai-config');
       if (!response.ok) {
         throw new Error('Failed to fetch AI configurations');
       }
@@ -48,12 +49,9 @@ export default function AIConfigPanel() {
   // Update AI configuration
   const updateConfigMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/admin/ai-config/${id}`, {
+      const response = await apiRequest(`/api/admin/ai-config/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+        body: data,
       });
       if (!response.ok) {
         throw new Error('Failed to update AI configuration');
@@ -79,7 +77,7 @@ export default function AIConfigPanel() {
   // Activate AI provider
   const activateProviderMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/admin/ai-config/${id}/activate`, {
+      const response = await apiRequest(`/api/admin/ai-config/${id}/activate`, {
         method: 'POST',
       });
       if (!response.ok) {

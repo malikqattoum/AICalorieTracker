@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Workout {
   id: number;
@@ -58,12 +59,7 @@ export function WorkoutTrackerCard() {
   // Add workout mutation
   const addWorkoutMutation = useMutation({
     mutationFn: async (workout: Omit<Workout, "id">) => {
-      const res = await fetch("/api/workouts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(workout),
-      });
-      if (!res.ok) throw new Error("Failed to add workout");
+      const res = await apiRequest("POST", "/api/workouts", workout);
       return res.json();
     },
     onSuccess: () => {
@@ -84,10 +80,7 @@ export function WorkoutTrackerCard() {
   // Delete workout mutation
   const deleteWorkoutMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/workouts/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete workout");
+      const res = await apiRequest("DELETE", `/api/workouts/${id}`);
       return res.json();
     },
     onSuccess: () => {

@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import { importedRecipes } from '../server/src/db/schemas/importedRecipes';
+
+export interface NutritionGoals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 export interface User {
   id: number;
@@ -15,7 +23,7 @@ export interface User {
   subscriptionStatus: string | null;
   subscriptionEndDate: Date | null;
   isPremium: boolean | null;
-  nutritionGoals: any | null;
+  nutritionGoals: NutritionGoals | null;
   role: string | null;
   age: number | null;
   gender: string | null;
@@ -117,12 +125,6 @@ export interface InsertWeeklyStats {
   macrosByDay?: Record<string, { protein: number; carbs: number; fat: number }>;
 }
 
-export interface NutritionGoals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
 
 export interface SiteContent {
   id: number;
@@ -155,6 +157,10 @@ export * from '../server/src/db/schemas/plannedMeals';
 export * from '../server/src/db/schemas/importedRecipes';
 export * from '../server/src/db/schemas/referralSettings';
 export * from '../server/src/db/schemas/referralCommissions';
+
+// Type definitions for imported recipes
+export type ImportedRecipe = typeof importedRecipes.$inferSelect;
+export type InsertImportedRecipe = typeof importedRecipes.$inferInsert;
 
 export const registerSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),

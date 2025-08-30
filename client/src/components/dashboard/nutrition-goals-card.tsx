@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { apiRequest } from "@/lib/queryClient";
 
 interface NutritionGoals {
   userId: number;
@@ -84,11 +85,7 @@ export function NutritionGoalsCard() {
   // Update nutrition goals mutation
   const updateGoalsMutation = useMutation({
     mutationFn: async (updatedGoals: NutritionGoals) => {
-      const res = await fetch("/api/nutrition-goals", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedGoals),
-      });
+      const res = await apiRequest("PUT", "/api/nutrition-goals", updatedGoals);
       if (!res.ok) throw new Error("Failed to update nutrition goals");
       return res.json();
     },

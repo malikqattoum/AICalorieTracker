@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { apiPost, apiPut } from "@/lib/apiRequest";
 import { 
   FileText,
   Download,
@@ -151,11 +152,7 @@ export default function ReportGenerator() {
   // Generate report mutation
   const generateReportMutation = useMutation({
     mutationFn: async (config: ReportConfig) => {
-      const response = await fetch('/api/admin/reports/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
+      const response = await apiPost('/api/admin/reports/generate', config);
       if (!response.ok) throw new Error('Failed to generate report');
       return response.json();
     },
@@ -171,11 +168,7 @@ export default function ReportGenerator() {
   // Create template mutation
   const createTemplateMutation = useMutation({
     mutationFn: async (template: any) => {
-      const response = await fetch('/api/admin/reports/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(template),
-      });
+      const response = await apiPost('/api/admin/reports/templates', template);
       if (!response.ok) throw new Error('Failed to create template');
       return response.json();
     },
@@ -202,11 +195,7 @@ export default function ReportGenerator() {
   // Schedule report mutation
   const scheduleReportMutation = useMutation({
     mutationFn: async ({ templateId, schedule }: { templateId: string; schedule: any }) => {
-      const response = await fetch(`/api/admin/reports/templates/${templateId}/schedule`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schedule),
-      });
+      const response = await apiPut(`/api/admin/reports/templates/${templateId}/schedule`, schedule);
       if (!response.ok) throw new Error('Failed to schedule report');
       return response.json();
     },

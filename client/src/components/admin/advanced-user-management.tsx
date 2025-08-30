@@ -12,16 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  User, 
-  Users, 
-  Search, 
-  Filter, 
-  UserPlus, 
-  Mail, 
-  Shield, 
-  Crown, 
-  Calendar, 
+import {
+  User,
+  Users,
+  Search,
+  Filter,
+  UserPlus,
+  Mail,
+  Shield,
+  Crown,
+  Calendar,
   Activity,
   Edit3,
   Trash2,
@@ -30,6 +30,13 @@ import {
   Upload
 } from "lucide-react";
 import { User as UserType } from "@shared/schema";
+import { apiRequest } from "@/lib/apiRequest";
+
+interface BulkOperationRequest {
+  operation: string;
+  userIds: number[];
+  data?: any;
+}
 
 interface UserStats {
   totalMeals: number;
@@ -65,8 +72,8 @@ export default function AdvancedUserManagement() {
       if (searchTerm) params.append('search', searchTerm);
       if (filterRole !== 'all') params.append('role', filterRole);
       if (filterPremium !== 'all') params.append('premium', filterPremium);
-      
-      const response = await fetch(`/api/admin/users/advanced?${params}`);
+
+      const response = await apiRequest(`/api/admin/users/advanced?${params}`);
       if (!response.ok) throw new Error('Failed to fetch users');
       return response.json();
     },
@@ -76,7 +83,7 @@ export default function AdvancedUserManagement() {
   const { data: userStats } = useQuery({
     queryKey: ['admin-user-stats'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/users/stats');
+      const response = await apiRequest('/api/admin/users/stats');
       if (!response.ok) throw new Error('Failed to fetch user stats');
       return response.json();
     },
@@ -85,10 +92,9 @@ export default function AdvancedUserManagement() {
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (userData: any) => {
-      const response = await fetch('/api/admin/users', {
+      const response = await apiRequest('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
+        body: userData,
       });
       if (!response.ok) throw new Error('Failed to create user');
       return response.json();
@@ -106,10 +112,9 @@ export default function AdvancedUserManagement() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await fetch(`/api/admin/users/${id}`, {
+      const response = await apiRequest(`/api/admin/users/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: data,
       });
       if (!response.ok) throw new Error('Failed to update user');
       return response.json();
@@ -126,11 +131,10 @@ export default function AdvancedUserManagement() {
 
   // Bulk operations mutation
   const bulkOperationMutation = useMutation({
-    mutationFn: async ({ operation, userIds, data }: { operation: string; userIds: number[]; data?: any }) => {
-      const response = await fetch('/api/admin/users/bulk', {
+    mutationFn: async ({ operation, userIds, data }: BulkOperationRequest) => {
+      const response = await apiRequest('/api/admin/users/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operation, userIds, data }),
+        body: { operation, userIds, data } as any,
       });
       if (!response.ok) throw new Error('Failed to perform bulk operation');
       return response.json();
@@ -619,7 +623,7 @@ export default function AdvancedUserManagement() {
               <div>
                 <Label htmlFor="edit-role">Role</Label>
                 <Select
-                  value={editUser.role}
+                  value={editUser.role || 'user'}
                   onValueChange={(value) => setEditUser({ ...editUser, role: value })}
                 >
                   <SelectTrigger>

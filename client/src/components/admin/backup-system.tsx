@@ -9,13 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Download, 
-  Upload, 
-  Database, 
-  Calendar, 
-  CheckCircle, 
-  AlertCircle, 
+import { apiPost, apiDelete } from "@/lib/apiRequest";
+import {
+  Download,
+  Upload,
+  Database,
+  Calendar,
+  CheckCircle,
+  AlertCircle,
   RefreshCw,
   Trash2,
   Copy,
@@ -74,11 +75,7 @@ export default function BackupSystem() {
   // Create backup mutation
   const createBackupMutation = useMutation({
     mutationFn: async (data: { type: string; name: string }) => {
-      const response = await fetch('/api/admin/backup/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      const response = await apiPost('/api/admin/backup/create', data);
       if (!response.ok) throw new Error('Failed to create backup');
       return response.json();
     },
@@ -97,9 +94,7 @@ export default function BackupSystem() {
   // Delete backup mutation
   const deleteBackupMutation = useMutation({
     mutationFn: async (backupId: string) => {
-      const response = await fetch(`/api/admin/backup/${backupId}`, {
-        method: 'DELETE',
-      });
+      const response = await apiDelete(`/api/admin/backup/${backupId}`);
       if (!response.ok) throw new Error('Failed to delete backup');
       return response.json();
     },
@@ -115,9 +110,7 @@ export default function BackupSystem() {
   // Restore backup mutation
   const restoreBackupMutation = useMutation({
     mutationFn: async (backupId: string) => {
-      const response = await fetch(`/api/admin/backup/${backupId}/restore`, {
-        method: 'POST',
-      });
+      const response = await apiPost(`/api/admin/backup/${backupId}/restore`);
       if (!response.ok) throw new Error('Failed to restore backup');
       return response.json();
     },

@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/apiRequest";
 import { 
   CreditCard, 
   DollarSign, 
@@ -79,6 +81,11 @@ interface RevenueMetrics {
   lifetimeValue: number;
 }
 
+interface ReferralSettings {
+  commission_percent: number;
+  is_recurring: boolean;
+}
+
 export default function PaymentManagement() {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,6 +97,11 @@ export default function PaymentManagement() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [referralSettings, setReferralSettings] = useState<ReferralSettings>({
+    commission_percent: 0,
+    is_recurring: false
+  });
 
   // Fetch revenue metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery<RevenueMetrics>({
@@ -139,7 +151,7 @@ export default function PaymentManagement() {
   // Cancel subscription mutation
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async (subscriptionId: string) => {
-      const response = await fetch(`/api/admin/payments/subscriptions/${subscriptionId}/cancel`, {
+      const response = await apiRequest(`/api/admin/payments/subscriptions/${subscriptionId}/cancel`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to cancel subscription');
@@ -157,9 +169,8 @@ export default function PaymentManagement() {
   // Refund payment mutation
   const refundPaymentMutation = useMutation({
     mutationFn: async (data: { transactionId: string; amount: number; reason: string }) => {
-      const response = await fetch(`/api/admin/payments/refund`, {
+      const response = await apiRequest(`/api/admin/payments/refund`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Failed to process refund');
@@ -174,6 +185,25 @@ export default function PaymentManagement() {
     },
     onError: (error: Error) => {
       toast({ title: "Error processing refund", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update referral settings mutation
+  const updateReferralSettings = useMutation({
+    mutationFn: async (settings: ReferralSettings) => {
+      const response = await apiRequest('/api/admin/referral-settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error('Failed to update referral settings');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Referral settings updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['admin-referral-settings'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error updating referral settings", description: error.message, variant: "destructive" });
     },
   });
 

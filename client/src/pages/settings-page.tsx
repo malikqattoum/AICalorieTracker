@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -23,11 +24,7 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSuccess(false);
-    await fetch("/api/user/goals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(goals),
-    });
+    await apiRequest("POST", "/api/user/goals", goals);
     setSaving(false);
     setSuccess(true);
   };

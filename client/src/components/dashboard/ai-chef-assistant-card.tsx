@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Bot, User, ChefHat } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Message {
   role: "user" | "assistant";
@@ -39,13 +40,7 @@ export function AiChefAssistantCard() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/ai-chef/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId: user?.id, messages: newMessages }),
-      });
+      const response = await apiRequest("POST", "/api/ai-chef/chat", { userId: user?.id, messages: newMessages });
 
       if (!response.ok) {
         const errorData = await response.json();

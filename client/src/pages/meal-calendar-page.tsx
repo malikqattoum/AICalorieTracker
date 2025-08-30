@@ -3,12 +3,15 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PlannedMeal, InsertPlannedMeal } from '@shared/schema'; // Assuming types are in schema
+import { apiRequest, addAuthHeader, addSecurityHeaders } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function MealCalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [plannedMeals, setPlannedMeals] = useState<PlannedMeal[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
     const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentMeal, setCurrentMeal] = useState<Partial<InsertPlannedMeal> & { id?: number }>({});
@@ -82,11 +85,12 @@ export default function MealCalendarPage() {
     formData.append('icalFile', file);
 
     try {
+      const headers = addAuthHeader(addSecurityHeaders({}));
       const response = await fetch('/api/planned-meals/import/ical', {
         method: 'POST',
+        headers,
         body: formData,
-        // Note: Do not set Content-Type header when using FormData,
-        // the browser will set it correctly with the boundary.
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -153,7 +157,7 @@ export default function MealCalendarPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setCurrentMeal(prev => ({ ...prev, [name]: name === 'calories' || name === 'protein' || name === 'carbs' || name === 'fat' ? parseInt(value, 10) : value }));
+    setCurrentMeal((prev: Partial<InsertPlannedMeal> & { id?: number }) => ({ ...prev, [name]: name === 'calories' || name === 'protein' || name === 'carbs' || name === 'fat' ? parseInt(value, 10) : value }));
   };
 
   const handleSubmitMeal = async () => {
@@ -164,6 +168,7 @@ export default function MealCalendarPage() {
 
     const mealData: InsertPlannedMeal = {
       date: selectedDate, // Pass as Date, not string
+      userId: user?.id || 0,
       mealType: currentMeal.mealType!,
       mealName: currentMeal.mealName!,
       calories: currentMeal.calories || 0,
@@ -177,17 +182,9 @@ export default function MealCalendarPage() {
     try {
       let response;
       if (editingMeal && editingMeal.id) {
-        response = await fetch(`/api/planned-meals/${editingMeal.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(mealData),
-        });
+        response = await apiRequest('PUT', `/api/planned-meals/${editingMeal.id}`, mealData);
       } else {
-        response = await fetch('/api/planned-meals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(mealData),
-        });
+        response = await apiRequest('POST', '/api/planned-meals', mealData);
       }
 
       if (!response.ok) {
@@ -211,9 +208,7 @@ export default function MealCalendarPage() {
     if (!confirm('Are you sure you want to delete this meal?')) return;
 
     try {
-      const response = await fetch(`/api/planned-meals/${mealId}`, {
-        method: 'DELETE',
-      });
+      const response = await apiRequest('DELETE', `/api/planned-meals/${mealId}`);
       if (!response.ok && response.status !== 204) { // 204 No Content is a success for DELETE
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to delete meal');

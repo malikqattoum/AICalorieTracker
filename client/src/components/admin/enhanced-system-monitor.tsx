@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/apiRequest";
 import { 
   Activity, 
   Server, 
@@ -190,7 +191,7 @@ export default function EnhancedSystemMonitor() {
   // Restart service mutation
   const restartServiceMutation = useMutation({
     mutationFn: async (serviceName: string) => {
-      const response = await fetch(`/api/admin/system/services/${serviceName}/restart`, {
+      const response = await apiRequest(`/api/admin/system/services/${serviceName}/restart`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to restart service');
@@ -212,7 +213,7 @@ export default function EnhancedSystemMonitor() {
   // Resolve alert mutation
   const resolveAlertMutation = useMutation({
     mutationFn: async (alertId: string) => {
-      const response = await fetch(`/api/admin/system/alerts/${alertId}/resolve`, {
+      const response = await apiRequest(`/api/admin/system/alerts/${alertId}/resolve`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to resolve alert');

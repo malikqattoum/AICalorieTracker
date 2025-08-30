@@ -11,15 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Settings, 
-  Database, 
-  Mail, 
-  Shield, 
-  Bell, 
-  Palette, 
-  Globe, 
-  Code, 
+import {
+  Settings,
+  Database,
+  Mail,
+  Shield,
+  Bell,
+  Palette,
+  Globe,
+  Code,
   Save,
   RefreshCw,
   AlertCircle,
@@ -29,6 +29,7 @@ import {
   Cloud,
   Lock
 } from "lucide-react";
+import { apiRequest } from "@/lib/apiRequest";
 
 interface AppSettings {
   general: {
@@ -99,7 +100,7 @@ export default function SettingsPanel() {
   const { data: appSettings, isLoading } = useQuery<AppSettings>({
     queryKey: ['admin-settings'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/settings');
+      const response = await apiRequest('/api/admin/settings');
       if (!response.ok) throw new Error('Failed to fetch settings');
       return response.json();
     },
@@ -108,10 +109,9 @@ export default function SettingsPanel() {
   // Update settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: { section: string; settings: any }) => {
-      const response = await fetch(`/api/admin/settings/${data.section}`, {
+      const response = await apiRequest(`/api/admin/settings/${data.section}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data.settings),
+        body: data.settings,
       });
       if (!response.ok) throw new Error('Failed to update settings');
       return response.json();
@@ -129,7 +129,7 @@ export default function SettingsPanel() {
   // Test email configuration mutation
   const testEmailMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/admin/settings/test-email', {
+      const response = await apiRequest('/api/admin/settings/test-email', {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to send test email');

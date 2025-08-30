@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiRequest } from "@/lib/queryClient";
 
 export function NutritionCoachChatbot({ userId }: { userId?: number }) {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([
@@ -15,13 +16,9 @@ export function NutritionCoachChatbot({ userId }: { userId?: number }) {
     setLoading(true);
     setInput("");
     try {
-      const res = await fetch("/api/nutrition-coach-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          messages: [...messages, { role: "user", content: input }],
-        }),
+      const res = await apiRequest("POST", "/api/nutrition-coach-chat", {
+        userId,
+        messages: [...messages, { role: "user", content: input }],
       });
       if (!res.ok) throw new Error("Failed to get response");
       const data = await res.json();

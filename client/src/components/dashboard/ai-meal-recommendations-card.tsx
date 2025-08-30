@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest } from "@/lib/queryClient";
 
 interface Meal { 
   id?: string; 
@@ -78,11 +79,7 @@ export function AiMealRecommendationsCard() {
 
   const dailyPlanMutation = useMutation<DailyMealPlan, Error, { targetCalories: number; preferences: string[] }> ({
     mutationFn: async ({ targetCalories, preferences }) => {
-      const res = await fetch("/api/meal-recommendations/daily-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetCalories, preferences }),
-      });
+      const res = await apiRequest("POST", "/api/meal-recommendations/daily-plan", { targetCalories, preferences });
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Failed to fetch daily meal plan");
@@ -105,20 +102,16 @@ export function AiMealRecommendationsCard() {
 
   const saveMealMutation = useMutation<unknown, Error, Meal>({
     mutationFn: async (meal: Meal) => {
-      const res = await fetch("/api/favorite-meals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          mealId: meal.id || `${meal.name.replace(/\s+/g, '-')}-${Date.now()}`,
-          mealName: meal.name,
-          mealType: mealType, 
-          calories: meal.calories,
-          protein: meal.protein,
-          carbs: meal.carbs,
-          fat: meal.fat,
-          description: meal.description,
-          tags: meal.tags || preferences,
-        }),
+      const res = await apiRequest("POST", "/api/favorite-meals", {
+        mealId: meal.id || `${meal.name.replace(/\s+/g, '-')}-${Date.now()}`,
+        mealName: meal.name,
+        mealType: mealType,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        description: meal.description,
+        tags: meal.tags || preferences,
       });
       if (!res.ok) throw new Error("Failed to save meal");
       return res.json();

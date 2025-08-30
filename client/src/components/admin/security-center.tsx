@@ -9,14 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Shield, 
-  AlertTriangle, 
-  Lock, 
-  Eye, 
-  Activity, 
-  Ban, 
-  CheckCircle, 
+import {
+  Shield,
+  AlertTriangle,
+  Lock,
+  Eye,
+  Activity,
+  Ban,
+  CheckCircle,
   XCircle,
   Key,
   Globe,
@@ -28,6 +28,7 @@ import {
   Download,
   RefreshCw
 } from "lucide-react";
+import { apiRequest } from '../../lib/apiRequest';
 
 interface SecurityEvent {
   id: string;
@@ -109,9 +110,8 @@ export default function SecurityCenter() {
   // Block IP mutation
   const blockIPMutation = useMutation({
     mutationFn: async (data: { ipAddress: string; reason: string }) => {
-      const response = await fetch('/api/admin/security/block-ip', {
+      const response = await apiRequest('/api/admin/security/block-ip', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       if (!response.ok) throw new Error('Failed to block IP');
@@ -129,7 +129,7 @@ export default function SecurityCenter() {
   // Unblock IP mutation
   const unblockIPMutation = useMutation({
     mutationFn: async (ipId: string) => {
-      const response = await fetch(`/api/admin/security/unblock-ip/${ipId}`, {
+      const response = await apiRequest(`/api/admin/security/unblock-ip/${ipId}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to unblock IP');
@@ -147,7 +147,7 @@ export default function SecurityCenter() {
   // Resolve security event mutation
   const resolveEventMutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const response = await fetch(`/api/admin/security/events/${eventId}/resolve`, {
+      const response = await apiRequest(`/api/admin/security/events/${eventId}/resolve`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to resolve event');

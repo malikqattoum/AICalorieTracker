@@ -4,6 +4,7 @@ import { Eye, Camera, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useEffect, useState } from "react";
 import { API_URL } from "../../lib/config";
+import { apiRequest } from "../../lib/queryClient";
 import { EnhancedResultsDisplay } from "./enhanced-results-display";
 
 
@@ -98,13 +99,7 @@ export function CameraView({ onCapture, onClose, isAnalyzing }: CameraViewProps)
           restaurantMode: false
         };
 
-        const response = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageData, options }),
-        });
+        const response = await apiRequest('POST', `${API_URL}${endpoint}`, { imageData, options });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));

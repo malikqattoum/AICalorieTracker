@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/apiRequest";
 import { 
   Bell, 
   Mail, 
@@ -125,10 +126,9 @@ export default function NotificationCenter() {
   // Create notification mutation
   const createNotificationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/admin/notifications', {
+      const response = await apiRequest('/api/admin/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: data,
       });
       if (!response.ok) throw new Error('Failed to create notification');
       return response.json();
@@ -154,7 +154,7 @@ export default function NotificationCenter() {
   // Send notification mutation
   const sendNotificationMutation = useMutation({
     mutationFn: async (notificationId: string) => {
-      const response = await fetch(`/api/admin/notifications/${notificationId}/send`, {
+      const response = await apiRequest(`/api/admin/notifications/${notificationId}/send`, {
         method: 'POST',
       });
       if (!response.ok) throw new Error('Failed to send notification');

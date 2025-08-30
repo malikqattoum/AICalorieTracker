@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { MealPlan } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function MealPlanPage() {
-  const [goal, setGoal] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
-  const { toast } = useToast();
+   const [goal, setGoal] = useState("");
+   const [isLoading, setIsLoading] = useState(false);
+   const [mealPlan, setMealPlan] = useState<any>(null);
+   const { toast } = useToast();
 
   const generatePlan = async () => {
     if (!goal) {
@@ -23,14 +23,10 @@ export default function MealPlanPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("/api/meal-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal }),
-      });
-      
+      const response = await apiRequest("POST", "/api/meal-plan", { goal });
+
       if (!response.ok) throw new Error("Failed to generate meal plan");
-      
+
       const plan = await response.json();
       setMealPlan(plan);
     } catch (error) {

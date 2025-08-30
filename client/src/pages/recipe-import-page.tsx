@@ -6,6 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { ImportedRecipe, InsertImportedRecipe } from '@shared/schema'; // Assuming types are in schema
 import { Loader2, UploadCloud, Link, Trash2, Edit3, Eye } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+
+// Define type for nutrition information to improve type safety
+interface NutritionInfo {
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+}
 
 export default function RecipeImportPage() {
   const [importUrl, setImportUrl] = useState('');
@@ -21,7 +33,7 @@ export default function RecipeImportPage() {
   const fetchImportedRecipes = async () => {
     setIsFetchingRecipes(true);
     try {
-      const response = await fetch('/api/imported-recipes');
+      const response = await apiRequest('GET', '/api/imported-recipes');
       if (!response.ok) throw new Error('Failed to fetch imported recipes');
       const data: ImportedRecipe[] = await response.json();
       setImportedRecipes(data);
@@ -42,11 +54,7 @@ export default function RecipeImportPage() {
     }
     setIsLoading(true);
     try {
-      const response = await fetch('/api/imported-recipes/from-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl }),
-      });
+      const response = await apiRequest('POST', '/api/imported-recipes/from-url', { url: importUrl });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to import from URL');
@@ -77,11 +85,7 @@ export default function RecipeImportPage() {
     reader.onload = async () => {
       try {
         const base64ImageData = reader.result as string;
-        const response = await fetch('/api/imported-recipes/from-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageData: base64ImageData }),
-        });
+        const response = await apiRequest('POST', '/api/imported-recipes/from-image', { imageData: base64ImageData });
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to import from image');
@@ -106,7 +110,7 @@ export default function RecipeImportPage() {
   const handleDeleteRecipe = async (recipeId: number) => {
     if (!confirm('Are you sure you want to delete this imported recipe?')) return;
     try {
-      const response = await fetch(`/api/imported-recipes/${recipeId}`, { method: 'DELETE' });
+      const response = await apiRequest('DELETE', `/api/imported-recipes/${recipeId}`);
       if (!response.ok && response.status !== 204) throw new Error('Failed to delete recipe');
       toast({ title: 'Success', description: 'Recipe deleted successfully.' });
       fetchImportedRecipes();
@@ -164,33 +168,64 @@ export default function RecipeImportPage() {
   };
 
  const handleUpdateRecipe = async () => {
-    if (!editingRecipe || !editingRecipe.id) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/imported-recipes/${editingRecipe.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipeName: currentRecipeForm.recipeName,
-          ingredients: currentRecipeForm.ingredients,
-          instructions: currentRecipeForm.instructions,
-          parsedNutrition: currentRecipeForm.parsedNutrition,
-          notes: currentRecipeForm.notes,
-          sourceUrl: currentRecipeForm.sourceUrl,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update recipe');
-      }
-      toast({ title: 'Success', description: 'Recipe updated successfully!' });
-      closeEditModal();
-      fetchImportedRecipes();
-    } catch (error) {
-      toast({ title: 'Update Error', description: (error as Error).message, variant: 'destructive' });
-    }
-    setIsLoading(false);
-  };
+   if (!editingRecipe || !editingRecipe.id) return;
+   setIsLoading(true);
+   try {
+     const response = await apiRequest('PUT', `/api/imported-recipes/${editingRecipe.id}`, {
+       recipeName: currentRecipeForm.recipeName,
+       ingredients: currentRecipeForm.ingredients,
+       instructions: currentRecipeForm.instructions,
+       parsedNutrition: currentRecipeForm.parsedNutrition,
+       notes: currentRecipeForm.notes,
+       sourceUrl: currentRecipeForm.sourceUrl,
+     });
+     if (!response.ok) {
+       const errorData = await response.json();
+       throw new Error(errorData.error || 'Failed to update recipe');
+     }
+     toast({ title: 'Success', description: 'Recipe updated successfully!' });
+     closeEditModal();
+     fetchImportedRecipes();
+   } catch (error) {
+     toast({ title: 'Update Error', description: (error as Error).message, variant: 'destructive' });
+   }
+   setIsLoading(false);
+ };
+
+ // Helper function to render nutrition information safely
+ const renderNutritionInfo = (nutrition: any) => {
+   if (!nutrition || typeof nutrition !== 'object') return null;
+
+   const nutritionData = nutrition as NutritionInfo;
+   const fields = [
+     { key: 'calories', label: 'Calories', unit: '' },
+     { key: 'protein', label: 'Protein', unit: 'g' },
+     { key: 'carbs', label: 'Carbs', unit: 'g' },
+     { key: 'fat', label: 'Fat', unit: 'g' },
+     { key: 'fiber', label: 'Fiber', unit: 'g' },
+     { key: 'sugar', label: 'Sugar', unit: 'g' },
+     { key: 'sodium', label: 'Sodium', unit: 'mg' },
+   ];
+
+   const availableFields = fields.filter(field =>
+     typeof nutritionData[field.key as keyof NutritionInfo] === 'number' &&
+     nutritionData[field.key as keyof NutritionInfo] !== undefined
+   );
+
+   if (availableFields.length === 0) return null;
+
+   return (
+     <div className="text-xs text-gray-600 space-y-1">
+       <div className="font-medium text-gray-700">Nutrition (per serving):</div>
+       {availableFields.map(field => (
+         <div key={field.key} className="flex justify-between">
+           <span>{field.label}:</span>
+           <span>{nutritionData[field.key as keyof NutritionInfo]}{field.unit}</span>
+         </div>
+       ))}
+     </div>
+   );
+ };
 
   return (
     <div className="container py-8">
@@ -254,10 +289,8 @@ export default function RecipeImportPage() {
                   {!recipe.sourceUrl && !recipe.sourceImageUrl && recipe.rawImageData && <CardDescription className="text-xs">Image Upload</CardDescription>}
                 </CardHeader>
                 <CardContent className="text-sm">
-                  {/* Basic display of nutrition if available */}
-                  {recipe.parsedNutrition && typeof recipe.parsedNutrition === 'object' && recipe.parsedNutrition !== null && (
-                    <p>Calories: {(recipe.parsedNutrition as any).calories || 'N/A'}</p>
-                  )}
+                  {/* Enhanced display of nutrition information */}
+                  {renderNutritionInfo(recipe.parsedNutrition)}
                   <p className="mt-2 text-gray-600 truncate h-10">{recipe.instructions || 'No instructions available.'}</p>
                 </CardContent>
                 <CardFooter className="flex justify-end space-x-2">
