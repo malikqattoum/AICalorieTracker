@@ -2,8 +2,7 @@ import { createHash } from 'crypto';
 import { writeFile, readFile, unlink, mkdir, access, constants } from 'fs/promises';
 import { join, dirname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { log, logError } from '../config';
-import { db } from '../db';
+import db from '../db';
 
 // Image storage configuration
 const IMAGE_STORAGE_CONFIG = {
@@ -72,9 +71,9 @@ class ImageStorageService {
       }
       
       this.initialized = true;
-      log('Image storage service initialized successfully');
+      console.log('Image storage service initialized successfully');
     } catch (error) {
-      logError('Failed to initialize image storage service:', error);
+      console.error('Failed to initialize image storage service:', error);
       throw error;
     }
   }
@@ -210,7 +209,7 @@ class ImageStorageService {
         thumbnail: thumbnailMetadata,
       };
     } catch (error) {
-      logError('Failed to process and store image:', error);
+      console.error('Failed to process and store image:', error);
       throw error;
     }
   }
@@ -379,7 +378,7 @@ class ImageStorageService {
             await unlink(filePath);
           } catch (error) {
             // File might not exist, which is fine
-            log(`File not found for deletion: ${filePath}`);
+            console.log(`File not found for deletion: ${filePath}`);
           }
         }
       } else if (IMAGE_STORAGE_CONFIG.storageType === 's3') {
@@ -403,7 +402,7 @@ class ImageStorageService {
               Key: key
             }).promise();
           } catch (error) {
-            log(`File not found in S3 for deletion: ${key}`);
+            console.log(`File not found in S3 for deletion: ${key}`);
           }
         }
       }
@@ -413,9 +412,9 @@ class ImageStorageService {
         `DELETE FROM image_metadata WHERE hash = '${imageMetadata.hash}'`
       );
 
-      log(`Image deleted successfully: ${imageMetadata.filename}`);
+      console.log(`Image deleted successfully: ${imageMetadata.filename}`);
     } catch (error) {
-      logError('Failed to delete image:', error);
+      console.error('Failed to delete image:', error);
       throw error;
     }
   }
@@ -425,12 +424,12 @@ class ImageStorageService {
    */
   async getImageByHash(hash: string): Promise<ImageMetadata | null> {
     try {
-      const [images] = await db.execute(
+      const images = await db.execute(
         `SELECT * FROM image_metadata WHERE hash = '${hash}' LIMIT 1`
       );
-      return images.length ? images[0] : null;
+      return images.length ? images[0] as ImageMetadata : null;
     } catch (error) {
-      logError('Failed to get image by hash:', error);
+      console.error('Failed to get image by hash:', error);
       return null;
     }
   }
@@ -443,20 +442,20 @@ class ImageStorageService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
-      const [oldImages] = await db.execute(
+      const oldImages = await db.execute(
         `SELECT * FROM image_metadata WHERE uploaded_at < '${cutoffDate.toISOString()}'`
       );
 
       let deletedCount = 0;
       for (const image of oldImages) {
-        await this.deleteImage(image);
+        await this.deleteImage(image as ImageMetadata);
         deletedCount++;
       }
 
-      log(`Image cleanup completed: ${deletedCount} images deleted`);
+      console.log(`Image cleanup completed: ${deletedCount} images deleted`);
       return deletedCount;
     } catch (error) {
-      logError('Failed to cleanup old images:', error);
+      console.error('Failed to cleanup old images:', error);
       throw error;
     }
   }
@@ -472,7 +471,7 @@ class ImageStorageService {
     thumbnailSize: number;
   }> {
     try {
-      const [stats] = await db.execute(
+      const stats = await db.execute(
         `SELECT
           COUNT(*) as totalImages,
           SUM(size) as totalSize,
@@ -490,7 +489,7 @@ class ImageStorageService {
         thumbnailSize: Number(stats[0]?.thumbnailSize || 0),
       };
     } catch (error) {
-      logError('Failed to get storage stats:', error);
+      console.error('Failed to get storage stats:', error);
       throw error;
     }
   }

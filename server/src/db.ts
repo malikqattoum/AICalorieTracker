@@ -1,4 +1,4 @@
-import mysql from 'mysql2/promise';
+import mysql, { RowDataPacket } from 'mysql2/promise';
 import { drizzle } from 'drizzle-orm/mysql2';
 import * as schema from '@shared/schema';
 import { wearableDevices, healthMetrics, syncLogs, correlationAnalysis } from '@migrations/001_create_wearable_tables';
@@ -36,11 +36,11 @@ export const db = drizzle(pool, {
 
 // Legacy execute method for backward compatibility
 export default {
-  async execute(sql: string, params?: any[]): Promise<any[]> {
+  async execute(sql: string, params?: any[]): Promise<RowDataPacket[]> {
     const connection = await pool.getConnection();
     try {
-      const [rows] = await connection.execute(sql, params);
-      return rows as any[];
+      const [rows, fields] = await connection.execute(sql, params);
+      return rows as RowDataPacket[];
     } finally {
       connection.release();
     }

@@ -15,6 +15,27 @@ import { eq } from "drizzle-orm";
 // Import authentication middleware
 import { authenticate } from "./src/middleware/auth";
 import jwt from "jsonwebtoken";
+// Import file system modules for image serving
+import * as fs from "fs";
+import * as path from "path";
+// Import admin auth middleware
+import { isAdmin } from "./admin-auth";
+// Import route modules
+import adminDashboardRouter from "./src/routes/admin/dashboard";
+import adminUsersRouter from "./src/routes/admin/users";
+import adminSystemRouter from "./src/routes/admin/system";
+import adminAnalyticsRouter from "./src/routes/admin/analytics";
+import adminPaymentsRouter from "./src/routes/admin/payments";
+import adminSettingsRouter from "./src/routes/admin/settings";
+import adminBackupRouter from "./src/routes/admin/backup";
+import adminSecurityRouter from "./src/routes/admin/security";
+import adminNotificationsRouter from "./src/routes/admin/notifications";
+import adminActivityRouter from "./src/routes/admin/activity";
+import adminRouter from "./src/routes/admin/index";
+import securityRouter from "./src/routes/security";
+import userRouter from "./src/routes/user/index";
+import wearableRouter from "./src/routes/wearables";
+import authRouter from "./src/routes/auth";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -26,7 +47,56 @@ if (process.env.STRIPE_SECRET_KEY) {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('[ROUTES] Registering routes...');
-  
+  console.log('[ROUTES] Adding image serving route...');
+
+  // Test route to verify routing is working
+  app.get('/api/test-image-route', (req, res) => {
+    console.log('[TEST-ROUTE] Test route hit');
+    res.json({ message: 'Test route working' });
+  });
+
+  // Image serving routes - must be before API routes
+  app.get('/api/images/:size/:filename', (req, res) => {
+    console.log('[IMAGE-SERVE] Image request received:', req.params);
+    try {
+      const { size, filename } = req.params;
+
+      // Validate size parameter
+      const validSizes = ['original', 'optimized', 'thumbnail'];
+      if (!validSizes.includes(size)) {
+        return res.status(400).json({ message: 'Invalid image size' });
+      }
+
+      // Validate filename to prevent directory traversal
+      if (!filename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+        return res.status(400).json({ message: 'Invalid filename' });
+      }
+
+      // Construct the file path
+      const filePath = path.join(process.cwd(), 'uploads', size === 'original' ? 'originals' : size === 'optimized' ? 'optimized' : 'thumbnails', filename);
+
+      // Check if file exists and serve it
+      if (fs.existsSync(filePath)) {
+        // Set appropriate headers
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        res.setHeader('Content-Type', 'image/jpeg'); // Default to JPEG, could be improved
+
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+
+        fileStream.on('error', (error: Error) => {
+          console.error('Error streaming image file:', error);
+          res.status(500).json({ message: 'Error serving image' });
+        });
+      } else {
+        res.status(404).json({ message: 'Image not found' });
+      }
+    } catch (error) {
+      console.error('Error serving image:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
 
   // Simple test endpoint for mobile app connectivity
   app.get('/api/simple-test', (req, res) => {
@@ -457,8 +527,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // --- Admin: Site Content Management ---
-  // Import admin auth middleware
-  const { isAdmin } = require("./admin-auth");
 
   app.get("/api/admin/content/:key", authenticate, isAdmin, async (req, res) => {
     try {
@@ -825,20 +893,8 @@ app.post("/api/onboarding/complete", authenticate, async (req, res) => {
     }
   });
 
-  // Import and mount admin routes
+  // Mount admin routes
   try {
-    const adminDashboardRouter = require('./src/routes/admin/dashboard').default;
-    const adminUsersRouter = require('./src/routes/admin/users').default;
-    const adminSystemRouter = require('./src/routes/admin/system').default;
-    const adminAnalyticsRouter = require('./src/routes/admin/analytics').default;
-    const adminPaymentsRouter = require('./src/routes/admin/payments').default;
-    const adminSettingsRouter = require('./src/routes/admin/settings').default;
-    const adminBackupRouter = require('./src/routes/admin/backup').default;
-    const adminSecurityRouter = require('./src/routes/admin/security').default;
-    const adminNotificationsRouter = require('./src/routes/admin/notifications').default;
-    const adminActivityRouter = require('./src/routes/admin/activity').default;
-    const adminRouter = require('./src/routes/admin/index').default;
-
     app.use('/api/admin/dashboard', adminDashboardRouter);
     app.use('/api/admin/users', adminUsersRouter);
     app.use('/api/admin/system', adminSystemRouter);
@@ -854,34 +910,30 @@ app.post("/api/onboarding/complete", authenticate, async (req, res) => {
     console.error('Error loading admin routes:', error);
   }
 
-  // Import and mount security routes
+  // Mount security routes
   try {
-    const securityRouter = require('./src/routes/security').default;
     app.use('/api/security', securityRouter);
   } catch (error) {
     console.error('Error loading security routes:', error);
   }
 
-  // Import and mount user routes
+  // Mount user routes
   try {
-    const userRouter = require('./src/routes/user/index').default;
     app.use('/api/user', userRouter);
   } catch (error) {
     console.error('Error loading user routes:', error);
   }
 
-  // Import and mount wearable routes
+  // Mount wearable routes
   try {
-    const wearableRouter = require('./src/routes/wearables').default;
     app.use('/api/wearable', wearableRouter);
   } catch (error) {
     console.error('Error loading wearable routes:', error);
   }
 
   // Set up authentication routes after public routes are defined
-  // Import and mount auth routes
+  // Mount auth routes
   try {
-    const authRouter = require('./src/routes/auth').default;
     app.use('/api/auth', authRouter);
     console.log('✓ Auth routes mounted at /api/auth');
   } catch (error) {

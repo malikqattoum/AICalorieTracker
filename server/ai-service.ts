@@ -9,18 +9,20 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-character-secret-k
 const ALGORITHM = 'aes-256-cbc';
 
 function encrypt(text: string): string {
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return iv.toString('hex') + ':' + encrypted;
 }
 
 function decrypt(text: string): string {
+  const key = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
   const textParts = text.split(':');
   const iv = Buffer.from(textParts.shift()!, 'hex');
   const encryptedText = textParts.join(':');
-  const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   return decrypted;

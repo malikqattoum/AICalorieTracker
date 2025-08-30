@@ -133,8 +133,9 @@ export interface SiteContent {
 export interface AIConfig {
   id: number;
   provider: string;
-  apiKey: string;
-  model: string;
+  apiKeyEncrypted: string | null;
+  modelName: string | null;
+  promptTemplate: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
