@@ -141,9 +141,10 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                   <YAxis stroke="#b5e3b6" />
                   <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
                   <Legend />
-                  <Line type="monotone" dataKey="calories" stroke="#4CAF50" strokeWidth={2} dot={false} />
+                  <Line key="calories" type="monotone" dataKey="calories" stroke="#4CAF50" strokeWidth={2} dot={false} />
                   {/* Custom dot for clinical flag */}
                   <Line
+                    key="clinical-calories"
                     type="monotone"
                     dataKey="calories"
                     stroke="transparent"
@@ -201,11 +202,12 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                 <YAxis />
                 <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
                 <Legend />
-                <Line type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
+                <Line key="protein" type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
+                <Line key="carbs" type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
+                <Line key="fat" type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
                 {/* Custom dot for clinical macro flag */}
                 <Line
+                  key="clinical-macro"
                   type="monotone"
                   dataKey="Protein"
                   stroke="transparent"
@@ -278,9 +280,9 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                 <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} />
                 <Tooltip formatter={v => `${v}%`} contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
                 <Legend />
-                <Line type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
-                <Line type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
+                <Line key="protein-consistency" type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
+                <Line key="carbs-consistency" type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
+                <Line key="fat-consistency" type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
               </LineChart>
             </ResponsiveContainer>
           </div>

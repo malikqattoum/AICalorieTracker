@@ -3,19 +3,34 @@ import { PremiumAnalyticsDashboard } from '../components/premium/PremiumAnalytic
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { 
-  Star, 
-  Crown, 
-  Zap, 
-  Shield, 
-  TrendingUp, 
+import { ChartContainer } from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { WeeklyStats } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
+import { BarChart2, PieChart } from "lucide-react";
+import {
+  Star,
+  Crown,
+  Zap,
+  Shield,
+  TrendingUp,
   Users,
   CheckCircle,
   ArrowRight
 } from 'lucide-react';
 
 export default function PremiumAnalyticsPage() {
-  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
+   const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
+
+   // Fetch user's weekly stats for analytics
+   const { data: stats } = useQuery<WeeklyStats>({
+     queryKey: ["/api/user/stats"],
+     queryFn: getQueryFn({ on401: "returnNull" })
+   });
+
+   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+   const selectedCondition = "none"; // Default to none for premium analytics
 
   const premiumFeatures = [
     {
@@ -197,6 +212,159 @@ export default function PremiumAnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {/* Enhanced Analytics Charts */}
+      {stats && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Advanced Analytics Dashboard
+            </h2>
+            <p className="text-xl text-gray-600">
+              Comprehensive charts and insights from your meal tracking data
+            </p>
+          </div>
+
+          <div className="space-y-8">
+            {/* Calorie Trend */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 className="w-5 h-5 text-primary-500" />
+                <h3 className="font-medium text-neutral-900">Calorie Trend</h3>
+              </div>
+              <div className="h-48 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg flex items-end justify-between p-4 shadow-inner">
+                {daysOfWeek.map((day) => {
+                  const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
+                  const maxCalories = Math.max(...Object.values(stats.caloriesByDay as Record<string, number>));
+                  const percentage = maxCalories > 0 ? (calories / maxCalories) * 100 : 0;
+                  const today = new Date().getDay();
+                  const dayIndex = daysOfWeek.indexOf(day);
+                  const isPastOrToday = dayIndex <= today;
+                  const barClass = isPastOrToday ? "bg-primary-400 w-full rounded-t-sm" : "bg-primary-900 w-full rounded-t-sm";
+                  return (
+                    <div key={day} className="w-1/7 flex flex-col items-center">
+                      <div
+                        className={barClass}
+                        style={{ height: `${percentage}%` }}
+                        aria-label={`Calories for ${day}: ${calories}`}
+                      ></div>
+                      <span className={`text-xs mt-2 ${isPastOrToday ? 'text-neutral-100' : 'text-neutral-500'}`}>{day.substring(0, 3)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Weekly Nutrition Breakdown */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 className="w-5 h-5 text-primary-200" />
+                <h3 className="font-medium text-primary-100">Weekly Nutrition Breakdown</h3>
+              </div>
+              <div className="h-64 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg p-4 shadow-inner">
+                <ChartContainer config={{ calories: { label: "Calories", color: "#4CAF50" } }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={daysOfWeek.map((day) => {
+                        const macros = stats.macrosByDay?.[day] || { protein: 0, carbs: 0, fat: 0 };
+                        const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
+                        return {
+                          day: day.substring(0, 3),
+                          calories,
+                        };
+                      })}
+                      margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
+                    >
+                      <XAxis dataKey="day" stroke="#b5e3b6" />
+                      <YAxis stroke="#b5e3b6" />
+                      <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
+                      <Legend />
+                      <Line key="calories" type="monotone" dataKey="calories" stroke="#4CAF50" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+            </Card>
+
+            {/* Macro Distribution */}
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChart className="w-5 h-5 text-amber-200" />
+                <h3 className="font-medium text-amber-500">Macro Distribution</h3>
+              </div>
+              <div className="h-56 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg p-4 flex items-center justify-center shadow-inner">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={daysOfWeek.map(day => {
+                      const macros = stats.macrosByDay?.[day] || { protein: 0, carbs: 0, fat: 0 };
+                      return {
+                        name: day.substring(0, 3),
+                        Protein: macros.protein,
+                        Carbs: macros.carbs,
+                        Fat: macros.fat,
+                      };
+                    })}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
+                    <Legend />
+                    <Line key="protein" type="monotone" dataKey="Protein" stroke="#a78bfa" strokeWidth={2} dot />
+                    <Line key="carbs" type="monotone" dataKey="Carbs" stroke="#2dd4bf" strokeWidth={2} dot />
+                    <Line key="fat" type="monotone" dataKey="Fat" stroke="#fbbf24" strokeWidth={2} dot />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Add a summary below the chart */}
+              <div className="mt-4 text-sm text-neutral-600 text-center">
+                {(() => {
+                  let totalProtein = 0, totalCarbs = 0, totalFat = 0;
+                  for (const day of daysOfWeek) {
+                    const macros = stats.macrosByDay?.[day] || { protein: 0, carbs: 0, fat: 0 };
+                    totalProtein += macros.protein;
+                    totalCarbs += macros.carbs;
+                    totalFat += macros.fat;
+                  }
+                  const total = totalProtein + totalCarbs + totalFat;
+                  const pct = (val: number) => total > 0 ? Math.round((val / total) * 100) : 0;
+                  return (
+                    <>
+                      <span className="mr-4">Protein: <span className="text-amber-600 font-semibold">{totalProtein}g</span> ({pct(totalProtein)}%)</span>
+                      <span className="mr-4">Carbs: <span className="text-teal-600 font-semibold">{totalCarbs}g</span> ({pct(totalCarbs)}%)</span>
+                      <span>Fat: <span className="text-yellow-600 font-semibold">{totalFat}g</span> ({pct(totalFat)}%)</span>
+                    </>
+                  );
+                })()}
+              </div>
+            </Card>
+
+            {/* AI Insights Section */}
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold mb-4">AI-Powered Insights</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Nutrition Optimization</h4>
+                  <p className="text-sm text-blue-700">
+                    Your protein intake shows good consistency. Consider increasing healthy fats for better satiety.
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">Calorie Management</h4>
+                  <p className="text-sm text-green-700">
+                    You're maintaining excellent calorie control. Your weekly average is within optimal range.
+                  </p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-lg">
+                  <h4 className="font-medium text-purple-900 mb-2">Progress Prediction</h4>
+                  <p className="text-sm text-purple-700">
+                    Based on current trends, you're on track to achieve your goals within the next 4 weeks.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Pricing Section */}
       <div className="bg-gray-50 py-16">

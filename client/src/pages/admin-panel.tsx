@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Table, TableHead, TableRow, TableCell, TableBody } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { User, MealAnalysis, WeeklyStats, AppConfig, InsertAppConfig } from "@shared/schema";
+import { User, MealAnalysis, WeeklyStats, appConfig, insertAppConfigSchema } from "@shared/schema";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,7 @@ export default function AdminPanel() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
-  const [currentConfig, setCurrentConfig] = useState<Partial<AppConfig> & { id?: number }>({});
+  const [currentConfig, setCurrentConfig] = useState<Partial<typeof appConfig.$inferSelect> & { id?: number }>({});
   const [isEditingConfig, setIsEditingConfig] = useState(false);
 
   // Protect route: only allow admin
@@ -57,7 +57,7 @@ export default function AdminPanel() {
   const { data: stats = [], refetch: refetchStats, isLoading: isLoadingStats } = useQuery<WeeklyStats[]>({ // Added isLoadingStats
     queryKey: ["/api/admin/data/weekly-stats"],
   });
-  const { data: fetchedAppConfigs = [], refetch: refetchAppConfigs, isLoading: isLoadingAppConfigs } = useQuery<AppConfig[]>({ // Added isLoadingAppConfigs
+  const { data: fetchedAppConfigs = [], refetch: refetchAppConfigs, isLoading: isLoadingAppConfigs } = useQuery<typeof appConfig.$inferSelect[]>({ // Added isLoadingAppConfigs
     queryKey: ["/api/admin/config"],
   });
 
@@ -99,7 +99,7 @@ export default function AdminPanel() {
 
   // App Config Mutations
   const createAppConfigMutation = useMutation({
-    mutationFn: async (data: InsertAppConfig) => {
+    mutationFn: async (data: typeof insertAppConfigSchema._type) => {
       const res = await fetch('/api/admin/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@ export default function AdminPanel() {
   });
 
   const updateAppConfigMutation = useMutation({
-    mutationFn: async (data: Partial<AppConfig> & { id: number }) => {
+    mutationFn: async (data: Partial<typeof appConfig.$inferSelect> & { id: number }) => {
       const res = await fetch(`/api/admin/config/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -178,13 +178,13 @@ export default function AdminPanel() {
 
   const handleSaveConfig = () => {
     if (isEditingConfig && currentConfig.id) {
-      updateAppConfigMutation.mutate(currentConfig as Partial<AppConfig> & { id: number });
+      updateAppConfigMutation.mutate(currentConfig as Partial<typeof appConfig.$inferSelect> & { id: number });
     } else {
-      createAppConfigMutation.mutate(currentConfig as InsertAppConfig);
+      createAppConfigMutation.mutate(currentConfig as typeof insertAppConfigSchema._type);
     }
   };
 
-  const openEditConfigDialog = (config: AppConfig) => {
+  const openEditConfigDialog = (config: typeof appConfig.$inferSelect) => {
     setCurrentConfig(config);
     setIsEditingConfig(true);
     setShowConfigDialog(true);
@@ -267,10 +267,10 @@ export default function AdminPanel() {
                           <TableCell>{meal.id}</TableCell>
                           <TableCell>{meal.userId}</TableCell>
                           <TableCell>{meal.foodName}</TableCell>
-                          <TableCell>{meal.calories}</TableCell>
-                          <TableCell>{meal.protein}</TableCell>
-                          <TableCell>{meal.carbs}</TableCell>
-                          <TableCell>{meal.fat}</TableCell>
+                          <TableCell>{meal.estimatedCalories}</TableCell>
+                          <TableCell>{meal.estimatedProtein}</TableCell>
+                          <TableCell>{meal.estimatedCarbs}</TableCell>
+                          <TableCell>{meal.estimatedFat}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

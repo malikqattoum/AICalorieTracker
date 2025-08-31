@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MobileMenu } from "./mobile-menu";
-import { Leaf } from "lucide-react";
+import { Leaf, Trophy, BookOpen, User, BarChart3 } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher"; // Added import
 
 export function Header() {
@@ -39,6 +39,21 @@ export function Header() {
                   </Link>
                   <Link href="/history" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/history' ? 'text-primary-600' : ''}`}>
                     History
+                  </Link>
+                  <Link href="/chatbot" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/chatbot' ? 'text-primary-600' : ''}`}>
+                    Nutrition Coach
+                  </Link>
+                  <Link href="/achievements" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/achievements' ? 'text-primary-600' : ''}`}>
+                    <Trophy className="h-4 w-4 inline mr-1" /> Achievements
+                  </Link>
+                  <Link href="/nutrition-education" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/nutrition-education' ? 'text-primary-600' : ''}`}>
+                    <BookOpen className="h-4 w-4 inline mr-1" /> Nutrition Education
+                  </Link>
+                  <Link href="/profile" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/profile' ? 'text-primary-600' : ''}`}>
+                    <User className="h-4 w-4 inline mr-1" /> Profile
+                  </Link>
+                  <Link href="/premium-analytics" className={`text-neutral-700 hover:text-primary-600 font-medium ${location === '/premium-analytics' ? 'text-primary-600' : ''}`}>
+                    <BarChart3 className="h-4 w-4 inline mr-1" /> Analytics
                   </Link>
                 </>
               ) : (

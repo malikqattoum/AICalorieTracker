@@ -31,19 +31,7 @@ import {
   handleAuthError
 } from "../lib/errorHandling";
 import { useErrorHandler, useErrorContext } from "../contexts/ErrorContext";
-import { NutritionGoals } from "../../../shared/schema";
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  createdAt: Date;
-  updatedAt: Date;
-  token?: string; // Optional JWT token for authentication
-  nutritionGoals: NutritionGoals | null;
-}
+import { NutritionGoals, User } from "../../../shared/schema";
 import { useLocation } from "wouter";
 import { z } from "zod";
 

@@ -38,21 +38,21 @@ export function EnhancedMealTrendsCard() {
 
   // Filter analyses by date range
   const filteredAnalyses = analyses?.filter(analysis => {
-    const analysisDate = new Date(analysis.timestamp);
+    const analysisDate = new Date(analysis.analysisTimestamp || analysis.createdAt || new Date());
     return analysisDate >= getDateRange();
   }) || [];
 
   // Aggregate daily totals for calories, protein, carbs, fat
   const dailyTotals: Record<string, { calories: number; protein: number; carbs: number; fat: number }> = {};
   filteredAnalyses.forEach(a => {
-    const date = format(new Date(a.timestamp), "yyyy-MM-dd");
+    const date = format(new Date(a.analysisTimestamp || a.createdAt || new Date()), "yyyy-MM-dd");
     if (!dailyTotals[date]) {
       dailyTotals[date] = { calories: 0, protein: 0, carbs: 0, fat: 0 };
     }
-    dailyTotals[date].calories += a.calories;
-    dailyTotals[date].protein += a.protein;
-    dailyTotals[date].carbs += a.carbs;
-    dailyTotals[date].fat += a.fat;
+    dailyTotals[date].calories += a.estimatedCalories || 0;
+    dailyTotals[date].protein += parseFloat(a.estimatedProtein || '0');
+    dailyTotals[date].carbs += parseFloat(a.estimatedCarbs || '0');
+    dailyTotals[date].fat += parseFloat(a.estimatedFat || '0');
   });
 
   // Fill in missing dates with zeros

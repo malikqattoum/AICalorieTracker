@@ -32,7 +32,7 @@ export function CameraUploadCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/meal-analyses"] });
       toast({
         title: "Analysis complete!",
-        description: `Detected ${analysis.foodName} with ${analysis.calories} calories.`,
+        description: `Detected ${analysis.foodName} with ${analysis.estimatedCalories} calories.`,
       });
       setUploadedImage(null);
     },

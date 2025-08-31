@@ -18,9 +18,7 @@ export function RecentResultsCard() {
           <CardTitle className="text-xl font-semibold text-neutral-800">Recent Results</CardTitle>
           <p className="text-neutral-600 text-sm mt-1">Your latest meal analysis</p>
         </div>
-        <Link href="/history">
-          <a className="text-sm font-medium text-primary hover:text-primary-700">View All</a>
-        </Link>
+        <Link href="/history" className="text-sm font-medium text-primary hover:text-primary-700">View All</Link>
       </CardHeader>
       
       <CardContent className="p-0">

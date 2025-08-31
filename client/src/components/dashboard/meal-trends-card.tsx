@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { MealAnalysis } from "@shared/schema";
-import { LineChart } from "lucide-react";
+import { LineChart as LineChartIcon } from "lucide-react";
 import { format } from "date-fns";
+import { ChartContainer } from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export function MealTrendsCard() {
   const { data: analyses, isLoading } = useQuery<MealAnalysis[]>({
@@ -34,7 +36,7 @@ export function MealTrendsCard() {
   return (
     <Card className="card-gradient hover-effect rounded-xl overflow-hidden">
       <CardHeader className="px-6 py-5 border-b border-neutral-200 flex items-center gap-2">
-        <LineChart className="h-5 w-5 text-primary-500" />
+        <LineChartIcon className="h-5 w-5 text-primary-500" />
         <CardTitle className="text-xl font-semibold text-neutral-800">Meal Trends</CardTitle>
       </CardHeader>
       <CardContent className="p-4">
@@ -45,29 +47,29 @@ export function MealTrendsCard() {
         ) : chartData.length === 0 ? (
           <div className="text-neutral-300 text-center py-8">No meal data to show trends.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="px-2 py-1 text-left">Date</th>
-                  <th className="px-2 py-1 text-left">Calories</th>
-                  <th className="px-2 py-1 text-left">Protein</th>
-                  <th className="px-2 py-1 text-left">Carbs</th>
-                  <th className="px-2 py-1 text-left">Fat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chartData.map(row => (
-                  <tr key={row.date}>
-                    <td className="px-2 py-1">{format(new Date(row.date), "MMM d")}</td>
-                    <td className="px-2 py-1">{row.calories}</td>
-                    <td className="px-2 py-1">{row.protein}g</td>
-                    <td className="px-2 py-1">{row.carbs}g</td>
-                    <td className="px-2 py-1">{row.fat}g</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-64">
+            <ChartContainer config={{
+              calories: { label: "Calories", color: "#4CAF50" },
+              protein: { label: "Protein (g)", color: "#a78bfa" },
+              carbs: { label: "Carbs (g)", color: "#2dd4bf" },
+              fat: { label: "Fat (g)", color: "#fbbf24" }
+            }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData.map(row => ({
+                  ...row,
+                  date: format(new Date(row.date), "MMM d")
+                }))}>
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip contentStyle={{ background: '#23272b', border: '1px solid #333', color: '#fff' }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="calories" stroke="#4CAF50" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="protein" stroke="#a78bfa" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="carbs" stroke="#2dd4bf" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="fat" stroke="#fbbf24" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
           </div>
         )}
       </CardContent>

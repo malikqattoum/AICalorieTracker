@@ -17,6 +17,11 @@ import MealCalendarPage from "./pages/meal-calendar-page";
 import RecipeImportPage from "./pages/recipe-import-page";
 import OnboardingPage from "./pages/onboarding-page";
 import AdminPanel from "./pages/admin-panel";
+import ChatbotPage from "./pages/chatbot";
+import AchievementsPage from "./pages/achievements-page";
+import NutritionEducationPage from "./pages/nutrition-education-page";
+import ProfilePage from "./pages/profile-page";
+import PremiumAnalyticsPage from "./pages/PremiumAnalytics";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
@@ -38,6 +43,11 @@ function Router(): ReactElement {
       <ProtectedRoute path="/recipe-import" component={RecipeImportPage} />
       <ProtectedRoute path="/onboarding" component={OnboardingPage} />
       <ProtectedRoute path="/admin" component={AdminPanel} />
+      <ProtectedRoute path="/chatbot" component={ChatbotPage} />
+      <ProtectedRoute path="/achievements" component={AchievementsPage} />
+      <ProtectedRoute path="/nutrition-education" component={NutritionEducationPage} />
+      <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/premium-analytics" component={PremiumAnalyticsPage} />
       <Route component={NotFound} />
     </Switch>
   );
