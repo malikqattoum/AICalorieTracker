@@ -31,6 +31,10 @@ export default function PremiumAnalyticsPage() {
      queryFn: getQueryFn({ on401: "returnNull" })
    });
 
+   // Debug logging
+   console.log('DEBUG: PremiumAnalytics stats:', stats);
+   console.log('DEBUG: PremiumAnalytics stats.caloriesByDay:', stats?.caloriesByDay);
+
    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
    const selectedCondition = "none"; // Default to none for premium analytics
 
@@ -238,8 +242,8 @@ export default function PremiumAnalyticsPage() {
               </div>
               <div className="h-48 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg flex items-end justify-between p-4 shadow-inner">
                 {daysOfWeek.map((day) => {
-                  const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
-                  const maxCalories = Math.max(...Object.values(stats.caloriesByDay as Record<string, number>));
+                  const calories = (stats?.caloriesByDay as Record<string, number>)?.[day] || 0;
+                  const maxCalories = Math.max(...Object.values(stats?.caloriesByDay as Record<string, number> || {}));
                   const percentage = maxCalories > 0 ? (calories / maxCalories) * 100 : 0;
                   const today = new Date().getDay();
                   const dayIndex = daysOfWeek.indexOf(day);
@@ -271,7 +275,7 @@ export default function PremiumAnalyticsPage() {
                     <LineChart
                       data={daysOfWeek.map((day) => {
                         const macros = stats.macrosByDay?.[day] || { protein: 0, carbs: 0, fat: 0 };
-                        const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
+                        const calories = (stats?.caloriesByDay as Record<string, number>)?.[day] || 0;
                         return {
                           day: day.substring(0, 3),
                           calories,

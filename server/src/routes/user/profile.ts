@@ -37,8 +37,11 @@ router.put('/settings',
 );
 
 // POST /api/user/onboarding-completed
-router.post('/onboarding-completed', 
+router.post('/onboarding-completed',
   UserProfileController.markOnboardingCompleted
 );
+
+// GET /api/user/stats
+router.get('/stats', UserProfileController.getUserStats);
 
 export default router;

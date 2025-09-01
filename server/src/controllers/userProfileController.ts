@@ -42,5 +42,22 @@ export default {
     } catch (error) {
       res.status(400).json({ error: 'Failed to mark onboarding completed' });
     }
+  },
+
+  async getUserStats(req: Request, res: Response) {
+    try {
+      console.log('DEBUG: getUserStats controller called');
+      const userId = (req as any).user.id;
+      console.log('DEBUG: userId from request:', userId);
+      if (!userId) {
+        return res.status(401).json({ error: 'User not authenticated' });
+      }
+
+      const stats = await UserProfileService.getUserStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      res.status(500).json({ error: 'Failed to fetch user statistics' });
+    }
   }
 };
