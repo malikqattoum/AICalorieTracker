@@ -251,7 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       try {
-        await apiRequest("POST", "/api/logout");
+        await apiRequest("POST", "/api/auth/logout");
       } catch (error) {
         // Log the error but continue with logout process
         logError("Logout API call failed", error);
