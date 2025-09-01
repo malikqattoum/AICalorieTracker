@@ -9,6 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
 import { WeeklyStats } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 
 interface Achievement {
   id: number;
@@ -128,7 +130,10 @@ export default function AchievementsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Achievements</h1>
         <p className="text-muted-foreground">
@@ -278,6 +283,9 @@ export default function AchievementsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
-}
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
+    }

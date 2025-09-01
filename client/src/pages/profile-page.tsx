@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import {
   User,
   Settings,
@@ -87,13 +89,16 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Profile & Account</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings, view your progress, and handle subscriptions.
-        </p>
-      </div>
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Profile & Account</h1>
+            <p className="text-muted-foreground">
+              Manage your account settings, view your progress, and handle subscriptions.
+            </p>
+          </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
@@ -448,6 +453,9 @@ export default function ProfilePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  );
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
 }

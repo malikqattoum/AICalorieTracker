@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getQueryFn } from "@/lib/queryClient";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 
 interface NutritionTip {
   id: number;
@@ -182,13 +184,16 @@ export default function NutritionEducationPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Nutrition Education</h1>
-        <p className="text-muted-foreground">
-          Expand your knowledge with comprehensive nutrition guides, tips, and educational content.
-        </p>
-      </div>
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Nutrition Education</h1>
+            <p className="text-muted-foreground">
+              Expand your knowledge with comprehensive nutrition guides, tips, and educational content.
+            </p>
+          </div>
 
       {/* Progress Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -352,6 +357,9 @@ export default function NutritionEducationPage() {
           </CardContent>
         </Card>
       )}
-    </div>
-  );
+            </div>
+          </main>
+          <Footer />
+        </div>
+      );
 }
