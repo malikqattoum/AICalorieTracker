@@ -286,19 +286,40 @@ if (process.env.NODE_ENV === "development") {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = process.env.PORT || PORT;
+  const host = "0.0.0.0";
+  console.log(`[SERVER] Attempting to start server on ${host}:${port}`);
+  console.log(`[SERVER] NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`[SERVER] Platform: ${process.platform}`);
+
   // Increase server connection limits
   server.maxConnections = 100;
   server.timeout = 120000; // 120 seconds
   server.keepAliveTimeout = 125000; // 125 seconds
   server.headersTimeout = 130000; // 130 seconds
 
-  const serverInstance = server!.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  try {
+    const serverInstance = server!.listen({
+      port,
+      host,
+      // Removed reusePort as it's not supported on Windows
+    }, () => {
+      log(`[SERVER] Server successfully started and listening on ${host}:${port}`);
+    });
+
+    // Handle listen errors
+    serverInstance.on('error', (error) => {
+      console.error(`[SERVER] Server listen error:`, error);
+      console.error(`[SERVER] Error code: ${error.code}`);
+      console.error(`[SERVER] Error message: ${error.message}`);
+      process.exit(1);
+    });
+
+    return serverInstance;
+  } catch (error) {
+    console.error(`[SERVER] Failed to start server:`, error);
+    console.error(`[SERVER] Error details:`, error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 
   // Handle graceful shutdown
   process.on('SIGTERM', async () => {
