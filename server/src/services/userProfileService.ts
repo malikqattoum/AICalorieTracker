@@ -120,7 +120,7 @@ export default {
     }
   },
 
-  private async createDefaultWeeklyStats(userId: number): Promise<any> {
+  async createDefaultWeeklyStats(userId: number): Promise<any> {
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
