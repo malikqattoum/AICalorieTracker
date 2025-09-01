@@ -297,8 +297,10 @@ if (process.env.NODE_ENV === "development") {
   server.keepAliveTimeout = 125000; // 125 seconds
   server.headersTimeout = 130000; // 130 seconds
 
+  let serverInstance: Server | undefined;
+
   try {
-    const serverInstance = server!.listen({
+    serverInstance = server!.listen({
       port,
       host,
       // Removed reusePort as it's not supported on Windows
@@ -309,7 +311,7 @@ if (process.env.NODE_ENV === "development") {
     // Handle listen errors
     serverInstance.on('error', (error) => {
       console.error(`[SERVER] Server listen error:`, error);
-      console.error(`[SERVER] Error code: ${error.code}`);
+      console.error(`[SERVER] Error code: ${(error as NodeJS.ErrnoException).code}`);
       console.error(`[SERVER] Error message: ${error.message}`);
       process.exit(1);
     });
@@ -325,19 +327,23 @@ if (process.env.NODE_ENV === "development") {
   process.on('SIGTERM', async () => {
     log('SIGTERM received, shutting down gracefully');
     await errorTrackingService.flush();
-    serverInstance.close(() => {
-      log('Process terminated');
-      process.exit(0);
-    });
+    if (serverInstance) {
+      serverInstance!.close(() => {
+        log('Process terminated');
+        process.exit(0);
+      });
+    }
   });
 
   process.on('SIGINT', async () => {
     log('SIGINT received, shutting down gracefully');
     await errorTrackingService.flush();
-    serverInstance.close(() => {
-      log('Process terminated');
-      process.exit(0);
-    });
+    if (serverInstance) {
+      serverInstance!.close(() => {
+        log('Process terminated');
+        process.exit(0);
+      });
+    }
   });
 
   return serverInstance;

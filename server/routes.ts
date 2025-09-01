@@ -43,7 +43,7 @@ import authRouter from "./src/routes/auth";
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-05-28.basil" // Use the version expected by the installed Stripe library
+    apiVersion: "2025-08-27.basil" // Use the version expected by the installed Stripe library
   });
 }
 
