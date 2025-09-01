@@ -11,7 +11,7 @@ import { getNutritionCoachReply } from "./openai";
 import { aiCache } from "./ai-cache";
 import { db } from "./src/db";
 import { users, nutritionGoals } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 // Import authentication middleware
 import { authenticate } from "./src/middleware/auth";
 import jwt from "jsonwebtoken";
@@ -328,15 +328,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Insert into meal_images table
       const { db } = await import('./db');
       const { mealImages } = await import('./src/db/schemas/mealImages');
-      await db.insert(mealImages).values({
-        mealAnalysisId: mealAnalysis.id,
-        filePath: processed.original.filename,
-        fileSize: processed.optimized.size,
-        mimeType: processed.optimized.mimeType,
-        width: processed.optimized.width || null,
-        height: processed.optimized.height || null,
-        imageHash: processed.original.hash,
-      });
+      // Upsert by unique image_hash to avoid duplicate errors for re-uploads
+      await db.insert(mealImages)
+        .values({
+          mealAnalysisId: mealAnalysis.id,
+          filePath: processed.original.filename,
+          fileSize: processed.optimized.size,
+          mimeType: processed.optimized.mimeType,
+          width: processed.optimized.width || null,
+          height: processed.optimized.height || null,
+          imageHash: processed.original.hash,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            mealAnalysisId: mealAnalysis.id,
+            filePath: processed.original.filename,
+            fileSize: processed.optimized.size,
+            mimeType: processed.optimized.mimeType,
+            width: processed.optimized.width || null,
+            height: processed.optimized.height || null,
+            updatedAt: sql`CURRENT_TIMESTAMP`
+          }
+        });
 
       res.status(201).json(mealAnalysis);
     } catch (error) {

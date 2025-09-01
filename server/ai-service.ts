@@ -65,16 +65,28 @@ export class AIService {
   }
 
   private async setupProvider(config: AIConfig): Promise<void> {
-    if (!config.apiKeyEncrypted) {
-      throw new Error(`No API key configured for ${config.provider}`);
+    // Only Gemini requires decrypting an API key stored in DB.
+    if (config.provider === 'gemini') {
+      if (!config.apiKeyEncrypted) {
+        throw new Error('No API key configured for gemini');
+      }
+      let apiKey: string;
+      try {
+        apiKey = decrypt(config.apiKeyEncrypted);
+      } catch (e) {
+        throw new Error('Failed to decrypt Gemini API key. Ensure ENCRYPTION_KEY matches the one used for encryption.');
+      }
+      initializeGemini(apiKey);
+      return;
     }
 
-    const apiKey = decrypt(config.apiKeyEncrypted);
-    
-    if (config.provider === 'gemini') {
-      initializeGemini(apiKey);
+    // OpenAI uses environment variables only; do not decrypt or require apiKeyEncrypted
+    if (config.provider === 'openai') {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY is not set');
+      }
+      return;
     }
-    // OpenAI is initialized in openai.ts with environment variables
   }
 
   async refreshConfig(): Promise<void> {

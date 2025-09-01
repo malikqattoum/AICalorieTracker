@@ -165,21 +165,22 @@ export default defineConfig(({ mode }) => {
             keepAlive: true,
             maxSockets: 50,
             maxFreeSockets: 10,
-            timeout: 60000,
+            timeout: 120000, // 120s keep-alive timeout
           }),
           // Add error handling
           onError: (err, req, res) => {
             console.log('Proxy error:', err);
             if (!res.headersSent) {
-              res.writeHead(500, {
+              res.writeHead(504, {
                 'Content-Type': 'application/json',
               });
               res.end(JSON.stringify({ error: 'Proxy error', message: err.message }));
             }
           },
-          // Add timeout
-          proxyTimeout: 5000,
-          // Retry failed requests
+          // Timeouts
+          proxyTimeout: 120000, // 120s for outgoing proxy requests
+          timeout: 120000,      // 120s for incoming requests
+          // Retry/diagnostics hooks
           configure: (proxy, _options) => {
             proxy.on('error', (err, _req, _res) => {
               console.log('Proxy error:', err);

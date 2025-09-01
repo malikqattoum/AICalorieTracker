@@ -1,10 +1,29 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/index.js";
 
-const apiKey = process.env.OPENAI_API_KEY || "";
+// Load env here as a safety net (in case index.ts ran before env load after bundling)
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+for (const envPath of [
+  path.resolve(__dirname, '../server/.env'),
+  path.resolve(__dirname, '.env'),
+  path.resolve(process.cwd(), '.env')
+]) {
+  dotenv.config({ path: envPath });
+}
+
+const rawKey = process.env.OPENAI_API_KEY || "";
+const apiKey = rawKey.trim();
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const MODEL = "gpt-4o";
+
+if (!apiKey || !apiKey.startsWith('sk-')) {
+  console.warn('[OpenAI] OPENAI_API_KEY is missing or malformed. Please set a valid key in server/.env or root .env');
+}
 
 const openai = new OpenAI({ apiKey });
 

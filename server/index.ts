@@ -6,8 +6,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from the server directory
-dotenv.config({ path: path.resolve(__dirname, '.env') });
+// Load environment variables from server and project root reliably (works after bundling)
+const envCandidates = [
+  path.resolve(__dirname, '../server/.env'), // when running from dist/
+  path.resolve(__dirname, '.env'),           // if .env is alongside compiled file
+  path.resolve(process.cwd(), '.env')        // project root
+];
+for (const envPath of envCandidates) {
+  dotenv.config({ path: envPath });
+}
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -70,8 +77,8 @@ app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 app.use(enhancedSecurityMiddleware);
 app.use(rateLimiters.api);
 
-// Apply timeout middleware globally
-app.use(createTimeoutMiddleware());
+// Apply timeout middleware globally with longer timeouts to avoid proxy socket hangups during AI calls
+app.use(createTimeoutMiddleware({ responseTimeout: 120000, requestTimeout: 300000 }));
 
 // Apply session middleware only to protected routes (moved after public routes)
 
@@ -281,9 +288,9 @@ if (process.env.NODE_ENV === "development") {
   const port = process.env.PORT || PORT;
   // Increase server connection limits
   server.maxConnections = 100;
-  server.timeout = 60000; // 60 seconds
-  server.keepAliveTimeout = 65000; // 65 seconds
-  server.headersTimeout = 66000; // 66 seconds
+  server.timeout = 120000; // 120 seconds
+  server.keepAliveTimeout = 125000; // 125 seconds
+  server.headersTimeout = 130000; // 130 seconds
 
   const serverInstance = server!.listen({
     port,
