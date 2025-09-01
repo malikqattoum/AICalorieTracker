@@ -87,17 +87,46 @@ export default function HistoryPage() {
                         <CardContent className="p-0">
                           <div className="flex flex-col md:flex-row">
                             <div className="w-full md:w-48 h-48 bg-neutral-200">
-                              {analysis.imageUrl ? (
-                                <img
-                                  src={analysis.imageUrl}
-                                  alt={analysis.foodName}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-neutral-500">
-                                  No image
-                                </div>
-                              )}
+                                  {(() => {
+                                const resolveImageSrc = (url: string | null | undefined): string => {
+                                  if (!url) return '/placeholder-food.svg';
+                                  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
+                                  // Normalize potential Windows paths
+                                  const normalized = url.replace(/\\/g, '/');
+                                  const filename = normalized.split('/').pop() || normalized;
+                                  return `/api/images/optimized/${filename}`;
+                                };
+                                const src = resolveImageSrc(analysis.imageUrl);
+                                return (
+                                  <img
+                                    src={src}
+                                    alt={analysis.foodName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      // Try thumbnail, then original, then placeholder
+                                      if (!target.dataset.fallbackTried) {
+                                        target.dataset.fallbackTried = '1';
+                                        const raw = (analysis.imageUrl || '').replace(/\\\\/g, '/');
+                                        const fname = raw.split('/').pop() || '';
+                                        if (fname) {
+                                          target.src = `/api/images/thumbnail/${fname}`;
+                                          return;
+                                        }
+                                      } else if (target.dataset.fallbackTried === '1') {
+                                        target.dataset.fallbackTried = '2';
+                                        const raw = (analysis.imageUrl || '').replace(/\\\\/g, '/');
+                                        const fname = raw.split('/').pop() || '';
+                                        if (fname) {
+                                          target.src = `/api/images/original/${fname}`;
+                                          return;
+                                        }
+                                      }
+                                      target.src = '/placeholder-food.svg';
+                                    }}
+                                  />
+                                );
+                              })()}
                             </div>
 
                             <div className="p-6 flex-grow">

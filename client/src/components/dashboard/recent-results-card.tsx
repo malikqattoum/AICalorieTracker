@@ -32,77 +32,115 @@ export function RecentResultsCard() {
           </div>
         ) : analyses && analyses.length > 0 ? (
           <div className="divide-y divide-neutral-200">
-            {analyses.slice(0, 3).map((analysis) => (
-              <div key={analysis.id} className="p-6 flex flex-col md:flex-row">
-                <div className="flex-shrink-0 w-full md:w-32 h-24 md:h-32 mb-4 md:mb-0 md:mr-6 bg-neutral-200 rounded-lg overflow-hidden relative">
-                  <img
-                    src={analysis.imageUrl || '/placeholder-food.jpg'}
-                    alt={analysis.foodName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-grow">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-medium text-neutral-900">{analysis.foodName}</h3>
-                      <p className="text-sm text-neutral-500">
-                        {analysis.analysisTimestamp ? formatDistanceToNow(new Date(analysis.analysisTimestamp), { addSuffix: true }) : 'No date available'}
-                      </p>
+            {analyses.slice(0, 3).map((analysis) => {
+              // Resolve image URL: support data URLs, absolute URLs, and server-stored paths (including Windows paths)
+              const resolveImageSrc = (url: string | null | undefined): string => {
+                if (!url) return '/placeholder-food.svg';
+                // If it's already a data URL or absolute http(s), use as-is
+                if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) return url;
+                // Normalize any backslashes from Windows paths and extract filename
+                const normalized = url.replace(/\\/g, '/');
+                const filename = normalized.split('/').pop() || normalized;
+                // Default to optimized via proxy endpoint
+                return `/api/images/optimized/${filename}`;
+              };
+
+              const imgSrc = resolveImageSrc(analysis.imageUrl);
+
+              return (
+                <div key={analysis.id} className="p-6 flex flex-col md:flex-row">
+                  <div className="flex-shrink-0 w-full md:w-32 h-24 md:h-32 mb-4 md:mb-0 md:mr-6 bg-neutral-200 rounded-lg overflow-hidden relative">
+                    <img
+                      src={imgSrc}
+                      alt={analysis.foodName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        // Try thumbnail, then original as fallback, then placeholder
+                        if (!target.dataset.fallbackTried) {
+                          target.dataset.fallbackTried = '1';
+                          const raw = (analysis.imageUrl || '').replace(/\\/g, '/');
+                          const fname = raw.split('/').pop() || '';
+                          if (fname) {
+                            target.src = `/api/images/thumbnail/${fname}`;
+                            return;
+                          }
+                        } else if (target.dataset.fallbackTried === '1') {
+                          target.dataset.fallbackTried = '2';
+                          const raw = (analysis.imageUrl || '').replace(/\\/g, '/');
+                          const fname = raw.split('/').pop() || '';
+                          if (fname) {
+                            target.src = `/api/images/original/${fname}`;
+                            return;
+                          }
+                        }
+                        target.src = '/placeholder-food.svg';
+                      }}
+                    />
+                  </div>
+                  <div className="flex-grow">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-medium text-neutral-900">{analysis.foodName}</h3>
+                        <p className="text-sm text-neutral-500">
+                          {analysis.analysisTimestamp ? formatDistanceToNow(new Date(analysis.analysisTimestamp), { addSuffix: true }) : 'No date available'}
+                        </p>
+                      </div>
+                      <div className="mt-2 md:mt-0 flex items-center bg-primary-50 text-primary-800 py-1 px-3 rounded-full text-sm font-medium">
+                        <span>{analysis.estimatedCalories || 0} calories</span>
+                      </div>
                     </div>
-                    <div className="mt-2 md:mt-0 flex items-center bg-primary-50 text-primary-800 py-1 px-3 rounded-full text-sm font-medium">
-                      <span>{analysis.estimatedCalories || 0} calories</span>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-neutral-700">Protein</span>
+                          <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedProtein || '0')}g</span>
+                        </div>
+                        <NutritionChart
+                          value={parseFloat(analysis.estimatedProtein || '0')}
+                          maxValue={50}
+                          color="bg-chart-1"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-neutral-700">Carbs</span>
+                          <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedCarbs || '0')}g</span>
+                        </div>
+                        <NutritionChart
+                          value={parseFloat(analysis.estimatedCarbs || '0')}
+                          maxValue={100}
+                          color="bg-chart-2"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-neutral-700">Fat</span>
+                          <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedFat || '0')}g</span>
+                        </div>
+                        <NutritionChart
+                          value={parseFloat(analysis.estimatedFat || '0')}
+                          maxValue={40}
+                          color="bg-chart-3"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-neutral-700">Fiber</span>
+                          <span className="text-sm text-neutral-600">0g</span>
+                        </div>
+                        <NutritionChart
+                          value={0}
+                          maxValue={20}
+                          color="bg-chart-4"
+                        />
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-neutral-700">Protein</span>
-                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedProtein || '0')}g</span>
-                      </div>
-                      <NutritionChart
-                        value={parseFloat(analysis.estimatedProtein || '0')}
-                        maxValue={50}
-                        color="bg-chart-1"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-neutral-700">Carbs</span>
-                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedCarbs || '0')}g</span>
-                      </div>
-                      <NutritionChart
-                        value={parseFloat(analysis.estimatedCarbs || '0')}
-                        maxValue={100}
-                        color="bg-chart-2"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-neutral-700">Fat</span>
-                        <span className="text-sm text-neutral-600">{parseFloat(analysis.estimatedFat || '0')}g</span>
-                      </div>
-                      <NutritionChart
-                        value={parseFloat(analysis.estimatedFat || '0')}
-                        maxValue={40}
-                        color="bg-chart-3"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-neutral-700">Fiber</span>
-                        <span className="text-sm text-neutral-600">0g</span>
-                      </div>
-                      <NutritionChart
-                        value={0}
-                        maxValue={20}
-                        color="bg-chart-4"
-                      />
-                    </div>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-6 text-center text-neutral-600">

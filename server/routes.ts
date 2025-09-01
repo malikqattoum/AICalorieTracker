@@ -18,6 +18,8 @@ import jwt from "jsonwebtoken";
 // Import file system modules for image serving
 import * as fs from "fs";
 import * as path from "path";
+// Image upload middleware
+import multer from "multer";
 // Import admin auth middleware
 import { isAdmin } from "./admin-auth";
 // Import route modules
@@ -295,7 +297,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiCache.set(base64Data, analysis);
       }
 
-      // Create a meal analysis record
+      // Persist image to storage (original, optimized, thumbnail)
+      const { imageStorageService } = await import('./src/services/imageStorageService');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const mimeType = (validatedData.imageData.startsWith('data:image/')
+        ? validatedData.imageData.substring(5, validatedData.imageData.indexOf(';'))
+        : 'image/jpeg');
+      const processed = await imageStorageService.processAndStoreImage(
+        buffer,
+        'camera.jpg',
+        mimeType,
+        userId
+      );
+      const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
+
+      // Create a meal analysis record referencing the stored file and hash
       const mealAnalysis = await storage.createMealAnalysis({
         userId,
         mealId: 0, // Will be set by database or can be updated later
@@ -304,8 +320,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedProtein: analysis.protein?.toString(),
         estimatedCarbs: analysis.carbs?.toString(),
         estimatedFat: analysis.fat?.toString(),
-        imageUrl: validatedData.imageData,
+        imageUrl: optimizedUrl,
+        imageHash: processed.original.hash,
         analysisDetails: analysis.analysisDetails
+      });
+
+      // Insert into meal_images table
+      const { db } = await import('./db');
+      const { mealImages } = await import('./src/db/schemas/mealImages');
+      await db.insert(mealImages).values({
+        mealAnalysisId: mealAnalysis.id,
+        filePath: processed.original.filename,
+        fileSize: processed.optimized.size,
+        mimeType: processed.optimized.mimeType,
+        width: processed.optimized.width || null,
+        height: processed.optimized.height || null,
+        imageHash: processed.original.hash,
       });
 
       res.status(201).json(mealAnalysis);
@@ -316,6 +346,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to analyze food" });
       }
+    }
+  });
+
+  // Mobile-compatible: Analyze meal image (multipart or base64)
+  // Matches mobile client: POST /api/meals/analyze
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+      const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
+      if (ok) cb(null, true); else cb(new Error('Unsupported file type'));
+    }
+  });
+
+  app.post('/api/meals/analyze', authenticate, upload.single('image'), async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { imageStorageService } = await import('./src/services/imageStorageService');
+      const { storage } = await import('./storage-provider');
+
+      let buffer: Buffer | null = null;
+      let originalName = 'upload.jpg';
+      let mimeType = 'image/jpeg';
+
+      if ((req as any).file) {
+        buffer = (req as any).file.buffer;
+        originalName = (req as any).file.originalname || originalName;
+        mimeType = (req as any).file.mimetype || mimeType;
+      } else if (typeof req.body?.imageData === 'string') {
+        const imageData = req.body.imageData.includes('base64,')
+          ? req.body.imageData.split('base64,')[1]
+          : req.body.imageData;
+        buffer = Buffer.from(imageData, 'base64');
+        if (req.body.imageData.startsWith('data:image/')) {
+          const mt = req.body.imageData.substring(5, req.body.imageData.indexOf(';'));
+          if (mt) mimeType = mt;
+        }
+      }
+
+      if (!buffer) {
+        return res.status(400).json({ error: 'No image provided. Send multipart field "image" or JSON { imageData }.' });
+      }
+
+      const processed = await imageStorageService.processAndStoreImage(
+        buffer,
+        originalName,
+        mimeType,
+        userId
+      );
+
+      const base64ForAI = buffer.toString('base64');
+      const { aiService } = await import('./ai-service');
+      const analysis = await aiService.analyzeFoodImage(base64ForAI);
+
+      const mealAnalysis = await storage.createMealAnalysis({
+        userId,
+        mealId: 0,
+        foodName: analysis.foodName,
+        estimatedCalories: analysis.calories,
+        estimatedProtein: analysis.protein?.toString(),
+        estimatedCarbs: analysis.carbs?.toString(),
+        estimatedFat: analysis.fat?.toString(),
+        imageUrl: `data:image/jpeg;base64,${base64ForAI}`,
+        analysisDetails: analysis.analysisDetails,
+      });
+
+      const { db } = await import('./db');
+      const { mealImages } = await import('./src/db/schemas/mealImages');
+      const { mealAnalyses } = await import('./src/db/schemas/mealAnalyses');
+      const { eq } = await import('drizzle-orm');
+
+      const filename = processed.original.filename;
+      const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
+
+      await db.insert(mealImages).values({
+        mealAnalysisId: mealAnalysis.id,
+        filePath: filename,
+        fileSize: processed.optimized.size,
+        mimeType: processed.optimized.mimeType,
+        width: processed.optimized.width || null,
+        height: processed.optimized.height || null,
+        imageHash: processed.original.hash,
+      });
+
+      await db.update(mealAnalyses)
+        .set({ imageHash: processed.original.hash, imageUrl: optimizedUrl })
+        .where(eq(mealAnalyses.id, mealAnalysis.id));
+
+      res.status(201).json({ ...mealAnalysis, imageUrl: optimizedUrl });
+    } catch (error) {
+      console.error('Error analyzing meal image:', error);
+      res.status(500).json({ message: 'Failed to analyze meal image' });
     }
   });
 

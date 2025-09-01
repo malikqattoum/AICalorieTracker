@@ -6,6 +6,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { JWTService } from '../../services/auth/jwt.service';
 
+console.log('[AUTH-DEBUG] Auth router file loaded');
+
 const router = Router();
 
 // Validation schemas
@@ -147,7 +149,9 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
 
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
+  console.log('[AUTH-DEBUG] Login route added');
   try {
+    console.log('[AUTH-DEBUG] Login handler called for path:', req.path);
     console.log('[LOGIN] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
     const validatedData = loginSchema.parse(req.body);
     
@@ -250,5 +254,15 @@ router.post('/refresh', async (req, res, next) => {
     next(error);
   }
 });
+
+console.log('[AUTH-DEBUG] Final router stack:', router.stack.map(layer => {
+  if (layer.route) {
+    return {
+      path: layer.route.path,
+      methods: Object.keys((layer.route as any).methods || {})
+    };
+  }
+  return 'middleware';
+}));
 
 export default router;

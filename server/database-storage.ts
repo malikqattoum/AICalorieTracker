@@ -208,8 +208,24 @@ export class DatabaseStorage implements IStorage {
       .from(mealAnalyses)
       .where(eq(mealAnalyses.userId, userId))
       .orderBy(mealAnalyses.analysisTimestamp);
-    
-    return analyses;
+
+    // Decrypt PHI fields if HIPAA compliance is enabled (to match getMealAnalysis behavior)
+    if (HIPAA_COMPLIANCE_ENABLED) {
+      return analyses.map((analysis: any) => ({
+        ...analysis,
+        foodName: analysis.foodName ? decryptPHI(analysis.foodName) : analysis.foodName,
+        imageUrl: analysis.imageUrl ? decryptPHI(analysis.imageUrl) : analysis.imageUrl,
+        analysisDetails: analysis.analysisDetails
+          ? decryptPHI(
+              typeof analysis.analysisDetails === 'string'
+                ? analysis.analysisDetails
+                : JSON.stringify(analysis.analysisDetails)
+            )
+          : undefined
+      })) as unknown as MealAnalysis[];
+    }
+
+    return analyses as unknown as MealAnalysis[];
   }
 
 
