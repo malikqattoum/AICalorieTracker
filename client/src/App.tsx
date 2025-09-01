@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import NotFound from "./pages/not-found";
@@ -25,6 +25,12 @@ import PremiumAnalyticsPage from "./pages/PremiumAnalytics";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
 
+const RedirectToLogin = () => {
+  const [, setLocation] = useLocation();
+  setLocation('/login');
+  return null;
+};
+
 function Router(): ReactElement {
   return (
     <Switch>
@@ -33,7 +39,8 @@ function Router(): ReactElement {
       <Route path="/pricing" component={PricingPage} />
       <ProtectedRoute path="/dashboard" component={HomePage} />
       <ProtectedRoute path="/history" component={HistoryPage} />
-      <Route path="/auth" component={AuthPage} />
+      <Route path="/auth" component={RedirectToLogin} />
+      <Route path="/login" component={AuthPage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/terms" component={TermsPage} />

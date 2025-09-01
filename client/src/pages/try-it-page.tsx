@@ -114,7 +114,7 @@ export default function TryItPage() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/auth">
+                <Link href="/login">
                   <Button size="sm" className="bg-primary-600 hover:bg-primary-700">
                     Sign In
                   </Button>
@@ -234,7 +234,7 @@ export default function TryItPage() {
                     <div className="mt-4 flex items-center p-3 bg-primary-50 rounded-lg">
                       <Info className="h-5 w-5 text-primary-600 mr-2 flex-shrink-0" />
                       <p className="text-sm text-neutral-700">
-                        This is a demo version with limited features. <Link href="/auth" className="text-primary-600 font-medium">Sign up</Link> for full access.
+                        This is a demo version with limited features. <Link href="/login" className="text-primary-600 font-medium">Sign up</Link> for full access.
                       </p>
                     </div>
                   </div>
@@ -309,7 +309,7 @@ export default function TryItPage() {
                         </div>
                         
                         <div className="mt-8 text-center">
-                          <Link href="/auth">
+                          <Link href="/login">
                             <Button className="bg-primary-600 hover:bg-primary-700">
                               Sign Up for Full Access
                             </Button>
@@ -329,7 +329,7 @@ export default function TryItPage() {
                           Upload a food image and click "Analyze Image" to see the nutritional information of your meal
                         </p>
                         <div className="flex space-x-4">
-                          <Link href="/auth">
+                          <Link href="/login">
                             <Button variant="outline">
                               Sign Up
                             </Button>
@@ -400,7 +400,7 @@ export default function TryItPage() {
             </div>
             
             <div className="text-center mt-10">
-              <Link href="/auth">
+              <Link href="/login">
                 <Button size="lg" className="bg-primary hover:bg-primary-700 text-primary-100">
                   Create Free Account
                 </Button>

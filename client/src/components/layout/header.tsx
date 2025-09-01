@@ -87,7 +87,7 @@ export function Header() {
                   </Button>
                 </>
               ) : (
-                <Link href="/auth">
+                <Link href="/login">
                   <Button variant="default" size="sm" className="hidden md:flex">
                     Sign In
                   </Button>

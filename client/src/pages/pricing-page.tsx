@@ -37,7 +37,7 @@ export default function PricingPage() {
     {
       name: "Basic",
       id: "basic",
-      href: user ? "/subscribe?plan=basic" : "/auth",
+      href: user ? "/subscribe?plan=basic" : "/login",
       price: {
         monthly: "$9.99",
         yearly: "$99.99",
@@ -55,7 +55,7 @@ export default function PricingPage() {
     {
       name: "Premium",
       id: "premium",
-      href: user ? "/subscribe?plan=premium" : "/auth",
+      href: user ? "/subscribe?plan=premium" : "/login",
       price: {
         monthly: "$19.99",
         yearly: "$199.99",
@@ -74,7 +74,7 @@ export default function PricingPage() {
     {
       name: "Professional",
       id: "professional",
-      href: user ? "/subscribe?plan=professional" : "/auth",
+      href: user ? "/subscribe?plan=professional" : "/login",
       price: {
         monthly: "$39.99",
         yearly: "$399.99",
@@ -124,7 +124,7 @@ export default function PricingPage() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/auth">
+                <Link href="/login">
                   <Button size="sm" className="bg-primary-600 hover:bg-primary-700">
                     Sign In
                   </Button>

@@ -151,12 +151,12 @@ export default function LandingPage() {
                 </Link>
               ) : (
                 <>
-                  <Link href="/auth" className="hidden sm:block">
+                  <Link href="/login" className="hidden sm:block">
                     <Button variant="outline" size="sm" className="border-primary-200 text-primary-700 hover:bg-primary-50 transition-all duration-300">
                       Sign In
                     </Button>
                   </Link>
-                  <Link href="/auth">
+                  <Link href="/login">
                     <Button size="sm" className="bg-primary-600 hover:bg-primary-700 shadow-md hover:shadow-glow transition-all duration-300">
                       Get Started
                     </Button>
@@ -198,7 +198,7 @@ export default function LandingPage() {
                     Try It Free
                   </Button>
                 </Link>
-                <Link href="/auth">
+                <Link href="/login">
                   <Button size="lg" variant="outline" className="border-primary-200 text-primary-700 hover:bg-primary-50 transition-all duration-300">
                     Get Started <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -507,7 +507,7 @@ export default function LandingPage() {
             </p>
             
             <div className="flex flex-col items-center">
-              <Link href="/auth">
+              <Link href="/login">
                 <Button size="lg" className="px-10 py-7 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700">
                   Create Free Account <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>

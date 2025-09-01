@@ -43,7 +43,7 @@ export default function AdminPanel() {
   useEffect(() => {
     if (!user || (user as any).role !== 'admin') {
       toast({ title: "Access Denied", description: "Admin access required.", variant: "destructive" });
-      navigate("/auth");
+      navigate("/login");
     }
   }, [user, navigate, toast]);
 
