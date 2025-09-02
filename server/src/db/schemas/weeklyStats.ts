@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, json, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, longtext, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Weekly Stats Table
 export const weeklyStats = mysqlTable('weekly_stats', {
@@ -10,8 +10,8 @@ export const weeklyStats = mysqlTable('weekly_stats', {
   averageProtein: int('average_protein').notNull(),
   healthiestDay: varchar('healthiest_day', { length: 255 }).notNull(),
   weekStarting: timestamp('week_starting').notNull(),
-  caloriesByDay: json('calories_by_day').notNull(),
-  macrosByDay: json('macros_by_day'),
+  caloriesByDay: longtext('calories_by_day').notNull(),
+  macrosByDay: longtext('macros_by_day'),
   caloriesBurned: int('calories_burned').default(0),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

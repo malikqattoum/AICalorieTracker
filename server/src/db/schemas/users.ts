@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, json, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, boolean, longtext, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Users Table
 export const users = mysqlTable('users', {
@@ -18,7 +18,7 @@ export const users = mysqlTable('users', {
   subscriptionStatus: varchar('subscription_status', { length: 255 }),
   subscriptionEndDate: timestamp('subscription_end_date'),
   isPremium: boolean('is_premium').default(false),
-  nutritionGoals: json('nutrition_goals'),
+  nutritionGoals: longtext('nutrition_goals'),
   role: varchar('role', { length: 50 }).default('user'),
   // Onboarding fields
   age: int('age'),
@@ -29,8 +29,8 @@ export const users = mysqlTable('users', {
   primaryGoal: varchar('primary_goal', { length: 100 }),
   targetWeight: int('target_weight'), // in kg
   timeline: varchar('timeline', { length: 50 }),
-  dietaryPreferences: json('dietary_preferences'),
-  allergies: json('allergies'),
+  dietaryPreferences: longtext('dietary_preferences'),
+  allergies: longtext('allergies'),
   aiMealSuggestions: boolean('ai_meal_suggestions').default(true),
   aiChatAssistantName: varchar('ai_chat_assistant_name', { length: 100 }),
   notificationsEnabled: boolean('notifications_enabled').default(true),
@@ -63,8 +63,8 @@ export const userPreferences = mysqlTable('user_preferences', {
   emailNotifications: boolean('email_notifications').default(true),
   pushNotifications: boolean('push_notifications').default(true),
   measurementSystem: varchar('measurement_system', { length: 10 }).default('metric'),
-  dietaryRestrictions: json('dietary_restrictions'),
-  allergies: json('allergies'),
+  dietaryRestrictions: longtext('dietary_restrictions'),
+  allergies: longtext('allergies'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

@@ -10,4 +10,4 @@ CREATE TABLE `app_config` (
 	CONSTRAINT `app_config_key_unique` UNIQUE(`key`)
 );
 --> statement-breakpoint
-ALTER TABLE `users` ADD `role` text DEFAULT ('user') NOT NULL;
+ALTER TABLE `users` ADD `role` text DEFAULT 'user' NOT NULL;
