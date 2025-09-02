@@ -41,6 +41,5 @@ CREATE TABLE `workouts` (
 );
 --> statement-breakpoint
 ALTER TABLE `meal_analyses` MODIFY COLUMN `timestamp` datetime NOT NULL;--> statement-breakpoint
-ALTER TABLE `favorite_meals` MODIFY COLUMN `created_at` datetime DEFAULT CURRENT_TIMESTAMP;--> statement-breakpoint
 ALTER TABLE `weekly_stats` MODIFY COLUMN `week_starting` datetime NOT NULL;--> statement-breakpoint
 ALTER TABLE `weekly_stats` ADD `calories_burned` int DEFAULT 0;
