@@ -1,4 +1,4 @@
-CREATE TABLE `nutrition_goals` (
+CREATE TABLE IF NOT EXISTS `nutrition_goals` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`daily_calories` int NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE `nutrition_goals` (
 	CONSTRAINT `nutrition_goals_user_id_unique` UNIQUE(`user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `planned_meals` (
+CREATE TABLE IF NOT EXISTS `planned_meals` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`date` datetime NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE `planned_meals` (
 	CONSTRAINT `planned_meals_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `workouts` (
+CREATE TABLE IF NOT EXISTS `workouts` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`type` varchar(50) NOT NULL,
