@@ -154,9 +154,17 @@ export * from '../server/src/db/schemas/aiConfig';
 export * from '../server/src/db/schemas/appConfig';
 export * from '../server/src/db/schemas/languages';
 export * from '../server/src/db/schemas/plannedMeals';
+export * from '../server/src/db/schemas/favoriteMeals';
 export * from '../server/src/db/schemas/importedRecipes';
 export * from '../server/src/db/schemas/referralSettings';
 export * from '../server/src/db/schemas/referralCommissions';
+export * from '../server/src/db/schemas/healthAnalytics';
+export * from '../server/src/db/schemas/imageStorage';
+export * from '../server/src/db/schemas/mealImages';
+export * from '../server/src/db/schemas/notifications';
+export * from '../server/src/db/schemas/payment';
+export * from '../server/src/db/schemas/wearableData';
+export * from '../server/src/db/schemas/workouts';
 
 // Type definitions for imported recipes
 export type ImportedRecipe = typeof importedRecipes.$inferSelect;
