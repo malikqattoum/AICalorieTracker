@@ -1,0 +1,95 @@
+{
+  "production": {
+    "ssh": {
+      "host": "141.136.39.242",
+      "port": 65002,
+      "username": "u741521150",
+      "password": "idTagFGz3XyRe4&",
+      "keyPath": null
+    },
+    "remote": {
+      "projectPath": "/home/u741521150/domains/scanitix.com/public_html/aical",
+      "nodeVersion": "18",
+      "backupPath": "/home/u741521150/backups",
+      "logPath": "/home/u741521150/logs"
+    },
+    "database": {
+      "host": "141.136.39.242",
+      "user": "u741521150_ct_user",
+      "password": "Tt|8C^SH388K",
+      "name": "u741521150_calorie_track",
+      "port": 3306
+    },
+    "application": {
+      "port": 3000,
+      "healthEndpoint": "/health",
+      "timeout": 30000
+    }
+  },
+  "staging": {
+    "ssh": {
+      "host": "staging.example.com",
+      "port": 22,
+      "username": "deploy",
+      "password": null,
+      "keyPath": "~/.ssh/staging_key"
+    },
+    "remote": {
+      "projectPath": "/var/www/staging/aicalorietracker",
+      "nodeVersion": "18",
+      "backupPath": "/var/backups/staging",
+      "logPath": "/var/log/staging"
+    },
+    "database": {
+      "host": "staging-db.example.com",
+      "user": "staging_user",
+      "password": "staging_password",
+      "name": "staging_calorie_tracker",
+      "port": 3306
+    },
+    "application": {
+      "port": 3001,
+      "healthEndpoint": "/health",
+      "timeout": 30000
+    }
+  },
+  "deployment": {
+    "preDeploymentChecks": [
+      "check_disk_space",
+      "check_database_connection",
+      "backup_database",
+      "validate_migrations"
+    ],
+    "postDeploymentChecks": [
+      "verify_application_startup",
+      "test_database_connection",
+      "check_health_endpoint",
+      "validate_migrations_applied"
+    ],
+    "rollbackStrategy": "database_backup_restore",
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "cpu_usage",
+      "memory_usage",
+      "disk_space",
+      "database_connections",
+      "response_time"
+    ],
+    "alerts": {
+      "cpu_threshold": 80,
+      "memory_threshold": 85,
+      "disk_threshold": 90,
+      "response_time_threshold": 5000
+    }
+  },
+  "security": {
+    "encryptPasswords": true,
+    "validateSSL": true,
+    "allowedIPs": [],
+    "firewallRules": []
+  }
+}
