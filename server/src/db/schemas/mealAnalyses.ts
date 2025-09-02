@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, json, text, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, datetime, boolean, json, text, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Meal Analyses Table
 export const mealAnalyses = mysqlTable('meal_analyses', {
@@ -20,7 +20,7 @@ export const mealAnalyses = mysqlTable('meal_analyses', {
   analysisTimestamp: timestamp('analysis_timestamp').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-  deletedAt: timestamp('deleted_at'),
+  deletedAt: datetime('deleted_at'),
 });
 
 // Create indexes for better performance

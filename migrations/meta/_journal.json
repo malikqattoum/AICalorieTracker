@@ -5,66 +5,65 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1747312740278,
-      "tag": "0000_shiny_mad_thinker",
+      "when": 1756823369553,
+      "tag": "0001_melodic_roxanne_simpson",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "5",
-      "when": 1747325361458,
-      "tag": "0001_melodic_roxanne_simpson",
+      "when": 1756823370553,
+      "tag": "0003_short_forgotten_one",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "5",
-      "when": 1748428810219,
-      "tag": "0002_tense_unicorn",
+      "when": 1756823371553,
+      "tag": "0004_square_ken_ellis",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "5",
-      "when": 1748429320646,
-      "tag": "0003_short_forgotten_one",
+      "when": 1756823372553,
+      "tag": "0005_progress_tracking",
       "breakpoints": true
     },
-  {
-    "idx": 4,
-    "version": "20240429100000",
-    "tag": "0004_square_ken_ellis",
-    "breakpoints": true
-  },
-  {
-    "idx": 5,
-    "version": "20240429100000",
-    "tag": "0005_progress_tracking",
-    "breakpoints": true
-  },
-  {
-    "idx": 6,
-    "version": "20240429100000",
-    "tag": "0006_add_wearable_data_table",
-    "breakpoints": true
-  },
-  {
-    "idx": 7,
-    "version": "20240429100000",
-    "tag": "0007_portion_size_estimation",
-    "breakpoints": true
-  },
-  {
-    "idx": 8,
-    "version": "20240429100000",
-    "tag": "0008_referral_program",
-    "breakpoints": true
-  },
-  {
-    "idx": 9,
-    "version": "20240429100000",
-    "tag": "0009_performance_indexes",
-    "breakpoints": true
-  }
-]
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1756823373553,
+      "tag": "0006_onboarding_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1756823374553,
+      "tag": "0007_portion_size_estimation",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1756823375553,
+      "tag": "0008_referral_program",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1756823376553,
+      "tag": "0009_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1756823377553,
+      "tag": "0010_brief_midnight",
+      "breakpoints": true
+    }
+  ]
 }

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, decimal, boolean, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, datetime, decimal, boolean, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Referral Commissions Table
 export const referralCommissions = mysqlTable('referral_commissions', {
@@ -11,7 +11,7 @@ export const referralCommissions = mysqlTable('referral_commissions', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   isRecurring: boolean('is_recurring').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-  paidAt: timestamp('paid_at'),
+  paidAt: datetime('paid_at'),
 });
 
 // Create indexes for better performance

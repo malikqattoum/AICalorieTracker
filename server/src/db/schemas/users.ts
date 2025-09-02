@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, longtext, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, datetime, boolean, longtext, decimal, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Users Table
 export const users = mysqlTable('users', {
@@ -16,7 +16,7 @@ export const users = mysqlTable('users', {
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),
   subscriptionType: varchar('subscription_type', { length: 255 }),
   subscriptionStatus: varchar('subscription_status', { length: 255 }),
-  subscriptionEndDate: timestamp('subscription_end_date'),
+  subscriptionEndDate: datetime('subscription_end_date'),
   isPremium: boolean('is_premium').default(false),
   nutritionGoals: longtext('nutrition_goals'),
   role: varchar('role', { length: 50 }).default('user'),
@@ -35,7 +35,7 @@ export const users = mysqlTable('users', {
   aiChatAssistantName: varchar('ai_chat_assistant_name', { length: 100 }),
   notificationsEnabled: boolean('notifications_enabled').default(true),
   onboardingCompleted: boolean('onboarding_completed').default(false),
-  onboardingCompletedAt: timestamp('onboarding_completed_at'),
+  onboardingCompletedAt: datetime('onboarding_completed_at').default(sql`NULL`),
   // Core user fields
   dailyCalorieTarget: int('daily_calorie_target').default(2000),
   proteinTarget: decimal('protein_target', { precision: 5, scale: 2 }).default(sql`150.00`),
@@ -46,8 +46,8 @@ export const users = mysqlTable('users', {
   emailVerified: boolean('email_verified').default(false),
   emailVerificationToken: varchar('email_verification_token', { length: 255 }),
   resetPasswordToken: varchar('reset_password_token', { length: 255 }),
-  resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
-  lastLoginAt: timestamp('last_login_at'),
+  resetPasswordExpiresAt: datetime('reset_password_expires_at'),
+  lastLoginAt: datetime('last_login_at'),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
