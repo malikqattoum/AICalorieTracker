@@ -17,7 +17,7 @@ CREATE TABLE referral_commissions (
   referee_id INTEGER NOT NULL,
   subscription_id VARCHAR(255) NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
-  status VARCHAR(50) NOT NULL CHECK (status IN ('pending', 'paid', 'cancelled')) DEFAULT 'pending',
+  status VARCHAR(50) NOT NULL DEFAULT 'pending',
   is_recurring BOOLEAN NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   paid_at TIMESTAMP,

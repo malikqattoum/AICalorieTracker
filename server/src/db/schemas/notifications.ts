@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, json, text, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, boolean, json, text, datetime, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Device Tokens Table
 export const deviceTokens = mysqlTable('device_tokens', {
@@ -22,8 +22,8 @@ export const pushNotifications = mysqlTable('push_notifications', {
   data: json('data'), // JSON object for additional data
   type: varchar('type', { length: 50 }).default('system'), // 'meal_reminder', 'goal_achievement', 'health_alert', 'system', 'marketing'
   priority: varchar('priority', { length: 20 }).default('normal'), // 'high', 'normal', 'low'
-  scheduledFor: timestamp('scheduled_for'),
-  sentAt: timestamp('sent_at'),
+  scheduledFor: datetime('scheduled_for').default(null),
+  sentAt: datetime('sent_at').default(null),
   status: varchar('status', { length: 20 }).default('pending'), // 'pending', 'sent', 'failed', 'cancelled'
   platform: varchar('platform', { length: 20 }), // 'ios', 'android', 'web'
   retryCount: int('retry_count').default(0),
@@ -87,7 +87,7 @@ export const notificationCampaigns = mysqlTable('notification_campaigns', {
   type: varchar('type', { length: 20 }).notNull(), // 'broadcast', 'segment', 'triggered'
   targetAudience: json('target_audience'), // JSON object for targeting criteria
   templateId: varchar('template_id', { length: 255 }).references(() => notificationTemplates.id),
-  scheduledFor: timestamp('scheduled_for'),
+  scheduledFor: datetime('scheduled_for').default(null),
   status: varchar('status', { length: 20 }).default('draft'), // 'draft', 'scheduled', 'running', 'completed', 'cancelled'
   totalSent: int('total_sent').default(0),
   totalDelivered: int('total_delivered').default(0),

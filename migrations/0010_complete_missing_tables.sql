@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS `referral_commissions` (
   `referee_id` int NOT NULL,
   `subscription_id` varchar(255) NOT NULL,
   `amount` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `status` varchar(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled')),
+  `status` varchar(20) NOT NULL DEFAULT 'pending',
   `is_recurring` boolean NOT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `paid_at` datetime DEFAULT NULL,

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, decimal, timestamp, boolean, json, text, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, decimal, timestamp, datetime, boolean, json, text, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Health Scores Table
 export const healthScores = mysqlTable('health_scores', {
@@ -68,9 +68,9 @@ export const healthReports = mysqlTable('health_reports', {
   summaryText: text('summary_text'),
   keyFindings: json('key_findings'),
   recommendations: json('recommendations'),
-  generatedAt: timestamp('generated_at'),
-  deliveredAt: timestamp('delivered_at'),
-  archivedAt: timestamp('archived_at'),
+  generatedAt: datetime('generated_at').default(null),
+  deliveredAt: datetime('delivered_at').default(null),
+  archivedAt: datetime('archived_at').default(null),
   metadata: json('metadata'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -134,7 +134,7 @@ export const healthGoals = mysqlTable('health_goals', {
   strategies: json('strategies'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-  completedAt: timestamp('completed_at'),
+  completedAt: datetime('completed_at').default(null),
 });
 
 // Health Insights Table
@@ -150,10 +150,10 @@ export const healthInsights = mysqlTable('health_insights', {
   actionItems: json('action_items'),
   relatedMetrics: json('related_metrics'),
   isActioned: boolean('is_actioned').default(false),
-  actionedAt: timestamp('actioned_at'),
+  actionedAt: datetime('actioned_at').default(null),
   actionNotes: text('action_notes'),
   createdAt: timestamp('created_at').defaultNow(),
-  expiresAt: timestamp('expires_at'),
+  expiresAt: datetime('expires_at').default(null),
 });
 
 // Create indexes for better performance

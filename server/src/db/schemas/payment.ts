@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, decimal, text, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, boolean, decimal, text, datetime, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Payment Intents Table
 export const paymentIntents = mysqlTable('payment_intents', {
@@ -36,10 +36,10 @@ export const subscriptions = mysqlTable('subscriptions', {
   userId: int('user_id').notNull(),
   planId: varchar('plan_id', { length: 50 }).notNull(), // 'free', 'premium', 'professional'
   status: varchar('status', { length: 50 }).default('incomplete'), // 'active', 'past_due', 'canceled', 'unpaid', 'incomplete', 'incomplete_expired'
-  currentPeriodStart: timestamp('current_period_start').notNull(),
-  currentPeriodEnd: timestamp('current_period_end').notNull(),
-  trialEnd: timestamp('trial_end'),
-  canceledAt: timestamp('canceled_at'),
+  currentPeriodStart: timestamp('current_period_start').notNull().defaultNow(),
+  currentPeriodEnd: timestamp('current_period_end').notNull().defaultNow(),
+  trialEnd: datetime('trial_end').default(null),
+  canceledAt: datetime('canceled_at').default(null),
   cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
   paymentMethodId: varchar('payment_method_id', { length: 255 }),
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
@@ -60,7 +60,7 @@ export const transactions = mysqlTable('transactions', {
   description: varchar('description', { length: 500 }).notNull(),
   metadata: text('metadata'), // JSON string for additional data
   stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
-  refundedAt: timestamp('refunded_at'),
+  refundedAt: datetime('refunded_at').default(null),
   refundId: varchar('refund_id', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -112,8 +112,8 @@ export const invoices = mysqlTable('invoices', {
   status: varchar('status', { length: 50 }).default('open'), // 'open', 'paid', 'void', 'uncollectible'
   hostedInvoiceUrl: varchar('hosted_invoice_url', { length: 500 }),
   invoicePdf: varchar('invoice_pdf', { length: 500 }),
-  dueDate: timestamp('due_date'),
-  paidAt: timestamp('paid_at'),
+  dueDate: datetime('due_date').default(null),
+  paidAt: datetime('paid_at').default(null),
   stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -125,7 +125,7 @@ export const paymentWebhooks = mysqlTable('payment_webhooks', {
   eventType: varchar('event_type', { length: 100 }).notNull(),
   eventData: text('event_data').notNull(), // JSON string of the webhook payload
   processed: boolean('processed').default(false),
-  processedAt: timestamp('processed_at'),
+  processedAt: datetime('processed_at').default(null),
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at').defaultNow(),
 });

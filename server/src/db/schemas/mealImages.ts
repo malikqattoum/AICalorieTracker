@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, boolean, datetime, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Meal Images Table
 export const mealImages = mysqlTable('meal_images', {
@@ -13,7 +13,7 @@ export const mealImages = mysqlTable('meal_images', {
   imageHash: varchar('image_hash', { length: 64 }).unique(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-  deletedAt: timestamp('deleted_at'),
+  deletedAt: datetime('deleted_at').default(null),
 });
 
 // Meal Image Archive Table

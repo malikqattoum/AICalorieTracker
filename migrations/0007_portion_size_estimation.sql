@@ -7,7 +7,7 @@ CREATE TABLE reference_objects (
   name VARCHAR(255) NOT NULL,
   width_cm REAL NOT NULL,
   height_cm REAL NOT NULL,
-  shape VARCHAR(50) NOT NULL CHECK (shape IN ('rectangle', 'circle', 'credit_card', 'coin'))
+  shape VARCHAR(50) NOT NULL
 );
 
 -- Prepopulate common reference objects

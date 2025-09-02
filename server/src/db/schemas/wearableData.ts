@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, decimal, json, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, varchar, timestamp, decimal, json, datetime, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Wearable Data Table
 export const wearableData = mysqlTable('wearable_data', {
@@ -14,10 +14,10 @@ export const wearableData = mysqlTable('wearable_data', {
   source: varchar('source', { length: 20 }).default('automatic'),
   confidenceScore: decimal('confidence_score', { precision: 5, scale: 4 }),
   metadata: json('metadata'),
-  syncedAt: timestamp('synced_at'),
+  syncedAt: datetime('synced_at').default(null),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
-  deletedAt: timestamp('deleted_at'),
+  deletedAt: datetime('deleted_at').default(null),
 });
 
 // Create indexes for better performance

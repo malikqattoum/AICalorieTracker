@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { int, varchar, timestamp, boolean, decimal, text, json, mysqlTable } from 'drizzle-orm/mysql-core';
+import { int, bigint, varchar, timestamp, datetime, boolean, decimal, text, json, mysqlTable } from 'drizzle-orm/mysql-core';
 
 // Image Metadata Table
 export const imageMetadata = mysqlTable('image_metadata', {
@@ -17,13 +17,13 @@ export const imageMetadata = mysqlTable('image_metadata', {
   storageType: varchar('storage_type', { length: 20 }).default('local'), // 'local', 's3'
   isPublic: boolean('is_public').default(false),
   downloadCount: int('download_count').default(0),
-  lastAccessed: timestamp('last_accessed'),
-  expiresAt: timestamp('expires_at'),
+  lastAccessed: datetime('last_accessed').default(null),
+  expiresAt: datetime('expires_at').default(null),
   metadata: text('metadata'), // JSON string for additional metadata
   tags: text('tags'), // comma-separated tags
   category: varchar('category', { length: 50 }), // 'avatar', 'meal', 'profile', etc.
   isDeleted: boolean('is_deleted').default(false),
-  deletedAt: timestamp('deleted_at'),
+  deletedAt: datetime('deleted_at').default(null),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -52,8 +52,8 @@ export const imageProcessingJobs = mysqlTable('image_processing_jobs', {
   errorMessage: text('error_message'),
   outputData: text('output_data'), // JSON string for job output
   priority: int('priority').default(5), // 1-10, higher is more important
-  startedAt: timestamp('started_at'),
-  completedAt: timestamp('completed_at'),
+  startedAt: datetime('started_at').default(null),
+  completedAt: datetime('completed_at').default(null),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -95,7 +95,7 @@ export const imageAnalytics = mysqlTable('image_analytics', {
 export const imageStorageQuotas = mysqlTable('image_storage_quotas', {
   id: varchar('id', { length: 255 }).primaryKey(),
   userId: int('user_id').unique().notNull(),
-  totalQuota: int('total_quota').default(5 * 1024 * 1024 * 1024), // 5GB default
+  totalQuota: bigint('total_quota', { mode: 'number' }).default(5 * 1024 * 1024 * 1024), // 5GB default
   usedQuota: int('used_quota').default(0),
   imageCount: int('image_count').default(0),
   lastUpdated: timestamp('last_updated').defaultNow(),
@@ -109,7 +109,7 @@ export const imageSharing = mysqlTable('image_sharing', {
   sharedBy: int('shared_by').notNull(),
   sharedWith: int('shared_with'), // null for public sharing
   accessType: varchar('access_type', { length: 20 }).default('view'), // 'view', 'download', 'edit'
-  expiresAt: timestamp('expires_at'),
+  expiresAt: datetime('expires_at').default(null),
   isRevoked: boolean('is_revoked').default(false),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -137,7 +137,7 @@ export const imageCache = mysqlTable('image_cache', {
   mimeType: varchar('mime_type', { length: 100 }).notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   hitCount: int('hit_count').default(0),
-  lastAccessed: timestamp('last_accessed'),
+  lastAccessed: datetime('last_accessed').default(null),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

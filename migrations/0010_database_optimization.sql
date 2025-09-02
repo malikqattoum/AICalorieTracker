@@ -40,30 +40,6 @@ ALTER TABLE wearable_data
 ADD CONSTRAINT fk_wearable_data_user 
 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- Add check constraints for data validation
-ALTER TABLE users 
-ADD CONSTRAINT chk_age CHECK (age IS NULL OR (age >= 13 AND age <= 120)),
-ADD CONSTRAINT chk_height CHECK (height IS NULL OR (height >= 100 AND height <= 250)),
-ADD CONSTRAINT chk_weight CHECK (weight IS NULL OR (weight >= 30 AND weight <= 300)),
-ADD CONSTRAINT chk_email CHECK (email IS NULL OR email LIKE '%_@_%._%');
-
-ALTER TABLE meal_analyses 
-ADD CONSTRAINT chk_nutrition_values CHECK (
-    calories >= 0 AND 
-    protein >= 0 AND 
-    carbs >= 0 AND 
-    fat >= 0 AND 
-    fiber >= 0
-);
-
-ALTER TABLE nutrition_goals 
-ADD CONSTRAINT chk_nutrition_goals CHECK (
-    calories >= 0 AND 
-    protein >= 0 AND 
-    carbs >= 0 AND 
-    fat >= 0 AND 
-    dailyCalories >= 0
-);
 
 -- Add indexes for frequently queried fields
 CREATE INDEX idx_users_username ON users(username);
