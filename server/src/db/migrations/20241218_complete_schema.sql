@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     notifications_enabled BOOLEAN DEFAULT TRUE,
     email_notifications BOOLEAN DEFAULT TRUE,
     push_notifications BOOLEAN DEFAULT TRUE,
-    measurement_system ENUM('metric', 'imperial') DEFAULT 'metric',
+    measurement_system VARCHAR(10) DEFAULT 'metric',
     dietary_restrictions JSON,
     allergies JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
