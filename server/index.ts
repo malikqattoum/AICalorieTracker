@@ -96,9 +96,7 @@ console.log('[SERVER] Environment is development:', process.env.NODE_ENV === "de
 registerRoutes(app);
 console.log('[SERVER] Routes registered');
 
-// Apply JSON middleware before security middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+// Remove duplicate JSON middleware - already applied above
 
 // Apply enhanced security middleware
 app.use(enhancedSecurityMiddleware);

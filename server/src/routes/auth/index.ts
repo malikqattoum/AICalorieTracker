@@ -27,33 +27,8 @@ const loginSchema = z.object({
 console.log('[AUTH-ROUTE] Setting up /api/auth/register route...');
 // POST /api/auth/register
 
-// Middleware to log raw request body
-const rawBodyLogger = (req: Request, res: Response, next: NextFunction) => {
-  let rawBody = '';
-  req.on('data', (chunk) => {
-    rawBody += chunk.toString();
-  });
-  req.on('end', () => {
-    console.log('[RAW BODY]', rawBody);
-    next();
-  });
-};
-
-// Middleware to validate Content-Type
-const validateContentType = (req: Request, res: Response, next: NextFunction) => {
-  const contentType = req.headers['content-type'];
-  if (!contentType || !contentType.includes('application/json')) {
-    return res.status(415).json({
-      message: "Unsupported Media Type",
-      details: "Content-Type must be application/json"
-    });
-  }
-  next();
-};
 
 router.post('/register',
-  // Parse JSON even if Content-Type header is missing or altered by proxies
-  express.json({ type: '*/*' }),
   registerRateLimiter,
   async (req, res, next) => {
   console.log('=== [REGISTER] DEBUG START ===');
