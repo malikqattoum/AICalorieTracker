@@ -3496,6 +3496,178 @@ var init_imageStorageService = __esm({
   }
 });
 
+// vite.config.ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path2 from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { fileURLToPath as fileURLToPath2 } from "url";
+import { dirname as dirname2 } from "path";
+var __filename2, __dirname2, vite_config_default;
+var init_vite_config = __esm({
+  "vite.config.ts"() {
+    "use strict";
+    __filename2 = fileURLToPath2(import.meta.url);
+    __dirname2 = dirname2(__filename2);
+    vite_config_default = defineConfig({
+      plugins: [
+        react(),
+        runtimeErrorOverlay()
+      ],
+      resolve: {
+        alias: {
+          "@": path2.resolve(__dirname2, "client", "src"),
+          "@shared": path2.resolve(__dirname2, "shared"),
+          "@assets": path2.resolve(__dirname2, "attached_assets")
+        }
+      },
+      root: path2.resolve(__dirname2, "client"),
+      build: {
+        outDir: path2.resolve(__dirname2, "dist/public"),
+        emptyOutDir: true
+      }
+    });
+  }
+});
+
+// server/vite.ts
+var vite_exports = {};
+__export(vite_exports, {
+  log: () => log,
+  serveStatic: () => serveStatic,
+  setupVite: () => setupVite
+});
+import express from "express";
+import fs2 from "fs";
+import path3 from "path";
+import { createServer as createViteServer, createLogger } from "vite";
+import { nanoid } from "nanoid";
+import { fileURLToPath as fileURLToPath3 } from "url";
+import { dirname as dirname3 } from "path";
+function log(message, source = "express") {
+  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
+async function setupVite(app2, server) {
+  const serverOptions = {
+    middlewareMode: true,
+    hmr: { server }
+  };
+  const vite = await createViteServer({
+    ...vite_config_default,
+    configFile: false,
+    customLogger: {
+      ...viteLogger,
+      error: (msg, options) => {
+        viteLogger.error(msg, options);
+        process.exit(1);
+      }
+    },
+    server: serverOptions,
+    appType: "custom"
+  });
+  app2.use((req, res, next) => {
+    if (req.originalUrl.startsWith("/api/")) {
+      console.log("[VITE] Skipping API route:", req.originalUrl);
+      return next();
+    }
+    console.log("[VITE] Handling non-API route:", req.originalUrl);
+    vite.middlewares(req, res, next);
+  });
+  app2.use("*", async (req, res, next) => {
+    console.log("[DEBUG] Request received for:", req.originalUrl);
+    console.log("[DEBUG] User-Agent:", req.get("User-Agent"));
+    if (req.originalUrl.startsWith("/api/")) {
+      console.log("[DEBUG] Skipping API route");
+      return next();
+    }
+    if (res.headersSent) {
+      console.log("[DEBUG] Response already sent, skipping");
+      return next();
+    }
+    try {
+      const url = req.originalUrl;
+      const clientTemplate = path3.resolve(
+        __dirname3,
+        "..",
+        "client",
+        "index.html"
+      );
+      console.log("[DEBUG] Attempting to serve client template from:", clientTemplate);
+      if (!fs2.existsSync(clientTemplate)) {
+        console.error("[ERROR] Client template not found:", clientTemplate);
+        throw new Error("Client template not found");
+      }
+      let template = await fs2.promises.readFile(clientTemplate, "utf-8");
+      console.log("[DEBUG] Client template loaded, length:", template.length);
+      template = template.replace(
+        `src="./src/main.tsx"`,
+        `src="/src/main.tsx?v=${nanoid()}"`
+      );
+      const page = await vite.transformIndexHtml(url, template);
+      console.log("[DEBUG] Transformed HTML, length:", page.length);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      console.log("[DEBUG] Successfully served React app");
+    } catch (e) {
+      console.error("[ERROR] Failed to serve React app:", e);
+      vite.ssrFixStacktrace(e);
+      res.status(500).end(e.message);
+    }
+  });
+}
+function serveStatic(app2) {
+  console.log("[SERVE-STATIC] Setting up static file serving...");
+  const distPath = path3.resolve(__dirname3, "..", "dist", "public");
+  if (!fs2.existsSync(distPath)) {
+    console.error("[ERROR] Build directory not found:", distPath);
+    throw new Error(
+      `Could not find the build directory: ${distPath}, make sure to build the client first`
+    );
+  }
+  console.log("[SERVE-STATIC] Serving static files from:", distPath);
+  app2.use(express.static(distPath));
+  app2.use("*", (req, res, next) => {
+    if (req.originalUrl.startsWith("/api/")) {
+      console.log("[SERVE-STATIC] Skipping API route:", req.originalUrl);
+      return next();
+    }
+    try {
+      const url = req.originalUrl;
+      const clientTemplate = path3.resolve(
+        __dirname3,
+        "..",
+        "dist",
+        "public",
+        "index.html"
+      );
+      if (!fs2.existsSync(clientTemplate)) {
+        console.error("[ERROR] Client template not found:", clientTemplate);
+        return res.status(404).send("Client not built");
+      }
+      let template = fs2.readFileSync(clientTemplate, "utf-8");
+      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+    } catch (e) {
+      console.error("[ERROR] Failed to serve static file:", e);
+      next(e);
+    }
+  });
+}
+var __filename3, __dirname3, viteLogger;
+var init_vite = __esm({
+  "server/vite.ts"() {
+    "use strict";
+    init_vite_config();
+    __filename3 = fileURLToPath3(import.meta.url);
+    __dirname3 = dirname3(__filename3);
+    viteLogger = createLogger();
+  }
+});
+
 // server/index.ts
 import * as dotenv6 from "dotenv";
 import * as path5 from "path";
@@ -4485,10 +4657,10 @@ router3.get("/logs", async (req, res) => {
     const { limit = 100, level: level2, service } = req.query;
     let filteredLogs = [...systemLogs];
     if (level2) {
-      filteredLogs = filteredLogs.filter((log2) => log2.level === level2);
+      filteredLogs = filteredLogs.filter((log3) => log3.level === level2);
     }
     if (service) {
-      filteredLogs = filteredLogs.filter((log2) => log2.service === service);
+      filteredLogs = filteredLogs.filter((log3) => log3.service === service);
     }
     filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     filteredLogs = filteredLogs.slice(0, parseInt(limit));
@@ -6487,21 +6659,21 @@ router10.get("/stats", async (req, res) => {
     const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
     const totalActivities = activityLogs.length + Math.floor(Math.random() * 1e4);
     const activitiesLast24h = activityLogs.filter(
-      (log2) => new Date(log2.timestamp) > last24h
+      (log3) => new Date(log3.timestamp) > last24h
     ).length + Math.floor(Math.random() * 100);
     const activitiesLast7d = activityLogs.filter(
-      (log2) => new Date(log2.timestamp) > last7d
+      (log3) => new Date(log3.timestamp) > last7d
     ).length + Math.floor(Math.random() * 500);
     const securityEvents2 = activityLogs.filter(
-      (log2) => log2.category === "security"
+      (log3) => log3.category === "security"
     ).length + Math.floor(Math.random() * 50);
     const failedAttempts = activityLogs.filter(
-      (log2) => !log2.success
+      (log3) => !log3.success
     ).length + Math.floor(Math.random() * 25);
-    const uniqueIPs = new Set(activityLogs.map((log2) => log2.ipAddress)).size + Math.floor(Math.random() * 100);
+    const uniqueIPs = new Set(activityLogs.map((log3) => log3.ipAddress)).size + Math.floor(Math.random() * 100);
     const actionCounts = {};
-    activityLogs.forEach((log2) => {
-      actionCounts[log2.action] = (actionCounts[log2.action] || 0) + 1;
+    activityLogs.forEach((log3) => {
+      actionCounts[log3.action] = (actionCounts[log3.action] || 0) + 1;
     });
     actionCounts["USER_LOGIN"] = (actionCounts["USER_LOGIN"] || 0) + Math.floor(Math.random() * 1e3);
     actionCounts["AI_ANALYSIS_REQUEST"] = (actionCounts["AI_ANALYSIS_REQUEST"] || 0) + Math.floor(Math.random() * 800);
@@ -6510,9 +6682,9 @@ router10.get("/stats", async (req, res) => {
     actionCounts["SUBSCRIPTION_CREATED"] = Math.floor(Math.random() * 200);
     const topActions = Object.entries(actionCounts).sort(([, a], [, b]) => b - a).slice(0, 10).map(([action, count4]) => ({ action, count: count4 }));
     const userCounts = {};
-    activityLogs.forEach((log2) => {
-      if (log2.userEmail) {
-        userCounts[log2.userEmail] = (userCounts[log2.userEmail] || 0) + 1;
+    activityLogs.forEach((log3) => {
+      if (log3.userEmail) {
+        userCounts[log3.userEmail] = (userCounts[log3.userEmail] || 0) + 1;
       }
     });
     const mockUsers = [
@@ -6558,14 +6730,14 @@ router10.get("/logs", async (req, res) => {
     } = req.query;
     let filteredLogs = [...activityLogs];
     if (category && category !== "all") {
-      filteredLogs = filteredLogs.filter((log2) => log2.category === category);
+      filteredLogs = filteredLogs.filter((log3) => log3.category === category);
     }
     if (severity && severity !== "all") {
-      filteredLogs = filteredLogs.filter((log2) => log2.severity === severity);
+      filteredLogs = filteredLogs.filter((log3) => log3.severity === severity);
     }
     if (success && success !== "all") {
       const isSuccess = success === "true";
-      filteredLogs = filteredLogs.filter((log2) => log2.success === isSuccess);
+      filteredLogs = filteredLogs.filter((log3) => log3.success === isSuccess);
     }
     if (timeRange && timeRange !== "all") {
       const now = /* @__PURE__ */ new Date();
@@ -6586,27 +6758,27 @@ router10.get("/logs", async (req, res) => {
         default:
           timeFilter = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
       }
-      filteredLogs = filteredLogs.filter((log2) => new Date(log2.timestamp) > timeFilter);
+      filteredLogs = filteredLogs.filter((log3) => new Date(log3.timestamp) > timeFilter);
     }
     if (userId) {
       filteredLogs = filteredLogs.filter(
-        (log2) => log2.userId?.toLowerCase().includes(userId.toString().toLowerCase())
+        (log3) => log3.userId?.toLowerCase().includes(userId.toString().toLowerCase())
       );
     }
     if (action) {
       filteredLogs = filteredLogs.filter(
-        (log2) => log2.action.toLowerCase().includes(action.toString().toLowerCase())
+        (log3) => log3.action.toLowerCase().includes(action.toString().toLowerCase())
       );
     }
     if (ipAddress) {
       filteredLogs = filteredLogs.filter(
-        (log2) => log2.ipAddress.includes(ipAddress.toString())
+        (log3) => log3.ipAddress.includes(ipAddress.toString())
       );
     }
     if (search) {
       const searchTerm = search.toString().toLowerCase();
       filteredLogs = filteredLogs.filter(
-        (log2) => log2.action.toLowerCase().includes(searchTerm) || log2.description.toLowerCase().includes(searchTerm) || log2.userEmail?.toLowerCase().includes(searchTerm) || log2.ipAddress.includes(searchTerm)
+        (log3) => log3.action.toLowerCase().includes(searchTerm) || log3.description.toLowerCase().includes(searchTerm) || log3.userEmail?.toLowerCase().includes(searchTerm) || log3.ipAddress.includes(searchTerm)
       );
     }
     filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -6635,14 +6807,14 @@ router10.get("/export", async (req, res) => {
     } = req.query;
     let filteredLogs = [...activityLogs];
     if (category && category !== "all") {
-      filteredLogs = filteredLogs.filter((log2) => log2.category === category);
+      filteredLogs = filteredLogs.filter((log3) => log3.category === category);
     }
     if (severity && severity !== "all") {
-      filteredLogs = filteredLogs.filter((log2) => log2.severity === severity);
+      filteredLogs = filteredLogs.filter((log3) => log3.severity === severity);
     }
     if (success && success !== "all") {
       const isSuccess = success === "true";
-      filteredLogs = filteredLogs.filter((log2) => log2.success === isSuccess);
+      filteredLogs = filteredLogs.filter((log3) => log3.success === isSuccess);
     }
     if (timeRange && timeRange !== "all") {
       const now = /* @__PURE__ */ new Date();
@@ -6663,12 +6835,12 @@ router10.get("/export", async (req, res) => {
         default:
           timeFilter = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
       }
-      filteredLogs = filteredLogs.filter((log2) => new Date(log2.timestamp) > timeFilter);
+      filteredLogs = filteredLogs.filter((log3) => new Date(log3.timestamp) > timeFilter);
     }
     if (search) {
       const searchTerm = search.toString().toLowerCase();
       filteredLogs = filteredLogs.filter(
-        (log2) => log2.action.toLowerCase().includes(searchTerm) || log2.description.toLowerCase().includes(searchTerm) || log2.userEmail?.toLowerCase().includes(searchTerm) || log2.ipAddress.includes(searchTerm)
+        (log3) => log3.action.toLowerCase().includes(searchTerm) || log3.description.toLowerCase().includes(searchTerm) || log3.userEmail?.toLowerCase().includes(searchTerm) || log3.ipAddress.includes(searchTerm)
       );
     }
     filteredLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -6685,17 +6857,17 @@ router10.get("/export", async (req, res) => {
         "Severity",
         "Location"
       ];
-      const csvRows = filteredLogs.map((log2) => [
-        log2.id,
-        log2.timestamp,
-        log2.userEmail || "",
-        log2.action,
-        log2.category,
-        log2.description,
-        log2.ipAddress,
-        log2.success.toString(),
-        log2.severity,
-        log2.location ? `${log2.location.city}, ${log2.location.country}` : ""
+      const csvRows = filteredLogs.map((log3) => [
+        log3.id,
+        log3.timestamp,
+        log3.userEmail || "",
+        log3.action,
+        log3.category,
+        log3.description,
+        log3.ipAddress,
+        log3.success.toString(),
+        log3.severity,
+        log3.location ? `${log3.location.city}, ${log3.location.country}` : ""
       ]);
       const csvContent = [
         csvHeaders.join(","),
@@ -6730,11 +6902,11 @@ router10.get("/export", async (req, res) => {
 router10.get("/logs/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const log2 = activityLogs.find((log3) => log3.id === id);
-    if (!log2) {
+    const log3 = activityLogs.find((log4) => log4.id === id);
+    if (!log3) {
       return res.status(404).json({ message: "Activity log not found" });
     }
-    res.json(log2);
+    res.json(log3);
   } catch (error) {
     console.error("Error fetching activity log:", error);
     res.status(500).json({ message: "Failed to fetch activity log" });
@@ -6807,8 +6979,8 @@ router10.delete("/logs", async (req, res) => {
     const originalLength = activityLogs.length;
     if (olderThan) {
       const cutoffDate = new Date(olderThan);
-      activityLogs = activityLogs.filter((log2) => {
-        const logDate = new Date(log2.timestamp);
+      activityLogs = activityLogs.filter((log3) => {
+        const logDate = new Date(log3.timestamp);
         if (logDate < cutoffDate) {
           deletedCount++;
           return false;
@@ -6817,8 +6989,8 @@ router10.delete("/logs", async (req, res) => {
       });
     }
     if (category) {
-      activityLogs = activityLogs.filter((log2) => {
-        if (log2.category === category) {
+      activityLogs = activityLogs.filter((log3) => {
+        if (log3.category === category) {
           deletedCount++;
           return false;
         }
@@ -6826,8 +6998,8 @@ router10.delete("/logs", async (req, res) => {
       });
     }
     if (severity) {
-      activityLogs = activityLogs.filter((log2) => {
-        if (log2.severity === severity) {
+      activityLogs = activityLogs.filter((log3) => {
+        if (log3.severity === severity) {
           deletedCount++;
           return false;
         }
@@ -9835,97 +10007,8 @@ import { Router as Router22 } from "express";
 
 // server/src/services/nutritionCoachService.ts
 init_db2();
+init_vite();
 import OpenAI2 from "openai";
-
-// server/vite.ts
-import express from "express";
-import fs2 from "fs";
-import path3 from "path";
-import { createServer as createViteServer, createLogger } from "vite";
-
-// vite.config.ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path2 from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { fileURLToPath as fileURLToPath2 } from "url";
-import { dirname as dirname2 } from "path";
-var __filename2 = fileURLToPath2(import.meta.url);
-var __dirname2 = dirname2(__filename2);
-var vite_config_default = defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay()
-  ],
-  resolve: {
-    alias: {
-      "@": path2.resolve(__dirname2, "client", "src"),
-      "@shared": path2.resolve(__dirname2, "shared"),
-      "@assets": path2.resolve(__dirname2, "attached_assets")
-    }
-  },
-  root: path2.resolve(__dirname2, "client"),
-  build: {
-    outDir: path2.resolve(__dirname2, "dist/public"),
-    emptyOutDir: true
-  }
-});
-
-// server/vite.ts
-import { nanoid } from "nanoid";
-import { fileURLToPath as fileURLToPath3 } from "url";
-import { dirname as dirname3 } from "path";
-var __filename3 = fileURLToPath3(import.meta.url);
-var __dirname3 = dirname3(__filename3);
-var viteLogger = createLogger();
-function log(message, source = "express") {
-  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-function serveStatic(app2) {
-  console.log("[SERVE-STATIC] Setting up static file serving...");
-  const distPath = path3.resolve(__dirname3, "..", "dist", "public");
-  if (!fs2.existsSync(distPath)) {
-    console.error("[ERROR] Build directory not found:", distPath);
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
-    );
-  }
-  console.log("[SERVE-STATIC] Serving static files from:", distPath);
-  app2.use(express.static(distPath));
-  app2.use("*", (req, res, next) => {
-    if (req.originalUrl.startsWith("/api/")) {
-      console.log("[SERVE-STATIC] Skipping API route:", req.originalUrl);
-      return next();
-    }
-    try {
-      const url = req.originalUrl;
-      const clientTemplate = path3.resolve(
-        __dirname3,
-        "..",
-        "dist",
-        "public",
-        "index.html"
-      );
-      if (!fs2.existsSync(clientTemplate)) {
-        console.error("[ERROR] Client template not found:", clientTemplate);
-        return res.status(404).send("Client not built");
-      }
-      let template = fs2.readFileSync(clientTemplate, "utf-8");
-      res.status(200).set({ "Content-Type": "text/html" }).end(template);
-    } catch (e) {
-      console.error("[ERROR] Failed to serve static file:", e);
-      next(e);
-    }
-  });
-}
-
-// server/src/services/nutritionCoachService.ts
 var openai2 = new OpenAI2({
   apiKey: process.env.OPENAI_API_KEY
 });
@@ -10290,6 +10373,7 @@ var profile_default = router22;
 import { Router as Router24 } from "express";
 
 // server/src/services/enhancedFoodRecognitionService.ts
+init_vite();
 var EnhancedFoodRecognitionService = class {
   providers = {
     openai: null,
@@ -10657,6 +10741,7 @@ var EnhancedFoodRecognitionService = class {
 var enhancedFoodRecognitionService = new EnhancedFoodRecognitionService();
 
 // server/src/routes/user/enhanced-food-recognition.ts
+init_vite();
 var router23 = Router24();
 router23.post(
   "/analyze-single",
@@ -13708,6 +13793,7 @@ import { Router as Router28 } from "express";
 
 // server/src/controllers/healthController.ts
 init_db2();
+init_vite();
 import { sql as sql29 } from "drizzle-orm";
 var HealthController = class {
   startTime;
@@ -14057,6 +14143,7 @@ healthRouter.get("/live", healthController.livenessProbe);
 var health_default = healthRouter;
 
 // server/src/services/errorTrackingService.ts
+init_vite();
 var ErrorTrackingService = class {
   options;
   errorQueue = [];
@@ -15550,6 +15637,15 @@ var envCandidates = [
 for (const envPath of envCandidates) {
   dotenv6.config({ path: envPath });
 }
+function log2(message, source = "express") {
+  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 var app = express2();
 app.use(express2.json({ limit: "50mb" }));
 app.use(express2.urlencoded({ extended: false, limit: "50mb" }));
@@ -15585,9 +15681,9 @@ app.use("/api/health", (req, res, next) => {
   next();
 }, health_default);
 app.get("/api/test", (req, res) => {
-  log("=== TEST ENDPOINT HIT ===");
-  log("Request received from mobile app");
-  log("Sending test response");
+  log2("=== TEST ENDPOINT HIT ===");
+  log2("Request received from mobile app");
+  log2("Sending test response");
   res.json({
     success: true,
     message: "Mobile app test endpoint working",
@@ -15597,9 +15693,9 @@ app.get("/api/test", (req, res) => {
   });
 });
 app.get("/api/connectivity-test", (req, res) => {
-  log("=== CONNECTIVITY TEST ENDPOINT HIT ===");
-  log("Request received from mobile app");
-  log("Sending connectivity test response");
+  log2("=== CONNECTIVITY TEST ENDPOINT HIT ===");
+  log2("Request received from mobile app");
+  log2("Sending connectivity test response");
   res.json({
     success: true,
     message: "Connectivity test successful",
@@ -15615,11 +15711,11 @@ app.get("/api/connectivity-test", (req, res) => {
   });
 });
 app.get("/api/health/db", async (req, res) => {
-  log("=== DATABASE HEALTH CHECK ENDPOINT HIT ===");
+  log2("=== DATABASE HEALTH CHECK ENDPOINT HIT ===");
   try {
     const { storage: storage2 } = await Promise.resolve().then(() => (init_storage_provider(), storage_provider_exports));
     const testContent = await storage2.getSiteContent("test_key");
-    log("Database health check successful");
+    log2("Database health check successful");
     res.json({
       success: true,
       message: "Database health check passed",
@@ -15628,7 +15724,7 @@ app.get("/api/health/db", async (req, res) => {
       testContent
     });
   } catch (error) {
-    log("Database health check failed:", error instanceof Error ? error.message : String(error));
+    log2("Database health check failed:", error instanceof Error ? error.message : String(error));
     res.status(500).json({
       success: false,
       message: "Database health check failed",
@@ -15647,9 +15743,9 @@ app.use("/api/*", (req, res) => {
   });
 });
 app.get("/api/public/connectivity-test", (req, res) => {
-  log("=== PUBLIC CONNECTIVITY TEST ENDPOINT HIT ===");
-  log("Request received from mobile app");
-  log("Sending connectivity test response");
+  log2("=== PUBLIC CONNECTIVITY TEST ENDPOINT HIT ===");
+  log2("Request received from mobile app");
+  log2("Sending connectivity test response");
   res.json({
     success: true,
     message: "Public connectivity test successful",
@@ -15688,21 +15784,21 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path6.startsWith("/api")) {
-      log(`=== API RESPONSE DEBUG ===`);
-      log(`Method: ${req.method}`);
-      log(`Path: ${path6}`);
-      log(`Status: ${res.statusCode}`);
-      log(`Duration: ${duration}ms`);
-      log(`Content-Type: ${res.get("content-type")}`);
-      log(`Content-Length: ${res.get("content-length")}`);
+      log2(`=== API RESPONSE DEBUG ===`);
+      log2(`Method: ${req.method}`);
+      log2(`Path: ${path6}`);
+      log2(`Status: ${res.statusCode}`);
+      log2(`Duration: ${duration}ms`);
+      log2(`Content-Type: ${res.get("content-type")}`);
+      log2(`Content-Length: ${res.get("content-length")}`);
       if (capturedJsonResponse) {
-        log(`Response Data Type: ${typeof capturedJsonResponse}`);
-        log(`Response Data Size: ${JSON.stringify(capturedJsonResponse).length} chars`);
-        log(`Response Data: ${JSON.stringify(capturedJsonResponse).substring(0, 200)}${JSON.stringify(capturedJsonResponse).length > 200 ? "..." : ""}`);
+        log2(`Response Data Type: ${typeof capturedJsonResponse}`);
+        log2(`Response Data Size: ${JSON.stringify(capturedJsonResponse).length} chars`);
+        log2(`Response Data: ${JSON.stringify(capturedJsonResponse).substring(0, 200)}${JSON.stringify(capturedJsonResponse).length > 200 ? "..." : ""}`);
       } else {
-        log(`No JSON response captured`);
+        log2(`No JSON response captured`);
       }
-      log(`=========================`);
+      log2(`=========================`);
       let logLine = `${req.method} ${path6} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -15710,28 +15806,28 @@ app.use((req, res, next) => {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
-      log(logLine);
+      log2(logLine);
     }
   });
   next();
 });
 var serverInstance;
 process.on("SIGTERM", async () => {
-  log("SIGTERM received, shutting down gracefully");
+  log2("SIGTERM received, shutting down gracefully");
   await errorTrackingService.flush();
   if (serverInstance) {
     serverInstance.close(() => {
-      log("Process terminated");
+      log2("Process terminated");
       process.exit(0);
     });
   }
 });
 process.on("SIGINT", async () => {
-  log("SIGINT received, shutting down gracefully");
+  log2("SIGINT received, shutting down gracefully");
   await errorTrackingService.flush();
   if (serverInstance) {
     serverInstance.close(() => {
-      log("Process terminated");
+      log2("Process terminated");
       process.exit(0);
     });
   }
@@ -15742,7 +15838,8 @@ process.on("SIGINT", async () => {
     console.log("[SERVER] Development mode: Express server running on port 3002 for API routes");
     console.log("[SERVER] Vite dev server running on port 3000 for frontend with API proxy");
   } else {
-    serveStatic(app);
+    const { serveStatic: serveStatic2 } = await Promise.resolve().then(() => (init_vite(), vite_exports));
+    serveStatic2(app);
     console.log("[SERVER] Production mode: Using static file serving");
   }
   try {
@@ -15767,7 +15864,7 @@ process.on("SIGINT", async () => {
       host
       // Removed reusePort as it's not supported on Windows
     }, () => {
-      log(`[SERVER] Server successfully started and listening on ${host}:${port}`);
+      log2(`[SERVER] Server successfully started and listening on ${host}:${port}`);
     });
     serverInstance.on("error", (error) => {
       console.error(`[SERVER] Server listen error:`, error);
