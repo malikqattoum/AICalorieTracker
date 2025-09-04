@@ -71,7 +71,7 @@ export default defineConfig(({ mode }) => {
             // Split vendor libraries
             if (id.includes('node_modules')) {
               if (id.includes('react') || id.includes('solid') || id.includes('preact')) {
-                return 'react-vendor';
+                return 'react-core';
               }
               if (id.includes('router')) {
                 return 'router';
@@ -141,6 +141,7 @@ export default defineConfig(({ mode }) => {
         'clsx',
         'tailwind-merge',
         'recharts',
+        'use-sync-external-store',
       ],
       exclude: ['@babel/runtime'],
       force: true,
