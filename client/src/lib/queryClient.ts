@@ -297,10 +297,16 @@ export async function apiRequest(
   // Add security headers
   addSecurityHeaders(headers);
 
-  // Add content-type for requests with data
-  if (data) {
-    headers["Content-Type"] = "application/json";
-  }
+  // Always set Content-Type for API requests
+  headers["Content-Type"] = "application/json";
+  
+  // Add debug logging for request payload
+  console.log('[API REQUEST DEBUG]', {
+    method,
+    url,
+    headers,
+    body: data ? JSON.stringify(data) : undefined
+  });
 
   // Add authorization header if token exists and is valid
   if (token) {

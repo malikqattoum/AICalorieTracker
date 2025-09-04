@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import express, { Router, Request, Response, NextFunction } from 'express';
 import { registerRateLimiter } from '../../../rate-limiter';
 import { z } from 'zod';
 import { storage } from '../../../storage-provider';
@@ -26,11 +26,43 @@ const loginSchema = z.object({
 
 console.log('[AUTH-ROUTE] Setting up /api/auth/register route...');
 // POST /api/auth/register
-router.post('/register', registerRateLimiter, async (req, res, next) => {
+
+// Middleware to log raw request body
+const rawBodyLogger = (req: Request, res: Response, next: NextFunction) => {
+  let rawBody = '';
+  req.on('data', (chunk) => {
+    rawBody += chunk.toString();
+  });
+  req.on('end', () => {
+    console.log('[RAW BODY]', rawBody);
+    next();
+  });
+};
+
+// Middleware to validate Content-Type
+const validateContentType = (req: Request, res: Response, next: NextFunction) => {
+  const contentType = req.headers['content-type'];
+  if (!contentType || !contentType.includes('application/json')) {
+    return res.status(415).json({
+      message: "Unsupported Media Type",
+      details: "Content-Type must be application/json"
+    });
+  }
+  next();
+};
+
+router.post('/register',
+  rawBodyLogger,
+  express.json(),
+  validateContentType,
+  registerRateLimiter,
+  async (req, res, next) => {
   console.log('=== [REGISTER] DEBUG START ===');
   console.log('[REGISTER] Received request:', req.body);
+  console.log('[REGISTER] Parsed body type:', typeof req.body);
   console.log('[REGISTER] Headers:', req.headers);
   console.log('[REGISTER] Content-Type:', req.get('content-type'));
+  console.log('[REGISTER] Raw headers:', req.rawHeaders);
   
   try {
     console.log('[REGISTER] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);

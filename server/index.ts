@@ -49,9 +49,22 @@ import { imageStorageService } from "./src/services/imageStorageService";
 
 export const app = express();
 
-// Apply JSON middleware before any routes
+// Apply JSON middleware before any routes with enhanced logging
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log('[PRE-PARSING] Headers:', req.headers);
+  console.log('[PRE-PARSING] Raw headers:', req.rawHeaders);
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+
+// Log parsed body after JSON middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log('[POST-PARSING] Body:', req.body);
+  console.log('[POST-PARSING] Body type:', typeof req.body);
+  next();
+});
 
 // Apply HTTPS enforcement middleware (must be early)
 app.use(enforceHttps);
