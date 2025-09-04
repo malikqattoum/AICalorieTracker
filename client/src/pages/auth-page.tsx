@@ -23,8 +23,8 @@ const registerSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Please enter a valid email address"),
   username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Please confirm your password"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(8, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -55,6 +55,8 @@ export default function AuthPage() {
       password: "",
       confirmPassword: "",
     },
+    mode: 'onChange', // Validate on change to catch issues early
+    reValidateMode: 'onChange', // Re-validate on changes
   });
 
   const onLoginSubmit = async (formData: LoginFormValues) => {
@@ -67,9 +69,71 @@ export default function AuthPage() {
 
   const onRegisterSubmit = async (formData: RegisterFormValues) => {
     try {
+      // Debug: Log form values before submission
+      console.log('[REGISTRATION DEBUG] Form values before submission:', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        username: formData.username,
+        password: formData.password ? '***' : undefined,
+        confirmPassword: formData.confirmPassword ? '***' : undefined,
+        allFieldsPresent: {
+          firstName: !!formData.firstName,
+          lastName: !!formData.lastName,
+          email: !!formData.email,
+          username: !!formData.username,
+          password: !!formData.password,
+          confirmPassword: !!formData.confirmPassword
+        }
+      });
+
+      // Validate all required fields are present
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.username || !formData.password) {
+        console.error('[REGISTRATION DEBUG] Missing required fields:', {
+          firstName: !!formData.firstName,
+          lastName: !!formData.lastName,
+          email: !!formData.email,
+          username: !!formData.username,
+          password: !!formData.password
+        });
+        throw new Error('All fields are required');
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        console.error('[REGISTRATION DEBUG] Invalid email format:', formData.email);
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Validate password strength
+      if (formData.password.length < 8) {
+        console.error('[REGISTRATION DEBUG] Password too short:', formData.password.length);
+        throw new Error('Password must be at least 8 characters long');
+      }
+
+      // Validate passwords match
+      if (formData.password !== formData.confirmPassword) {
+        console.error('[REGISTRATION DEBUG] Passwords do not match');
+        throw new Error('Passwords do not match');
+      }
+
+      // Clean and prepare data for API
+      const { confirmPassword, ...apiData } = formData;
+      
+      console.log('[REGISTRATION DEBUG] Sending to API:', {
+        firstName: apiData.firstName,
+        lastName: apiData.lastName,
+        email: apiData.email,
+        username: apiData.username,
+        password: '***'
+      });
+
       await registerMutation.mutateAsync(formData);
     } catch (error) {
       console.error("Registration failed:", error);
+      // Re-throw to allow the mutation's error handler to process it
+      throw error;
     }
   };
 
@@ -289,7 +353,7 @@ export default function AuthPage() {
                       <Button 
                         type="submit" 
                         className="w-full" 
-                        disabled={registerMutation.isPending}
+                        disabled={registerMutation.isPending || !registerForm.formState.isValid}
                       >
                         {registerMutation.isPending ? 'Creating account...' : 'Create account'}
                       </Button>
