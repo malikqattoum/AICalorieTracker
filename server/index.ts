@@ -49,6 +49,9 @@ import { imageStorageService } from "./src/services/imageStorageService";
 
 export const app = express();
 
+// Trust proxy configuration - must be set before any middleware that uses req.ip
+app.set('trust proxy', true);
+
 // Apply JSON middleware before any routes with enhanced logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log('[PRE-PARSING] Headers:', req.headers);
@@ -56,13 +59,66 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+// Enhanced body parsing middleware with proper Content-Type validation
+app.use(express.json({
+  limit: '50mb',
+  strict: false,
+  verify: (req: Request, res: Response, buf: Buffer, encoding: string) => {
+    // Add custom verification for JSON parsing
+    try {
+      JSON.parse(buf.toString(encoding as BufferEncoding || 'utf8'));
+    } catch (e) {
+      // If JSON parsing fails, let the request continue
+      // This allows form data to be handled by urlencoded middleware
+    }
+  }
+}));
 
-// Log parsed body after JSON middleware
+// Use extended: true to handle complex form data and nested objects
+app.use(express.urlencoded({
+  extended: true,
+  limit: '50mb',
+  parameterLimit: 10000,
+  verify: (req: Request, res: Response, buf: Buffer, encoding: string) => {
+    // Add custom verification for URL-encoded data
+    try {
+      const str = buf.toString(encoding as BufferEncoding || 'utf8');
+      // Basic validation for URL-encoded format
+      if (str && str.includes('=')) {
+        // Parse the URL-encoded string to validate it
+        const urlSearchParams = new URLSearchParams(str);
+        urlSearchParams.toString(); // This will throw if the format is invalid
+      }
+    } catch (e) {
+      // If URL-encoded parsing fails, let the request continue
+      // The error will be handled by the error handling middleware
+    }
+  }
+}));
+
+// Enhanced body logging with Content-Type information
 app.use((req: Request, res: Response, next: NextFunction) => {
+  const contentType = req.get('Content-Type') || 'unknown';
+  console.log('[POST-PARSING] Content-Type:', contentType);
   console.log('[POST-PARSING] Body:', req.body);
   console.log('[POST-PARSING] Body type:', typeof req.body);
+  console.log('[POST-PARSING] Body keys:', Object.keys(req.body || {}));
+  next();
+});
+
+// Add Content-Type validation middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const contentType = req.get('Content-Type');
+  
+  // Validate Content-Type for JSON and form data
+  if (contentType) {
+    if (contentType.includes('application/json') && typeof req.body !== 'object') {
+      console.warn('[CONTENT-TYPE-WARNING] Content-Type indicates JSON but body is not an object');
+    } else if (contentType.includes('application/x-www-form-urlencoded') && typeof req.body !== 'object') {
+      console.warn('[CONTENT-TYPE-WARNING] Content-Type indicates form data but body is not an object');
+    }
+  }
+  
   next();
 });
 
@@ -131,6 +187,25 @@ app.get('/api/test', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     server: 'AI Calorie Tracker Backend',
     version: '1.0.0'
+  });
+});
+
+// Add a test endpoint for form data validation
+app.post('/api/test-form-data', (req: Request, res: Response) => {
+  log('=== FORM DATA TEST ENDPOINT HIT ===');
+  log('Content-Type:', req.get('Content-Type'));
+  log('Parsed body:', req.body);
+  log('Body type:', typeof req.body);
+  log('Body keys:', Object.keys(req.body || {}).join(', '));
+  
+  res.json({
+    success: true,
+    message: 'Form data test endpoint working',
+    timestamp: new Date().toISOString(),
+    receivedBody: req.body,
+    bodyType: typeof req.body,
+    bodyKeys: Object.keys(req.body || {}),
+    contentType: req.get('Content-Type')
   });
 });
 

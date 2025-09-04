@@ -7,6 +7,35 @@ import { securityConfig } from '../config/security';
 const logger = new Logger('SecurityUtils');
 
 /**
+ * Standardized IP resolution function that handles proxy headers correctly
+ * This function respects the X-Forwarded-For header when trust proxy is enabled
+ */
+export const getClientIp = (req: Request): string => {
+  // When trust proxy is enabled, req.ip will be the left-most IP in X-Forwarded-For
+  // If X-Forwarded-For is not present, it falls back to req.connection.remoteAddress
+  // If trust proxy is not enabled, req.ip will be the direct connection IP
+  return req.ip || 'unknown';
+};
+
+/**
+ * Enhanced IP resolution that includes additional proxy headers for better accuracy
+ * This function provides more detailed IP information for logging and analysis
+ */
+export const getDetailedIpInfo = (req: Request): {
+  ip: string;
+  xForwardedFor: string | undefined;
+  xRealIp: string | undefined;
+  connectionIp: string | undefined;
+} => {
+  return {
+    ip: getClientIp(req),
+    xForwardedFor: req.headers['x-forwarded-for'] as string,
+    xRealIp: req.headers['x-real-ip'] as string,
+    connectionIp: req.connection?.remoteAddress
+  };
+};
+
+/**
  * Enhanced CORS validation
  */
 export const validateCORS = (origin: string): boolean => {
@@ -332,3 +361,37 @@ export const authRateLimiter = new EnhancedRateLimiter(
   securityConfig.rateLimit?.auth?.windowMs || 15 * 60 * 1000,
   30 * 60 * 1000 // 30 minute block for auth failures
 );
+
+/**
+ * Enhanced rate limiting middleware that uses standardized IP resolution
+ */
+export const createEnhancedRateLimiter = (windowMs: number, max: number, message: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const clientIp = getClientIp(req);
+    const result = apiRateLimiter.isAllowed(clientIp);
+    
+    if (!result.allowed) {
+      logger.warn(`Rate limit exceeded for IP: ${clientIp}, blocked: ${result.blocked}`);
+      
+      return res.status(429).json({
+        success: false,
+        error: message,
+        code: 'RATE_LIMIT_EXCEEDED',
+        timestamp: new Date().toISOString(),
+        retryAfter: result.blockTime ? Math.ceil(result.blockTime / 1000) : undefined,
+        limit: max,
+        remaining: result.remaining,
+        blocked: result.blocked
+      });
+    }
+    
+    // Add rate limit headers
+    res.set({
+      'X-RateLimit-Limit': max.toString(),
+      'X-RateLimit-Remaining': result.remaining.toString(),
+      'X-RateLimit-Reset': (Date.now() + windowMs).toString()
+    });
+    
+    next();
+  };
+};

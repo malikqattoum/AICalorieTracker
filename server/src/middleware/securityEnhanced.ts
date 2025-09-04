@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Logger } from '../utils/logger';
 import { AppError, AuthenticationError, AuthorizationError, ErrorType, ErrorCode } from './errorHandler';
 import { securityConfig } from '../config/security';
-import { validateCORS, logSecurityEvent, validateRequest, validateJWTEnhanced, apiRateLimiter, authRateLimiter } from '../lib/securityUtils';
+import { validateCORS, logSecurityEvent, validateRequest, validateJWTEnhanced, apiRateLimiter, authRateLimiter, getClientIp, getDetailedIpInfo } from '../lib/securityUtils';
 
 const logger = new Logger('SecurityEnhanced');
 
@@ -20,7 +20,7 @@ const rateLimitStore = new Map<string, RateLimitEntry>();
 
 export const createRateLimiter = (windowMs: number, max: number, message: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const clientIp = req.ip || 'unknown';
+    const clientIp = getClientIp(req);
     const now = Date.now();
     
     // Clean expired entries
@@ -117,7 +117,7 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
       message: 'Token validated successfully',
       details: { userId: decoded.id, tokenLength: token.length },
       userId: decoded.id,
-      ip: req.ip,
+      ip: getClientIp(req),
       userAgent: req.get('User-Agent'),
       endpoint: req.path
     });
@@ -133,7 +133,7 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
         message: 'Token expiring soon',
         details: { userId: decoded.id, expiresAt: new Date(exp).toISOString() },
         userId: decoded.id,
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get('User-Agent'),
         endpoint: req.path
       });
@@ -149,7 +149,7 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
       level: 'ERROR',
       message: 'Token validation failed',
       details: { error: error instanceof Error ? error.message : 'Unknown error' },
-      ip: req.ip,
+      ip: getClientIp(req),
       userAgent: req.get('User-Agent'),
       endpoint: req.path
     });
@@ -173,7 +173,7 @@ export const validateJWT = (req: Request, res: Response, next: NextFunction) => 
 export const sessionSecurity = (req: Request, res: Response, next: NextFunction) => {
   const sessionId = req.headers['x-session-id'] as string;
   const userAgent = req.get('User-Agent') || '';
-  const clientIp = req.ip || 'unknown';
+  const clientIp = getClientIp(req);
   
   // Check if session exists and is valid
   if (sessionId) {
@@ -212,7 +212,7 @@ export const inputValidation = (req: Request, res: Response, next: NextFunction)
       level: 'WARNING',
       message: 'Request validation failed',
       details: { errors: validation.errors, method: req.method, url: req.url },
-      ip: req.ip,
+      ip: getClientIp(req),
       userAgent: req.get('User-Agent'),
       endpoint: req.path
     });
@@ -286,7 +286,7 @@ export const sqlInjectionProtection = (req: Request, res: Response, next: NextFu
   
   // Check request body, query, and params
   if (checkValue(req.body) || checkValue(req.query) || checkValue(req.params)) {
-    logger.warn('SQL injection attempt detected from:', req.ip);
+    logger.warn('SQL injection attempt detected from:', getClientIp(req));
     throw new AppError(ErrorType.VALIDATION_ERROR, ErrorCode.INVALID_INPUT, 'Invalid request format');
   }
   
@@ -325,7 +325,7 @@ export const xssProtection = (req: Request, res: Response, next: NextFunction) =
   
   // Check for XSS patterns
   if (checkXSS(req.body) || checkXSS(req.query) || checkXSS(req.params)) {
-    logger.warn('XSS attempt detected from:', req.ip);
+    logger.warn('XSS attempt detected from:', getClientIp(req));
     throw new AppError(ErrorType.VALIDATION_ERROR, ErrorCode.INVALID_INPUT, 'Invalid request format');
   }
   
@@ -343,7 +343,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     }
     
     // Skip CSRF protection for localhost testing
-    if (req.hostname === 'localhost' || req.ip === '127.0.0.1') {
+    if (req.hostname === 'localhost' || getClientIp(req) === '127.0.0.1') {
       logger.debug('CSRF protection skipped for localhost testing:', req.path);
       return next();
     }
@@ -352,13 +352,13 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     const sessionToken = req.headers['x-session-token'];
     
     if (!csrfToken || !sessionToken) {
-      logger.warn('CSRF protection failed - missing tokens from:', req.ip);
+      logger.warn('CSRF protection failed - missing tokens from:', getClientIp(req));
       throw new AuthorizationError('CSRF protection failed');
     }
     
     // In production, validate tokens against session store
     if (csrfToken !== sessionToken) {
-      logger.warn('CSRF token mismatch from:', req.ip);
+      logger.warn('CSRF token mismatch from:', getClientIp(req));
       throw new AuthorizationError('Invalid CSRF token');
     }
   }
@@ -368,7 +368,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
 
 // Enhanced IP filtering
 export const ipFilter = (req: Request, res: Response, next: NextFunction) => {
-  const clientIp = req.ip || 'unknown';
+  const clientIp = getClientIp(req);
   const whitelist = process.env.IP_WHITELIST?.split(',') || [];
   const blacklist = process.env.IP_BLACKLIST?.split(',') || [];
   
@@ -401,7 +401,7 @@ export const botDetection = (req: Request, res: Response, next: NextFunction) =>
   );
   
   if (isBot) {
-    logger.warn(`Bot detected: ${userAgent} from IP: ${req.ip}`);
+    logger.warn(`Bot detected: ${userAgent} from IP: ${getClientIp(req)}`);
     // Log but don't block - you can choose to block if needed
   }
   
@@ -438,7 +438,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const bodyStr = JSON.stringify(req.body);
     const suspicious = checkSuspicious(bodyStr);
     if (suspicious.length > 0) {
-      logger.warn(`Suspicious activity detected in body from ${req.ip}:`, suspicious);
+      logger.warn(`Suspicious activity detected in body from ${getClientIp(req)}:`, suspicious);
       
       // Log security event for suspicious activity
       logSecurityEvent({
@@ -446,7 +446,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
         level: 'WARNING',
         message: 'Suspicious activity detected in request body',
         details: { patterns: suspicious, method: req.method, url: req.url },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get('User-Agent'),
         endpoint: req.path
       });
@@ -458,7 +458,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
     const queryStr = JSON.stringify(req.query);
     const suspicious = checkSuspicious(queryStr);
     if (suspicious.length > 0) {
-      logger.warn(`Suspicious activity detected in query from ${req.ip}:`, suspicious);
+      logger.warn(`Suspicious activity detected in query from ${getClientIp(req)}:`, suspicious);
       
       // Log security event for suspicious activity
       logSecurityEvent({
@@ -466,7 +466,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
         level: 'WARNING',
         message: 'Suspicious activity detected in query parameters',
         details: { patterns: suspicious, method: req.method, url: req.url },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get('User-Agent'),
         endpoint: req.path
       });
@@ -485,7 +485,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
         level: 'WARNING',
         message: 'Slow request detected',
         details: { method: req.method, url: req.url, duration: duration },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get('User-Agent'),
         endpoint: req.path
       });
@@ -503,7 +503,7 @@ export const securityMonitoring = (req: Request, res: Response, next: NextFuncti
           statusCode: res.statusCode,
           userAgent: req.get('User-Agent')
         },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get('User-Agent'),
         endpoint: req.path
       });
