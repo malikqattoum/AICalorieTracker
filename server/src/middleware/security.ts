@@ -594,6 +594,43 @@ export const securityConfig = {
   }
 };
 
+// HTTPS enforcement middleware
+export const enforceHttps = (req: Request, res: Response, next: NextFunction) => {
+  const forceHttps = process.env.FORCE_HTTPS === 'true';
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Skip HTTPS enforcement in development or if disabled
+  if (!forceHttps || !isProduction) {
+    return next();
+  }
+
+  // Check if request is using HTTPS
+  const isHttps = req.protocol === 'https' ||
+                  req.secure ||
+                  req.headers['x-forwarded-proto'] === 'https' ||
+                  req.headers['x-forwarded-protocol'] === 'https';
+
+  // Allow localhost and internal requests in development
+  const isLocalhost = req.hostname === 'localhost' ||
+                     req.hostname === '127.0.0.1' ||
+                     req.ip === '127.0.0.1' ||
+                     req.ip === '::1';
+
+  if (!isHttps && !isLocalhost) {
+    console.warn(`HTTPS enforcement: Blocking HTTP request from ${req.ip} to ${req.originalUrl}`);
+    return res.status(403).json({
+      error: 'HTTPS is required for all API requests',
+      code: 'HTTPS_REQUIRED',
+      message: 'This API only accepts HTTPS requests for security reasons',
+      timestamp: new Date().toISOString(),
+      protocol: req.protocol,
+      hostname: req.hostname
+    });
+  }
+
+  next();
+};
+
 // Security utilities
 export const securityUtils = {
   // Sanitize input

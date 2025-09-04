@@ -175,7 +175,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
   try {
     logInfo('Attempting to refresh access token');
     
-    const res = await fetch('/api/auth/refresh', {
+    const res = await fetch(`${CONFIG.api}/api/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -272,6 +272,11 @@ export async function apiRequest(
     cleanupExpiredTokens();
   } catch (cleanupError) {
     logError('Failed to cleanup expired tokens before request', cleanupError);
+  }
+
+  // Prepend API_URL if url is relative (starts with /api/)
+  if (url.startsWith('/api/')) {
+    url = `${CONFIG.api}${url}`;
   }
 
   // HTTPS enforcement check
@@ -417,8 +422,15 @@ export const getQueryFn: <T>(options: {
       logError('Failed to cleanup expired tokens before query', cleanupError);
     }
 
+    let queryUrl = queryKey[0] as string;
+
+    // Prepend API_URL if url is relative (starts with /api/)
+    if (queryUrl.startsWith('/api/')) {
+      queryUrl = `${CONFIG.api}${queryUrl}`;
+    }
+
     // HTTPS enforcement check for queries
-    if (typeof queryKey[0] === 'string' && !validateHttpsUrl(queryKey[0])) {
+    if (!validateHttpsUrl(queryUrl)) {
       if (unauthorizedBehavior === "returnNull") {
         return null;
       }
@@ -460,14 +472,14 @@ export const getQueryFn: <T>(options: {
       }
     }
 
-    let res = await fetch(queryKey[0] as string, {
+    let res = await fetch(queryUrl, {
       headers,
       credentials: "include",
     });
 
     // Enhanced 401 error handling for queries with better error categorization
-    if (res.status === 401 && typeof queryKey[0] === 'string' && !queryKey[0].includes('/auth/refresh')) {
-      logInfo(`Received 401 error for query ${queryKey[0]}, attempting token refresh`);
+    if (res.status === 401 && !queryUrl.includes('/auth/refresh')) {
+      logInfo(`Received 401 error for query ${queryUrl}, attempting token refresh`);
 
       try {
         const newToken = await performTokenRefresh();
@@ -476,15 +488,15 @@ export const getQueryFn: <T>(options: {
           const retryHeaders = { ...headers };
           retryHeaders["Authorization"] = `Bearer ${newToken}`;
 
-          logInfo(`Retrying query ${queryKey[0]} with new token`);
-          res = await fetch(queryKey[0] as string, {
+          logInfo(`Retrying query ${queryUrl} with new token`);
+          res = await fetch(queryUrl, {
             headers: retryHeaders,
             credentials: "include",
           });
 
           // If retry still fails with 401, it means the refresh token is also expired
           if (res.status === 401) {
-            logError(`Token refresh succeeded but query retry still failed with 401 for ${queryKey[0]}`);
+            logError(`Token refresh succeeded but query retry still failed with 401 for ${queryUrl}`);
             clearTokens(); // Clear invalid tokens
             if (unauthorizedBehavior === "returnNull") {
               return null;
@@ -495,7 +507,7 @@ export const getQueryFn: <T>(options: {
           // Handle other retry errors (network issues, server errors)
           if (!res.ok) {
             const errorText = await res.text().catch(() => 'Unknown error');
-            logError(`Query retry failed with status ${res.status} for ${queryKey[0]}: ${errorText}`);
+            logError(`Query retry failed with status ${res.status} for ${queryUrl}: ${errorText}`);
             if (unauthorizedBehavior === "returnNull") {
               return null;
             }
@@ -506,20 +518,20 @@ export const getQueryFn: <T>(options: {
         // Categorize refresh errors for queries
         if (refreshError instanceof Error) {
           if (refreshError.message.includes('Maximum refresh attempts exceeded')) {
-            logError(`Token refresh failed for query ${queryKey[0]}: Max attempts exceeded`);
+            logError(`Token refresh failed for query ${queryUrl}: Max attempts exceeded`);
             clearTokens();
             if (unauthorizedBehavior === "returnNull") {
               return null;
             }
             throw new Error('Session expired. Please log in again.');
           } else if (refreshError.message.includes('Network') || refreshError.message.includes('fetch')) {
-            logError(`Token refresh failed for query ${queryKey[0]}: Network error`, refreshError);
+            logError(`Token refresh failed for query ${queryUrl}: Network error`, refreshError);
             if (unauthorizedBehavior === "returnNull") {
               return null;
             }
             throw new Error('Network error during authentication. Please check your connection and try again.');
           } else {
-            logError(`Token refresh failed for query ${queryKey[0]}: ${refreshError.message}`, refreshError);
+            logError(`Token refresh failed for query ${queryUrl}: ${refreshError.message}`, refreshError);
             clearTokens();
             if (unauthorizedBehavior === "returnNull") {
               return null;
@@ -527,7 +539,7 @@ export const getQueryFn: <T>(options: {
             throw new Error('Session expired. Please log in again.');
           }
         } else {
-          logError(`Token refresh failed for query ${queryKey[0]}: Unknown error`, refreshError);
+          logError(`Token refresh failed for query ${queryUrl}: Unknown error`, refreshError);
           clearTokens();
           if (unauthorizedBehavior === "returnNull") {
             return null;

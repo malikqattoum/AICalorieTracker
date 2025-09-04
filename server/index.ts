@@ -40,6 +40,7 @@ import { Logger } from "./src/utils/logger";
 import { enhancedSecurityMiddleware, rateLimiters } from "./src/middleware/securityEnhanced";
 import { sessionMiddleware, validateSession, refreshSession } from "./src/middleware/secureSession";
 import { securityAuditService, securityAuditMiddleware } from "./src/services/securityAuditService";
+import { enforceHttps } from "./src/middleware/security";
 import { PORT } from "./config";
 import { createServer, type Server } from "http";
 import jwt from "jsonwebtoken";
@@ -52,6 +53,8 @@ export const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// Apply HTTPS enforcement middleware (must be early)
+app.use(enforceHttps);
 
 // Configure static file serving for uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {

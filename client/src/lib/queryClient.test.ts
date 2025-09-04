@@ -27,6 +27,7 @@ global.fetch = fetchMock;
 // Mock config
 jest.mock('./config', () => ({
   CONFIG: {
+    api: 'http://localhost:3002',
     security: {
       enforceHTTPS: false, // Default to false for development testing
       headers: {

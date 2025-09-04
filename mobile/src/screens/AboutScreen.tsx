@@ -25,15 +25,15 @@ export default function AboutScreen() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@aicalorietracker.com');
+    Linking.openURL('mailto:support@aical.scanitix.com');
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://aicalorietracker.com/privacy');
+    Linking.openURL('https://aical.scanitix.com/privacy');
   };
 
   const handleTermsOfService = () => {
-    Linking.openURL('https://aicalorietracker.com/terms');
+    Linking.openURL('https://aical.scanitix.com/terms');
   };
 
   const handleRateApp = () => {
@@ -48,7 +48,7 @@ export default function AboutScreen() {
   };
 
   const handleShareApp = () => {
-    Linking.openURL('https://aicalorietracker.com');
+    Linking.openURL('https://aical.scanitix.com');
   };
 
   return (

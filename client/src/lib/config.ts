@@ -4,7 +4,7 @@ const API_CONFIG = {
   development: 'http://localhost:3002',
 
   // Production API URL
-  production: 'https://api.aicalorietracker.com',
+  production: 'https://aical.scanitix.com',
 
   // Staging API URL
   staging: 'https://staging-api.aicalorietracker.com',
@@ -87,10 +87,10 @@ export const CAMERA_CONFIG = {
 export const ENHANCED_FOOD_RECOGNITION_CONFIG = {
   // API endpoints
   endpoints: {
-    single: '/api/user/enhanced-food-recognition/analyze-single',
-    multi: '/api/user/enhanced-food-recognition/analyze-multi',
-    barcode: '/api/user/enhanced-food-recognition/barcode-scan',
-    restaurant: '/api/user/enhanced-food-recognition/restaurant-menu'
+    single: () => `${API_URL}/api/user/enhanced-food-recognition/analyze-single`,
+    multi: () => `${API_URL}/api/user/enhanced-food-recognition/analyze-multi`,
+    barcode: () => `${API_URL}/api/user/enhanced-food-recognition/barcode-scan`,
+    restaurant: () => `${API_URL}/api/user/enhanced-food-recognition/restaurant-menu`
   },
   
   // Default options
@@ -260,7 +260,9 @@ export const SECURITY_CONFIG = {
       'http://localhost:4173',
       'https://aicalorietracker.com',
       'https://www.aicalorietracker.com',
-      'https://staging.aicalorietracker.com'
+      'https://staging.aicalorietracker.com',
+      'https://aical.scanitix.com',
+      'https://www.aical.scanitix.com'
     ],
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [

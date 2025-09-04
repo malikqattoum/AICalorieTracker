@@ -9,14 +9,14 @@ const ENV = {
     testApiUrl: 'http://localhost:3003', // Test server for connectivity checks
   },
   staging: {
-    apiUrl: 'https://staging-api.aicalorietracker.com',
-    testApiUrl: 'https://staging-api.aicalorietracker.com',
+    apiUrl: 'https://aical.scanitix.com',
+    testApiUrl: 'https://aical.scanitix.com',
     enableLogging: true,
     useMockData: false,
   },
   production: {
-    apiUrl: 'https://api.aicalorietracker.com',
-    testApiUrl: 'https://api.aicalorietracker.com',
+    apiUrl: 'https://aical.scanitix.com',
+    testApiUrl: 'https://aical.scanitix.com',
     enableLogging: false,
     useMockData: false,
   },
@@ -45,7 +45,7 @@ export const SENTRY_DSN = Constants.expoConfig?.extra?.sentryDsn || '';
 export const APP_CONFIG = {
   appName: Constants.expoConfig?.extra?.appName || 'AI Calorie Tracker',
   version: Constants.expoConfig?.extra?.version || '1.0.0',
-  supportEmail: Constants.expoConfig?.extra?.supportEmail || 'support@aicalorietracker.com',
+  supportEmail: Constants.expoConfig?.extra?.supportEmail || 'support@aical.scanitix.com',
   environment: Constants.expoConfig?.extra?.environment || currentEnv,
 };
 

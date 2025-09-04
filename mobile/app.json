@@ -59,11 +59,11 @@
       "eas": {
         "projectId": "ai-calorie-tracker-2024"
       },
-      "apiUrl": "https://api.aicalorietracker.com",
+      "apiUrl": "https://aical.scanitix.com",
       "enableLogging": false,
       "useMockData": false,
       "releaseChannel": "production",
-      "supportEmail": "support@aicalorietracker.com",
+      "supportEmail": "support@aical.scanitix.com",
       "appName": "AI Calorie Tracker",
       "version": "1.0.0",
       "environment": "production",
