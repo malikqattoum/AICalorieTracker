@@ -54,6 +54,7 @@ class ProxyEngine {
         }
         curl_setopt($ch, CURLOPT_URL, $fullUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->config['timeout']);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
         if ($body) {
@@ -65,11 +66,33 @@ class ProxyEngine {
             $headerArray[] = "$key: $value";
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headerArray);
-        $response = curl_exec($ch);
+        $fullResponse = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
-        return ['response' => $response, 'code' => $httpCode, 'error' => $error];
+
+        // Parse headers and body
+        $headerEnd = strpos($fullResponse, "\r\n\r\n");
+        if ($headerEnd !== false) {
+            $headersString = substr($fullResponse, 0, $headerEnd);
+            $responseBody = substr($fullResponse, $headerEnd + 4);
+        } else {
+            $headersString = '';
+            $responseBody = $fullResponse;
+        }
+
+        // Parse headers into array
+        $headerLines = explode("\r\n", $headersString);
+        array_shift($headerLines); // Remove status line
+        $responseHeaders = [];
+        foreach ($headerLines as $line) {
+            if (strpos($line, ': ') !== false) {
+                list($key, $value) = explode(': ', $line, 2);
+                $responseHeaders[$key] = $value;
+            }
+        }
+
+        return ['response' => $responseBody, 'headers' => $responseHeaders, 'code' => $httpCode, 'error' => $error];
     }
 }
 
@@ -82,6 +105,17 @@ class ResponseProcessor {
             return;
         }
         http_response_code($result['code']);
+
+        // Set response headers
+        if (isset($result['headers'])) {
+            foreach ($result['headers'] as $key => $value) {
+                // Skip headers that PHP handles automatically
+                if (!in_array(strtolower($key), ['content-length', 'transfer-encoding', 'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'upgrade'])) {
+                    header("$key: $value");
+                }
+            }
+        }
+
         echo $result['response'];
     }
 }
