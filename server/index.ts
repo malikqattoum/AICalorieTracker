@@ -16,7 +16,7 @@ for (const envPath of envCandidates) {
   dotenv.config({ path: envPath });
 }
 
-import express, { type Request, Response, NextFunction } from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler } from "./error-handler";
@@ -88,24 +88,14 @@ import { defaultPerformanceMonitor } from "./src/utils/performanceMonitor";
 app.use(performanceMonitoringMiddleware(defaultPerformanceMonitor, logger));
 
 // Add health check routes (no timeout for health checks)
-app.use('/api/health', (req, res, next) => {
+app.use('/api/health', (req: Request, res: Response, next: NextFunction) => {
   // Skip timeout middleware for health checks
   next();
 }, healthRouter);
 
-// Add a 404 handler for API routes that don't exist
-app.use('/api/*', (req, res) => {
-  console.log(`[API-404] API route not found: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({
-    success: false,
-    message: `API endpoint not found: ${req.originalUrl}`,
-    method: req.method,
-    path: req.originalUrl
-  });
-});
 
 // Add a simple test endpoint for mobile app debugging
-app.get('/api/test', (req, res) => {
+app.get('/api/test', (req: Request, res: Response) => {
   log('=== TEST ENDPOINT HIT ===');
   log('Request received from mobile app');
   log('Sending test response');
@@ -120,7 +110,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // Add a public connectivity test endpoint
-app.get('/api/connectivity-test', (req, res) => {
+app.get('/api/connectivity-test', (req: Request, res: Response) => {
   log('=== CONNECTIVITY TEST ENDPOINT HIT ===');
   log('Request received from mobile app');
   log('Sending connectivity test response');
@@ -141,7 +131,7 @@ app.get('/api/connectivity-test', (req, res) => {
 });
 
 // Add a database health check endpoint
-app.get('/api/health/db', async (req, res) => {
+app.get('/api/health/db', async (req: Request, res: Response) => {
   log('=== DATABASE HEALTH CHECK ENDPOINT HIT ===');
   
   try {
@@ -169,9 +159,19 @@ app.get('/api/health/db', async (req, res) => {
     });
   }
 });
+// Add a 404 handler for API routes that don't exist
+app.use('/api/*', (req: Request, res: Response) => {
+  console.log(`[API-404] API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: `API endpoint not found: ${req.originalUrl}`,
+    method: req.method,
+    path: req.originalUrl
+  });
+});
 
 // Add public routes (no authentication required)
-app.get('/api/public/connectivity-test', (req, res) => {
+app.get('/api/public/connectivity-test', (req: Request, res: Response) => {
   log('=== PUBLIC CONNECTIVITY TEST ENDPOINT HIT ===');
   log('Request received from mobile app');
   log('Sending connectivity test response');
@@ -190,7 +190,16 @@ app.get('/api/public/connectivity-test', (req, res) => {
     }
   });
 });
-
+// Add a 404 handler for API routes that don't exist
+app.use('/api/*', (req: Request, res: Response) => {
+  console.log(`[API-404] API route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: `API endpoint not found: ${req.originalUrl}`,
+    method: req.method,
+    path: req.originalUrl
+  });
+});
 
 
 // Add protected routes with session validation
@@ -203,15 +212,15 @@ errorTrackingService.installGlobalHandlers();
 // Install security audit middleware
 app.use(securityAuditMiddleware);
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+  res.json = function (bodyJson: unknown) {
+    capturedJsonResponse = bodyJson as Record<string, any>;
+    return originalResJson.call(res, bodyJson);
   };
 
   res.on("finish", () => {
@@ -251,19 +260,43 @@ app.use((req, res, next) => {
   next();
 });
 
+
+// Handle graceful shutdown
+let serverInstance: Server | undefined;
+
+process.on('SIGTERM', async () => {
+  log('SIGTERM received, shutting down gracefully');
+  await errorTrackingService.flush();
+  if (serverInstance) {
+    serverInstance!.close(() => {
+      log('Process terminated');
+      process.exit(0);
+    });
+  }
+});
+
+process.on('SIGINT', async () => {
+  log('SIGINT received, shutting down gracefully');
+  await errorTrackingService.flush();
+  if (serverInstance) {
+    serverInstance!.close(() => {
+      log('Process terminated');
+      process.exit(0);
+    });
+  }
+});
+
 (async () => {
-  let server: Server;
-  
+  let server: Server = createServer(app);
+
 // Set up server configuration
 if (process.env.NODE_ENV === "development") {
   // In development with concurrent setup, don't use Vite middleware
   // The Vite dev server (running on port 3000) will handle the frontend
   // and proxy API requests to this server (port 3002)
-  server = createServer(app);
   console.log('[SERVER] Development mode: Express server running on port 3002 for API routes');
   console.log('[SERVER] Vite dev server running on port 3000 for frontend with API proxy');
 } else {
-  server = createServer(app);
   serveStatic(app);
   console.log('[SERVER] Production mode: Using static file serving');
 }
@@ -297,8 +330,6 @@ if (process.env.NODE_ENV === "development") {
   server.keepAliveTimeout = 125000; // 125 seconds
   server.headersTimeout = 130000; // 130 seconds
 
-  let serverInstance: Server | undefined;
-
   try {
     serverInstance = server!.listen({
       port,
@@ -307,7 +338,6 @@ if (process.env.NODE_ENV === "development") {
     }, () => {
       log(`[SERVER] Server successfully started and listening on ${host}:${port}`);
     });
-
     // Handle listen errors
     serverInstance.on('error', (error) => {
       console.error(`[SERVER] Server listen error:`, error);
@@ -315,36 +345,9 @@ if (process.env.NODE_ENV === "development") {
       console.error(`[SERVER] Error message: ${error.message}`);
       process.exit(1);
     });
-
-    return serverInstance;
   } catch (error) {
     console.error(`[SERVER] Failed to start server:`, error);
     console.error(`[SERVER] Error details:`, error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
-
-  // Handle graceful shutdown
-  process.on('SIGTERM', async () => {
-    log('SIGTERM received, shutting down gracefully');
-    await errorTrackingService.flush();
-    if (serverInstance) {
-      serverInstance!.close(() => {
-        log('Process terminated');
-        process.exit(0);
-      });
-    }
-  });
-
-  process.on('SIGINT', async () => {
-    log('SIGINT received, shutting down gracefully');
-    await errorTrackingService.flush();
-    if (serverInstance) {
-      serverInstance!.close(() => {
-        log('Process terminated');
-        process.exit(0);
-      });
-    }
-  });
-
-  return serverInstance;
 })();
