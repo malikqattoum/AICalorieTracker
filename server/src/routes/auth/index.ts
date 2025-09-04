@@ -14,7 +14,9 @@ const router = Router();
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  username: z.string().min(3)
+  username: z.string().min(3),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1)
 });
 
 const loginSchema = z.object({
@@ -77,8 +79,8 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
       username: validatedData.username,
       email: validatedData.email,
       password: '***', // Don't log actual password
-      firstName: validatedData.username.split(' ')[0] || 'User',
-      lastName: validatedData.username.split(' ')[1] || 'Account'
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName
     });
     
     let user;
@@ -87,8 +89,8 @@ router.post('/register', registerRateLimiter, async (req, res, next) => {
         username: validatedData.username,
         email: validatedData.email,
         password: hashedPassword,
-        firstName: validatedData.username.split(' ')[0] || 'User',
-        lastName: validatedData.username.split(' ')[1] || 'Account'
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName
       });
       console.log('[REGISTER] User created successfully:', { id: user.id, username: user.username });
     } catch (error) {
