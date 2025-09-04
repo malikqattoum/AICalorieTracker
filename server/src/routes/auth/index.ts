@@ -52,7 +52,8 @@ const validateContentType = (req: Request, res: Response, next: NextFunction) =>
 };
 
 router.post('/register',
-  express.json(),
+  // Parse JSON even if Content-Type header is missing or altered by proxies
+  express.json({ type: '*/*' }),
   registerRateLimiter,
   async (req, res, next) => {
   console.log('=== [REGISTER] DEBUG START ===');
