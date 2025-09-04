@@ -81,6 +81,15 @@ export default defineConfig(({ mode }) => {
               if (id.includes('@tanstack') || id.includes('react-query')) {
                 return 'query';
               }
+              if (id.includes('axios')) {
+                return 'http';
+              }
+              if (id.includes('framer-motion')) {
+                return 'animation';
+              }
+              if (id.includes('use-sync-external-store')) {
+                return 'sync';
+              }
               // Group remaining node_modules into a single chunk
               return 'vendor';
             }
@@ -109,8 +118,8 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
-      // Enable source maps
-      sourcemap: isProduction,
+      // Disable source maps in production for better performance
+      sourcemap: false,
       // Enable chunk size warning limit
       chunkSizeWarningLimit: 1000,
       // Enable brotli compression
@@ -154,7 +163,7 @@ export default defineConfig(({ mode }) => {
           // Handle connection issues
           agent: new http.Agent({
             keepAlive: true,
-            maxSockets: 50,
+            maxSockets: 20,
             maxFreeSockets: 10,
             timeout: 120000, // 120s keep-alive timeout
           }),

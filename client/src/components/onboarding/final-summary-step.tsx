@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../hooks/use-auth";
 import { apiRequest } from "../../lib/queryClient";
+import { clearTokens } from "../../lib/tokenManager";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
@@ -89,7 +90,6 @@ export default function FinalSummaryStep({
       if (error instanceof Error && error.message.includes('401')) {
         alert('Authentication failed. Please log in again.');
         // Clear token and redirect to login
-        const { clearTokens } = await import('../../lib/tokenManager');
         clearTokens();
         setLocation('/login');
       } else {
