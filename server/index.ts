@@ -16,9 +16,20 @@ for (const envPath of envCandidates) {
   dotenv.config({ path: envPath });
 }
 
+// Local log function to avoid importing Vite dependencies
+function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
+
 import express, { type Request, type Response, type NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler } from "./error-handler";
 import { securityHeaders, corsMiddleware, sanitizeInput, requestSizeLimiter } from "./security-middleware";
 import { createTimeoutMiddleware } from "./src/middleware/timeoutMiddleware";
@@ -297,6 +308,7 @@ if (process.env.NODE_ENV === "development") {
   console.log('[SERVER] Development mode: Express server running on port 3002 for API routes');
   console.log('[SERVER] Vite dev server running on port 3000 for frontend with API proxy');
 } else {
+  const { serveStatic } = await import("./vite");
   serveStatic(app);
   console.log('[SERVER] Production mode: Using static file serving');
 }
