@@ -1,0 +1,13 @@
+
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "pricing": "Pricing",
+    "contact": "Contact"
+  },
+  "home": {
+    "title": "Welcome to NutriScan",
+    "subtitle": "Your AI-powered nutrition assistant"
+  }
+}
