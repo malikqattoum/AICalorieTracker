@@ -53,7 +53,6 @@ const validateContentType = (req: Request, res: Response, next: NextFunction) =>
 
 router.post('/register',
   express.json(),
-  validateContentType,
   registerRateLimiter,
   async (req, res, next) => {
   console.log('=== [REGISTER] DEBUG START ===');
