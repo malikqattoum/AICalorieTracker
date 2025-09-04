@@ -59,6 +59,7 @@ class ProxyEngine {
         if ($body) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         }
+        $headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
         $headerArray = [];
         foreach ($headers as $key => $value) {
             $headerArray[] = "$key: $value";
@@ -157,12 +158,7 @@ try {
     $body = $requestHandler->getBody();
     $query = $requestHandler->getQueryString();
     $url = $_SERVER['REQUEST_URI'];
-
-    $securityManager = new SecurityManager($config);
-    if (!$securityManager->validateAccess()) {
-        exit;
-    }
-
+    
     $resourceManager = new ResourceManager($config);
     if (!$resourceManager->checkResources()) {
         http_response_code(503);
