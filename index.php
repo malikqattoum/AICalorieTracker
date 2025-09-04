@@ -61,6 +61,11 @@ class ProxyEngine {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         }
         $headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
+
+        // Add forwarded headers for HTTPS validation
+        $headers['X-Forwarded-Proto'] = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $headers['X-Forwarded-For'] = $_SERVER['REMOTE_ADDR'];
+
         $headerArray = [];
         foreach ($headers as $key => $value) {
             $headerArray[] = "$key: $value";
