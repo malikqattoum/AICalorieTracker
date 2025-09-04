@@ -52,7 +52,6 @@ const validateContentType = (req: Request, res: Response, next: NextFunction) =>
 };
 
 router.post('/register',
-  rawBodyLogger,
   express.json(),
   validateContentType,
   registerRateLimiter,
