@@ -49,22 +49,12 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "../dist/public",
       emptyOutDir: true,
-      // Enable minification
-      minify: isProduction ? 'terser' : false,
-      terserOptions: {
-        compress: {
-          // Remove console.log in production
-          drop_console: isProduction,
-          drop_debugger: isProduction,
-          pure_funcs: isProduction ? ['console.log'] : [],
-        },
-        format: {
-          comments: false,
-        },
-      },
-      // Enable code splitting
+      // Enable minification with esbuild (better for shared hosting)
+      minify: isProduction ? 'esbuild' : false,
+      // Enable code splitting (optimized for shared hosting)
       rollupOptions: {
         treeshake: isProduction,
+        maxParallelFileOps: 2, // Limit parallel operations for shared hosting
         output: {
           // Optimize chunk sizes
           manualChunks: (id) => {
@@ -128,7 +118,7 @@ export default defineConfig(({ mode }) => {
       // Enable CSS code splitting
       cssCodeSplit: true,
     },
-    // Optimize dependencies
+    // Optimize dependencies (reduced for shared hosting)
     optimizeDeps: {
       include: [
         'react',
@@ -144,7 +134,7 @@ export default defineConfig(({ mode }) => {
         'use-sync-external-store',
       ],
       exclude: ['@babel/runtime'],
-      force: true,
+      force: isProduction ? false : true, // Only force in development
     },
     // Development server configuration
     server: {
