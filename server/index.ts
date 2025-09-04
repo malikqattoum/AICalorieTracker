@@ -50,7 +50,8 @@ import { imageStorageService } from "./src/services/imageStorageService";
 export const app = express();
 
 // Trust proxy configuration - must be set before any middleware that uses req.ip
-app.set('trust proxy', true);
+// Use a numeric hop count to avoid permissive trust proxy issues with rate limiters
+app.set('trust proxy', 1);
 
 // Apply JSON middleware before any routes with enhanced logging
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -95,6 +96,25 @@ app.use(express.urlencoded({
     }
   }
 }));
+
+// Fix misformatted URL-encoded payloads where the entire JSON object is used as a single key
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const contentType = req.get('Content-Type') || '';
+  if (contentType.includes('application/x-www-form-urlencoded') && req.body && typeof req.body === 'object') {
+    const keys = Object.keys(req.body);
+    if (keys.length === 1 && keys[0].trim().startsWith('{') && keys[0].trim().endsWith('}') && (req.body as any)[keys[0]] === '') {
+      try {
+        const parsed = JSON.parse(keys[0]);
+        if (parsed && typeof parsed === 'object') {
+          req.body = parsed;
+        }
+      } catch (e) {
+        // Ignore parsing errors and continue
+      }
+    }
+  }
+  next();
+});
 
 // Enhanced body logging with Content-Type information
 app.use((req: Request, res: Response, next: NextFunction) => {
