@@ -97,19 +97,47 @@ app.use(express.urlencoded({
   }
 }));
 
-// Fix misformatted URL-encoded payloads where the entire JSON object is used as a single key
+// Fix misformatted URL-encoded payloads where JSON was stringified as a key
+// Handles cases like:
+// 1) {"a":1,"b":2} as the only key with empty value
+// 2) {"...","allergies": as key and the value object containing selected items as keys
 app.use((req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type') || '';
   if (contentType.includes('application/x-www-form-urlencoded') && req.body && typeof req.body === 'object') {
     const keys = Object.keys(req.body);
-    if (keys.length === 1 && keys[0].trim().startsWith('{') && keys[0].trim().endsWith('}') && (req.body as any)[keys[0]] === '') {
-      try {
-        const parsed = JSON.parse(keys[0]);
-        if (parsed && typeof parsed === 'object') {
-          req.body = parsed;
+    if (keys.length === 1) {
+      const soleKey = keys[0].trim();
+      const soleVal: any = (req.body as any)[keys[0]];
+      // Case 1: entire JSON string used as a key with empty value
+      if (soleKey.startsWith('{') && soleKey.endsWith('}') && soleVal === '') {
+        try {
+          const parsed = JSON.parse(soleKey);
+          if (parsed && typeof parsed === 'object') {
+            req.body = parsed;
+          }
+        } catch (e) {
+          // Ignore parsing errors and continue
         }
-      } catch (e) {
-        // Ignore parsing errors and continue
+      }
+      // Case 2: partial JSON where last property (e.g., allergies) is missing its value,
+      // and the value came through as an object whose keys are the chosen items.
+      // Example:
+      // key: '{"name":"x", ... , "allergies":'
+      // val: { '"Peanuts"': '' }
+      else if (soleKey.startsWith('{') && /"(allergies|dietaryPreferences)":\s*$/.test(soleKey) && soleVal && typeof soleVal === 'object') {
+        try {
+          // Convert object keys to an array of strings, unwrapping extra quotes if present
+          const arr = Object.keys(soleVal).map(k => {
+            try { return JSON.parse(k); } catch { return k.replace(/^\"|\"$/g, '').replace(/^"|"$/g, ''); }
+          });
+          const reconstructed = `${soleKey}${JSON.stringify(arr)}}`;
+          const parsed = JSON.parse(reconstructed);
+          if (parsed && typeof parsed === 'object') {
+            req.body = parsed;
+          }
+        } catch (e) {
+          // Ignore parsing errors and continue
+        }
       }
     }
   }
