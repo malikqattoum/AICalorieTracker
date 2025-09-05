@@ -79,16 +79,17 @@ export default {
 
   async getUserStats(userId: number): Promise<WeeklyStats> {
     try {
-      console.log('DEBUG: getUserStats called for userId:', userId);
+      console.log('[DEBUG] getUserStats called for userId:', userId);
 
       // Fetch weekly stats from database
       let [stats] = await drizzleDb.select()
         .from(weeklyStats)
         .where(eq(weeklyStats.userId, userId));
+      console.log('[DEBUG] Database query result for user stats:', stats ? 'found' : 'null');
 
       // If no stats exist, create default stats
       if (!stats) {
-        console.log(`DEBUG: No weekly stats found for user ${userId}, creating default stats`);
+        console.log(`[DEBUG] No weekly stats found for user ${userId}, creating default stats`);
         stats = await this.createDefaultWeeklyStats(userId);
       }
 
@@ -153,7 +154,11 @@ export default {
       }
     };
 
-    const result = await drizzleDb.insert(weeklyStats).values(defaultStats);
+    const result = await drizzleDb.insert(weeklyStats).values({
+      ...defaultStats,
+      caloriesByDay: JSON.stringify(defaultStats.caloriesByDay),
+      macrosByDay: JSON.stringify(defaultStats.macrosByDay)
+    });
     // @ts-ignore drizzle-orm/mysql2 returns insertId
     const insertId = result.insertId || result[0]?.insertId;
     if (!insertId) throw new Error('Failed to get inserted weekly stats id');

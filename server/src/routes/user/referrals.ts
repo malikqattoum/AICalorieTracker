@@ -12,8 +12,14 @@ router.use(isAuthenticated);
 // Get user's referral commissions
 router.get('/commissions', async (req, res) => {
   try {
+    console.log('[REFERRALS] Commissions endpoint called');
+    console.log('[REFERRALS] req.user:', req.user);
+    console.log('[REFERRALS] req.user?.id:', req.user?.id);
+    console.log('[REFERRALS] typeof req.user?.id:', typeof req.user?.id);
+
     const userId = req.user?.id;
     if (!userId) {
+      console.log('[REFERRALS] No userId found, returning 401');
       return res.status(401).json({ message: 'User not authenticated' });
     }
     

@@ -188,7 +188,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserNutritionGoals(userId: number, goals: { calories: number; protein: number; carbs: number; fat: number }): Promise<void> {
     await db.update(users)
-      .set({ nutritionGoals: goals })
+      .set({ nutritionGoals: JSON.stringify(goals) })
       .where(eq(users.id, userId));
   }
 
@@ -345,7 +345,7 @@ export class DatabaseStorage implements IStorage {
     
     // Create or update weekly stats
     const existingStats = await this.getWeeklyStats(userId);
-    
+
     if (existingStats) {
       await db.update(weeklyStats)
         .set({
@@ -353,8 +353,8 @@ export class DatabaseStorage implements IStorage {
           mealsTracked: weekMeals.length,
           averageProtein,
           healthiestDay,
-          caloriesByDay,
-          macrosByDay
+          caloriesByDay: JSON.stringify(caloriesByDay),
+          macrosByDay: JSON.stringify(macrosByDay)
         })
         .where(eq(weeklyStats.id, existingStats.id));
     } else {
@@ -366,8 +366,8 @@ export class DatabaseStorage implements IStorage {
           averageProtein,
           healthiestDay,
           weekStarting: startOfWeek,
-          caloriesByDay,
-          macrosByDay
+          caloriesByDay: JSON.stringify(caloriesByDay),
+          macrosByDay: JSON.stringify(macrosByDay)
         });
     }
   }
@@ -406,7 +406,11 @@ export class DatabaseStorage implements IStorage {
       }
     };
 
-    const result = await db.insert(weeklyStats).values(defaultStats);
+    const result = await db.insert(weeklyStats).values({
+      ...defaultStats,
+      caloriesByDay: JSON.stringify(defaultStats.caloriesByDay),
+      macrosByDay: JSON.stringify(defaultStats.macrosByDay)
+    });
     // @ts-ignore drizzle-orm/mysql2 returns insertId
     const insertId = result.insertId || result[0]?.insertId;
     if (!insertId) throw new Error('Failed to get inserted weekly stats id');
@@ -417,13 +421,15 @@ export class DatabaseStorage implements IStorage {
 
   // Weekly stats methods
   async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
+    console.log(`[DEBUG] getWeeklyStats called for userId: ${userId}, medicalCondition: ${medicalCondition}`);
     let [stats] = await db.select()
       .from(weeklyStats)
       .where(eq(weeklyStats.userId, userId));
+    console.log(`[DEBUG] Database query result:`, stats ? 'found' : 'null');
 
     // If no stats exist, create default stats
     if (!stats) {
-      console.log(`[DATABASE STORAGE] No weekly stats found for user ${userId}, creating default stats`);
+      console.log(`[DEBUG] No weekly stats found for user ${userId}, creating default stats`);
       const defaultStats = await this.createDefaultWeeklyStats(userId);
       stats = defaultStats;
     }
@@ -462,7 +468,11 @@ export class DatabaseStorage implements IStorage {
     const existingStats = await this.getWeeklyStats(insertStats.userId);
     if (existingStats) {
       await db.update(weeklyStats)
-        .set(insertStats)
+        .set({
+          ...insertStats,
+          caloriesByDay: JSON.stringify(insertStats.caloriesByDay),
+          macrosByDay: JSON.stringify(insertStats.macrosByDay)
+        })
         .where(eq(weeklyStats.id, existingStats.id));
       const [updatedStats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, existingStats.id));
       return {
@@ -472,7 +482,11 @@ export class DatabaseStorage implements IStorage {
       };
     } else {
       const result = await db.insert(weeklyStats)
-        .values(insertStats);
+        .values({
+          ...insertStats,
+          caloriesByDay: JSON.stringify(insertStats.caloriesByDay),
+          macrosByDay: JSON.stringify(insertStats.macrosByDay)
+        });
       // @ts-ignore drizzle-orm/mysql2 returns insertId
       const insertId = result.insertId || result[0]?.insertId;
       if (!insertId) throw new Error('Failed to get inserted weekly stats id');
