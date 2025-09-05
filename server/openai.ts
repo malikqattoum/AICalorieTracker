@@ -249,7 +249,7 @@ export async function analyzeMultiFoodImage(base64Image: string): Promise<MultiF
   }
 }
 
-export async function getNutritionCoachReply(messages: {role: string, content: string}[], userId: number): Promise<string> {
+export async function getNutritionCoachReply(messages: {role: string, content: string | {image_url: string}}[], userId: number): Promise<string> {
   // Compose system prompt
   const systemPrompt =
     "You are a friendly, expert nutrition coach. Answer user questions about their meals, nutrition, and healthy eating. " +
@@ -260,7 +260,28 @@ export async function getNutritionCoachReply(messages: {role: string, content: s
   // Compose OpenAI chat messages
   const chatMessages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
-    ...messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content }))
+    ...messages.map((m): ChatCompletionMessageParam => {
+      if (typeof m.content === 'string') {
+        return { role: m.role as "user" | "assistant", content: m.content };
+      } else {
+        // Handle image content - only user messages can contain images
+        if (m.role === 'assistant') {
+          // Fallback for assistant messages with image content (shouldn't happen)
+          return { role: "assistant", content: "I received an image but cannot process it in this context." };
+        }
+        return {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: m.content.image_url
+              }
+            }
+          ]
+        };
+      }
+    })
   ];
 
   const response = await openai.chat.completions.create({

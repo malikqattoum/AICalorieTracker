@@ -9,7 +9,7 @@ const openai = new OpenAI({
 });
 
 export default {
-  async askQuestion(userId: number, question: string): Promise<CoachAnswer> {
+  async askQuestion(userId: number, question: string, imageData?: string): Promise<CoachAnswer> {
     try {
       // Create AI prompt for nutrition coaching
       const systemPrompt = `You are an expert nutrition coach with deep knowledge of:
@@ -28,6 +28,22 @@ Include scientific reasoning when appropriate, but keep advice accessible and ac
 User context: User ID ${userId}
 Question: ${question}`;
 
+      // Prepare user message content
+      let userContent: any;
+      if (imageData) {
+        userContent = [
+          { type: "text", text: question },
+          {
+            type: "image_url",
+            image_url: {
+              url: `data:image/jpeg;base64,${imageData}`
+            }
+          }
+        ];
+      } else {
+        userContent = question;
+      }
+
       // Call OpenAI API
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -38,7 +54,7 @@ Question: ${question}`;
           },
           {
             role: "user",
-            content: question
+            content: userContent
           }
         ],
         max_tokens: 500,
@@ -145,7 +161,15 @@ Question: ${question}`;
       'SELECT * FROM coach_answers WHERE user_id = ? ORDER BY created_at DESC',
       [userId]
     );
-    return answers;
+    return (answers as any[]).map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      question: row.question,
+      answer: row.answer,
+      rating: row.rating,
+      comment: row.comment,
+      created_at: row.created_at ? new Date(row.created_at) : undefined
+    }));
   },
 
   async submitFeedback(userId: number, answerId: number, rating: number, comment?: string) {

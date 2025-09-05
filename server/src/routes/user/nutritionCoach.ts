@@ -10,7 +10,8 @@ router.use(authenticate);
 // POST /api/user/nutrition-coach/ask
 router.post('/ask',
   ValidationService.validate({
-    question: { type: 'string', required: true, minLength: 10 }
+    question: { type: 'string', required: true, minLength: 10 },
+    imageData: { type: 'string', required: false }
   }),
   NutritionCoachController.askQuestion
 );

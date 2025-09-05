@@ -3672,7 +3672,7 @@ var init_vite = __esm({
 import * as dotenv6 from "dotenv";
 import * as path5 from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
-import express2 from "express";
+import express3 from "express";
 
 // server/routes.ts
 init_storage_provider();
@@ -8909,6 +8909,27 @@ var securityConfig = {
     maxUploadSize: "5mb"
   }
 };
+var enforceHttps = (req, res, next) => {
+  const forceHttps = process.env.FORCE_HTTPS === "true";
+  const isProduction = process.env.NODE_ENV === "production";
+  if (!forceHttps || !isProduction) {
+    return next();
+  }
+  const isHttps = req.protocol === "https" || req.secure || req.headers["x-forwarded-proto"] === "https" || req.headers["x-forwarded-protocol"] === "https";
+  const isLocalhost = req.hostname === "localhost" || req.hostname === "127.0.0.1" || req.ip === "127.0.0.1" || req.ip === "::1";
+  if (!isHttps && !isLocalhost) {
+    console.warn(`HTTPS enforcement: Blocking HTTP request from ${req.ip} to ${req.originalUrl}`);
+    return res.status(403).json({
+      error: "HTTPS is required for all API requests",
+      code: "HTTPS_REQUIRED",
+      message: "This API only accepts HTTPS requests for security reasons",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      protocol: req.protocol,
+      hostname: req.hostname
+    });
+  }
+  next();
+};
 var securityUtils = {
   // Sanitize input
   sanitize: (input) => {
@@ -12648,115 +12669,123 @@ var router25 = Router27();
 var registerSchema2 = z6.object({
   email: z6.string().email(),
   password: z6.string().min(8),
-  username: z6.string().min(3)
+  username: z6.string().min(3),
+  firstName: z6.string().min(1),
+  lastName: z6.string().min(1)
 });
 var loginSchema = z6.object({
   username: z6.string().min(1),
   password: z6.string().min(8)
 });
 console.log("[AUTH-ROUTE] Setting up /api/auth/register route...");
-router25.post("/register", registerRateLimiter, async (req, res, next) => {
-  console.log("=== [REGISTER] DEBUG START ===");
-  console.log("[REGISTER] Received request:", req.body);
-  console.log("[REGISTER] Headers:", req.headers);
-  console.log("[REGISTER] Content-Type:", req.get("content-type"));
-  try {
-    console.log("[REGISTER] Environment check - JWT_SECRET set:", !!process.env.JWT_SECRET);
-    console.log("[REGISTER] Starting validation...");
-    const validatedData = registerSchema2.parse(req.body);
-    console.log("[REGISTER] Validation successful:", validatedData);
-    console.log("[REGISTER] Checking username:", validatedData.username);
+router25.post(
+  "/register",
+  registerRateLimiter,
+  async (req, res, next) => {
+    console.log("=== [REGISTER] DEBUG START ===");
+    console.log("[REGISTER] Received request:", req.body);
+    console.log("[REGISTER] Parsed body type:", typeof req.body);
+    console.log("[REGISTER] Headers:", req.headers);
+    console.log("[REGISTER] Content-Type:", req.get("content-type"));
+    console.log("[REGISTER] Raw headers:", req.rawHeaders);
     try {
-      const existingUser = await storage.getUserByUsername(validatedData.username);
-      if (existingUser) {
-        console.log("[REGISTER] Username exists:", validatedData.username);
-        return res.status(400).json({ message: "Username already exists" });
+      console.log("[REGISTER] Environment check - JWT_SECRET set:", !!process.env.JWT_SECRET);
+      console.log("[REGISTER] Starting validation...");
+      const validatedData = registerSchema2.parse(req.body);
+      console.log("[REGISTER] Validation successful:", validatedData);
+      console.log("[REGISTER] Checking username:", validatedData.username);
+      try {
+        const existingUser = await storage.getUserByUsername(validatedData.username);
+        if (existingUser) {
+          console.log("[REGISTER] Username exists:", validatedData.username);
+          return res.status(400).json({ message: "Username already exists" });
+        }
+      } catch (error) {
+        console.error("[REGISTER] Error checking username:", error);
+        return res.status(500).json({ message: "Error checking username availability" });
       }
-    } catch (error) {
-      console.error("[REGISTER] Error checking username:", error);
-      return res.status(500).json({ message: "Error checking username availability" });
-    }
-    console.log("[REGISTER] Checking email:", validatedData.email);
-    try {
-      const existingEmail = await storage.getUserByEmail(validatedData.email);
-      if (existingEmail) {
-        console.log("[REGISTER] Email exists:", validatedData.email);
-        return res.status(400).json({ message: "Email already exists" });
+      console.log("[REGISTER] Checking email:", validatedData.email);
+      try {
+        const existingEmail = await storage.getUserByEmail(validatedData.email);
+        if (existingEmail) {
+          console.log("[REGISTER] Email exists:", validatedData.email);
+          return res.status(400).json({ message: "Email already exists" });
+        }
+      } catch (error) {
+        console.error("[REGISTER] Error checking email:", error);
+        return res.status(500).json({ message: "Error checking email availability" });
       }
-    } catch (error) {
-      console.error("[REGISTER] Error checking email:", error);
-      return res.status(500).json({ message: "Error checking email availability" });
-    }
-    console.log("[REGISTER] Hashing password...");
-    let hashedPassword;
-    try {
-      hashedPassword = await bcrypt3.hash(validatedData.password, 10);
-      console.log("[REGISTER] Password hashed successfully");
-    } catch (error) {
-      console.error("[REGISTER] Error hashing password:", error);
-      return res.status(500).json({ message: "Error processing password" });
-    }
-    console.log("[REGISTER] Creating user with:", {
-      username: validatedData.username,
-      email: validatedData.email,
-      password: "***",
-      // Don't log actual password
-      firstName: validatedData.username.split(" ")[0] || "User",
-      lastName: validatedData.username.split(" ")[1] || "Account"
-    });
-    let user;
-    try {
-      user = await storage.createUser({
+      console.log("[REGISTER] Hashing password...");
+      let hashedPassword;
+      try {
+        hashedPassword = await bcrypt3.hash(validatedData.password, 10);
+        console.log("[REGISTER] Password hashed successfully");
+      } catch (error) {
+        console.error("[REGISTER] Error hashing password:", error);
+        return res.status(500).json({ message: "Error processing password" });
+      }
+      console.log("[REGISTER] Creating user with:", {
         username: validatedData.username,
         email: validatedData.email,
-        password: hashedPassword,
-        firstName: validatedData.username.split(" ")[0] || "User",
-        lastName: validatedData.username.split(" ")[1] || "Account"
+        password: "***",
+        // Don't log actual password
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName
       });
-      console.log("[REGISTER] User created successfully:", { id: user.id, username: user.username });
+      let user;
+      try {
+        user = await storage.createUser({
+          username: validatedData.username,
+          email: validatedData.email,
+          password: hashedPassword,
+          firstName: validatedData.firstName,
+          lastName: validatedData.lastName
+        });
+        console.log("[REGISTER] User created successfully:", { id: user.id, username: user.username });
+      } catch (error) {
+        console.error("[REGISTER] Error creating user:", error);
+        return res.status(500).json({ message: "Error creating user account" });
+      }
+      console.log("[REGISTER] Generating JWT tokens...");
+      const tokens = await JWTService.generateTokens(user);
+      console.log("[REGISTER] Tokens value after generateTokens call:", tokens, "Type:", typeof tokens);
+      console.log("[REGISTER] Tokens generated successfully");
+      const { password, ...userWithoutPassword } = user;
+      console.log("[REGISTER] User creation completed successfully");
+      console.log("[REGISTER] About to send response with tokens:", tokens);
+      res.status(201).json({
+        user: userWithoutPassword,
+        tokens
+      });
     } catch (error) {
-      console.error("[REGISTER] Error creating user:", error);
-      return res.status(500).json({ message: "Error creating user account" });
-    }
-    console.log("[REGISTER] Generating JWT tokens...");
-    const tokens = await JWTService.generateTokens(user);
-    console.log("[REGISTER] Tokens value after generateTokens call:", tokens, "Type:", typeof tokens);
-    console.log("[REGISTER] Tokens generated successfully");
-    const { password, ...userWithoutPassword } = user;
-    console.log("[REGISTER] User creation completed successfully");
-    console.log("[REGISTER] About to send response with tokens:", tokens);
-    res.status(201).json({
-      user: userWithoutPassword,
-      tokens
-    });
-  } catch (error) {
-    console.error("=== [REGISTER] ERROR DEBUG ===");
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : void 0;
-    console.error("[REGISTER] Error type:", error?.constructor?.name || "Unknown");
-    console.error("[REGISTER] Error message:", errorMessage);
-    console.error("[REGISTER] Error stack:", errorStack);
-    if (error instanceof z6.ZodError) {
-      console.log("[REGISTER] Zod validation error:", error.errors);
-      return res.status(400).json({ message: "Invalid request data", errors: error.errors });
-    }
-    if (error instanceof Error) {
-      const lowerCaseMessage = errorMessage.toLowerCase();
-      if (lowerCaseMessage.includes("database") || lowerCaseMessage.includes("connection") || lowerCaseMessage.includes("mysql")) {
-        console.error("[REGISTER] Database connection error detected");
-        return res.status(503).json({ message: "Database service unavailable" });
+      console.error("=== [REGISTER] ERROR DEBUG ===");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : void 0;
+      console.error("[REGISTER] Error type:", error?.constructor?.name || "Unknown");
+      console.error("[REGISTER] Error message:", errorMessage);
+      console.error("[REGISTER] Error stack:", errorStack);
+      if (error instanceof z6.ZodError) {
+        console.log("[REGISTER] Zod validation error:", error.errors);
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
       }
-      if (lowerCaseMessage.includes("duplicate") || lowerCaseMessage.includes("already exists")) {
-        console.error("[REGISTER] Duplicate entry error detected");
-        return res.status(409).json({ message: "Resource already exists" });
+      if (error instanceof Error) {
+        const lowerCaseMessage = errorMessage.toLowerCase();
+        if (lowerCaseMessage.includes("database") || lowerCaseMessage.includes("connection") || lowerCaseMessage.includes("mysql")) {
+          console.error("[REGISTER] Database connection error detected");
+          return res.status(503).json({ message: "Database service unavailable" });
+        }
+        if (lowerCaseMessage.includes("duplicate") || lowerCaseMessage.includes("already exists")) {
+          console.error("[REGISTER] Duplicate entry error detected");
+          return res.status(409).json({ message: "Resource already exists" });
+        }
       }
+      console.error("[REGISTER] Unexpected error, passing to error handler");
+      next(error);
+    } finally {
+      console.log("=== [REGISTER] DEBUG END ===");
     }
-    console.error("[REGISTER] Unexpected error, passing to error handler");
-    next(error);
-  } finally {
-    console.log("=== [REGISTER] DEBUG END ===");
   }
-});
+);
 router25.post("/login", async (req, res, next) => {
   console.log("[AUTH-DEBUG] Login route added");
   try {
@@ -15079,6 +15108,9 @@ var securityConfig2 = {
 
 // server/src/lib/securityUtils.ts
 var logger5 = new Logger("SecurityUtils");
+var getClientIp = (req) => {
+  return req.ip || "unknown";
+};
 var logSecurityEvent = (event) => {
   if (process.env.NODE_ENV !== "production") return;
   const logEntry = {
@@ -15259,7 +15291,7 @@ var logger6 = new Logger("SecurityEnhanced");
 var rateLimitStore2 = /* @__PURE__ */ new Map();
 var createRateLimiter2 = (windowMs, max, message) => {
   return (req, res, next) => {
-    const clientIp = req.ip || "unknown";
+    const clientIp = getClientIp(req);
     const now = Date.now();
     const expiredEntries = [];
     rateLimitStore2.forEach((entry2, key) => {
@@ -15312,7 +15344,7 @@ var createRateLimiter2 = (windowMs, max, message) => {
 var sessionSecurity = (req, res, next) => {
   const sessionId = req.headers["x-session-id"];
   const userAgent = req.get("User-Agent") || "";
-  const clientIp = req.ip || "unknown";
+  const clientIp = getClientIp(req);
   if (sessionId) {
     logger6.debug("Session validation for:", sessionId);
   }
@@ -15339,7 +15371,7 @@ var inputValidation = (req, res, next) => {
       level: "WARNING",
       message: "Request validation failed",
       details: { errors: validation.errors, method: req.method, url: req.url },
-      ip: req.ip,
+      ip: getClientIp(req),
       userAgent: req.get("User-Agent"),
       endpoint: req.path
     });
@@ -15396,7 +15428,7 @@ var sqlInjectionProtection = (req, res, next) => {
     return false;
   };
   if (checkValue(req.body) || checkValue(req.query) || checkValue(req.params)) {
-    logger6.warn("SQL injection attempt detected from:", req.ip);
+    logger6.warn("SQL injection attempt detected from:", getClientIp(req));
     throw new AppError("VALIDATION_ERROR" /* VALIDATION_ERROR */, "INVALID_INPUT" /* INVALID_INPUT */, "Invalid request format");
   }
   next();
@@ -15429,7 +15461,7 @@ var xssProtection = (req, res, next) => {
     return false;
   };
   if (checkXSS(req.body) || checkXSS(req.query) || checkXSS(req.params)) {
-    logger6.warn("XSS attempt detected from:", req.ip);
+    logger6.warn("XSS attempt detected from:", getClientIp(req));
     throw new AppError("VALIDATION_ERROR" /* VALIDATION_ERROR */, "INVALID_INPUT" /* INVALID_INPUT */, "Invalid request format");
   }
   next();
@@ -15441,25 +15473,25 @@ var csrfProtection = (req, res, next) => {
       logger6.debug("CSRF protection skipped for auth/onboarding endpoint:", req.path);
       return next();
     }
-    if (req.hostname === "localhost" || req.ip === "127.0.0.1") {
+    if (req.hostname === "localhost" || getClientIp(req) === "127.0.0.1") {
       logger6.debug("CSRF protection skipped for localhost testing:", req.path);
       return next();
     }
     const csrfToken = req.headers["x-csrf-token"];
     const sessionToken = req.headers["x-session-token"];
     if (!csrfToken || !sessionToken) {
-      logger6.warn("CSRF protection failed - missing tokens from:", req.ip);
+      logger6.warn("CSRF protection failed - missing tokens from:", getClientIp(req));
       throw new AuthorizationError("CSRF protection failed");
     }
     if (csrfToken !== sessionToken) {
-      logger6.warn("CSRF token mismatch from:", req.ip);
+      logger6.warn("CSRF token mismatch from:", getClientIp(req));
       throw new AuthorizationError("Invalid CSRF token");
     }
   }
   next();
 };
 var ipFilter = (req, res, next) => {
-  const clientIp = req.ip || "unknown";
+  const clientIp = getClientIp(req);
   const whitelist = process.env.IP_WHITELIST?.split(",") || [];
   const blacklist = process.env.IP_BLACKLIST?.split(",") || [];
   if (blacklist.length > 0 && blacklist.includes(clientIp)) {
@@ -15498,7 +15530,7 @@ var botDetection = (req, res, next) => {
     (pattern) => userAgent.toLowerCase().includes(pattern.toLowerCase())
   );
   if (isBot) {
-    logger6.warn(`Bot detected: ${userAgent} from IP: ${req.ip}`);
+    logger6.warn(`Bot detected: ${userAgent} from IP: ${getClientIp(req)}`);
   }
   next();
 };
@@ -15526,13 +15558,13 @@ var securityMonitoring = (req, res, next) => {
     const bodyStr = JSON.stringify(req.body);
     const suspicious = checkSuspicious(bodyStr);
     if (suspicious.length > 0) {
-      logger6.warn(`Suspicious activity detected in body from ${req.ip}:`, suspicious);
+      logger6.warn(`Suspicious activity detected in body from ${getClientIp(req)}:`, suspicious);
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         level: "WARNING",
         message: "Suspicious activity detected in request body",
         details: { patterns: suspicious, method: req.method, url: req.url },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get("User-Agent"),
         endpoint: req.path
       });
@@ -15542,13 +15574,13 @@ var securityMonitoring = (req, res, next) => {
     const queryStr = JSON.stringify(req.query);
     const suspicious = checkSuspicious(queryStr);
     if (suspicious.length > 0) {
-      logger6.warn(`Suspicious activity detected in query from ${req.ip}:`, suspicious);
+      logger6.warn(`Suspicious activity detected in query from ${getClientIp(req)}:`, suspicious);
       logSecurityEvent({
         type: "SUSPICIOUS_ACTIVITY",
         level: "WARNING",
         message: "Suspicious activity detected in query parameters",
         details: { patterns: suspicious, method: req.method, url: req.url },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get("User-Agent"),
         endpoint: req.path
       });
@@ -15563,7 +15595,7 @@ var securityMonitoring = (req, res, next) => {
         level: "WARNING",
         message: "Slow request detected",
         details: { method: req.method, url: req.url, duration },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get("User-Agent"),
         endpoint: req.path
       });
@@ -15579,7 +15611,7 @@ var securityMonitoring = (req, res, next) => {
           statusCode: res.statusCode,
           userAgent: req.get("User-Agent")
         },
-        ip: req.ip,
+        ip: getClientIp(req),
         userAgent: req.get("User-Agent"),
         endpoint: req.path
       });
@@ -15646,10 +15678,59 @@ function log2(message, source = "express") {
   });
   console.log(`${formattedTime} [${source}] ${message}`);
 }
-var app = express2();
-app.use(express2.json({ limit: "50mb" }));
-app.use(express2.urlencoded({ extended: false, limit: "50mb" }));
-app.use("/uploads", express2.static(path5.join(__dirname4, "..", "uploads"), {
+var app = express3();
+app.set("trust proxy", true);
+app.use((req, res, next) => {
+  console.log("[PRE-PARSING] Headers:", req.headers);
+  console.log("[PRE-PARSING] Raw headers:", req.rawHeaders);
+  next();
+});
+app.use(express3.json({
+  limit: "50mb",
+  strict: false,
+  verify: (req, res, buf, encoding) => {
+    try {
+      JSON.parse(buf.toString(encoding || "utf8"));
+    } catch (e) {
+    }
+  }
+}));
+app.use(express3.urlencoded({
+  extended: true,
+  limit: "50mb",
+  parameterLimit: 1e4,
+  verify: (req, res, buf, encoding) => {
+    try {
+      const str = buf.toString(encoding || "utf8");
+      if (str && str.includes("=")) {
+        const urlSearchParams = new URLSearchParams(str);
+        urlSearchParams.toString();
+      }
+    } catch (e) {
+    }
+  }
+}));
+app.use((req, res, next) => {
+  const contentType = req.get("Content-Type") || "unknown";
+  console.log("[POST-PARSING] Content-Type:", contentType);
+  console.log("[POST-PARSING] Body:", req.body);
+  console.log("[POST-PARSING] Body type:", typeof req.body);
+  console.log("[POST-PARSING] Body keys:", Object.keys(req.body || {}));
+  next();
+});
+app.use((req, res, next) => {
+  const contentType = req.get("Content-Type");
+  if (contentType) {
+    if (contentType.includes("application/json") && typeof req.body !== "object") {
+      console.warn("[CONTENT-TYPE-WARNING] Content-Type indicates JSON but body is not an object");
+    } else if (contentType.includes("application/x-www-form-urlencoded") && typeof req.body !== "object") {
+      console.warn("[CONTENT-TYPE-WARNING] Content-Type indicates form data but body is not an object");
+    }
+  }
+  next();
+});
+app.use(enforceHttps);
+app.use("/uploads", express3.static(path5.join(__dirname4, "..", "uploads"), {
   maxAge: "1y",
   // Cache for 1 year
   etag: true,
@@ -15670,8 +15751,6 @@ console.log("[SERVER] NODE_ENV:", process.env.NODE_ENV);
 console.log("[SERVER] Environment is development:", process.env.NODE_ENV === "development");
 registerRoutes(app);
 console.log("[SERVER] Routes registered");
-app.use(express2.json({ limit: "50mb" }));
-app.use(express2.urlencoded({ extended: false, limit: "50mb" }));
 app.use(enhancedSecurityMiddleware);
 app.use(rateLimiters.api);
 app.use(createTimeoutMiddleware({ responseTimeout: 12e4, requestTimeout: 3e5 }));
@@ -15690,6 +15769,22 @@ app.get("/api/test", (req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     server: "AI Calorie Tracker Backend",
     version: "1.0.0"
+  });
+});
+app.post("/api/test-form-data", (req, res) => {
+  log2("=== FORM DATA TEST ENDPOINT HIT ===");
+  log2("Content-Type:", req.get("Content-Type"));
+  log2("Parsed body:", req.body);
+  log2("Body type:", typeof req.body);
+  log2("Body keys:", Object.keys(req.body || {}).join(", "));
+  res.json({
+    success: true,
+    message: "Form data test endpoint working",
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    receivedBody: req.body,
+    bodyType: typeof req.body,
+    bodyKeys: Object.keys(req.body || {}),
+    contentType: req.get("Content-Type")
   });
 });
 app.get("/api/connectivity-test", (req, res) => {

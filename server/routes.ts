@@ -762,9 +762,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: `Message ${i} role must be 'user' or 'assistant'` });
         }
 
-        if (typeof msg.content !== 'string') {
-          console.log(`[NUTRITION-COACH] ERROR: Message ${i} content is not a string, type: ${typeof msg.content}`);
-          return res.status(400).json({ error: `Message ${i} content must be a string` });
+        if (typeof msg.content !== 'string' && (typeof msg.content !== 'object' || !msg.content.image_url)) {
+          console.log(`[NUTRITION-COACH] ERROR: Message ${i} content must be a string or object with image_url, type: ${typeof msg.content}`);
+          return res.status(400).json({ error: `Message ${i} content must be a string or object with image_url` });
         }
       }
 

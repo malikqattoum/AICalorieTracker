@@ -5,8 +5,8 @@ export default {
   async askQuestion(req: Request, res: Response) {
     try {
       const userId = (req as any).user.id;
-      const { question } = req.body;
-      const response = await NutritionCoachService.askQuestion(userId, question);
+      const { question, imageData } = req.body;
+      const response = await NutritionCoachService.askQuestion(userId, question, imageData);
       res.json(response);
     } catch (error) {
       res.status(500).json({ error: 'Failed to process question' });

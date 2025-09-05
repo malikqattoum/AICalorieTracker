@@ -16,9 +16,8 @@ export function NutritionCoachChatbot({ userId }: { userId?: number }) {
     setLoading(true);
     setInput("");
     try {
-      const res = await apiRequest("POST", "/api/nutrition-coach-chat", {
-        userId,
-        messages: [...messages, { role: "user", content: input }],
+      const res = await apiRequest("POST", "/api/user/nutrition-coach/ask", {
+        question: input,
       });
       if (!res.ok) throw new Error("Failed to get response");
       const data = await res.json();

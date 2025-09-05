@@ -5,6 +5,7 @@ interface ValidationRule {
   type?: 'email' | 'string' | 'number' | 'boolean';
   minLength?: number;
   min?: number;
+  max?: number;
 }
 
 export default {
@@ -47,7 +48,14 @@ export default {
               error: `${field} must be at least ${rules.min}`
             });
           }
-          
+
+          // Check maximum value
+          if (rules.max !== undefined && value > rules.max) {
+            return res.status(400).json({
+              error: `${field} must be at most ${rules.max}`
+            });
+          }
+
           // Check boolean type
           if (rules.type === 'boolean' && typeof value !== 'boolean') {
             return res.status(400).json({ error: `${field} must be a boolean` });
