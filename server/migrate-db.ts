@@ -19,10 +19,10 @@ async function migrateDatabase() {
 
     // Create missing tables that are referenced in the application
     const requiredTables = [
-      'users', 'meal_analyses', 'weekly_stats', 'site_content', 
+      'users', 'meal_analyses', 'weekly_stats', 'site_content',
       'nutrition_goals', 'ai_config', 'planned_meals', 'favorite_meals',
-      'imported_recipes', 'languages', 'translations', 'workouts', 
-      'wearable_data', 'app_config'
+      'imported_recipes', 'languages', 'translations', 'workouts',
+      'wearable_data', 'app_config', 'coach_answers'
     ];
 
     for (const tableName of requiredTables) {
@@ -160,6 +160,24 @@ async function createTable(tableName: string) {
           type VARCHAR(50) NOT NULL DEFAULT 'string',
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+      break;
+
+    case 'coach_answers':
+      await db.execute(sql`
+        CREATE TABLE coach_answers (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          question TEXT NOT NULL,
+          answer TEXT NOT NULL,
+          rating INT,
+          comment TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          INDEX idx_user_id (user_id),
+          INDEX idx_created_at (created_at)
         )
       `);
       break;

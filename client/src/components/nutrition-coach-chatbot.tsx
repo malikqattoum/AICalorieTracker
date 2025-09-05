@@ -42,7 +42,7 @@ export function NutritionCoachChatbot({ userId }: { userId?: number }) {
       const res = await apiRequest("POST", "/api/user/nutrition-coach/ask", payload);
       if (!res.ok) throw new Error("Failed to get response");
       const data = await res.json();
-      setMessages((msgs) => [...msgs, { role: "assistant", content: data.reply }]);
+      setMessages((msgs) => [...msgs, { role: "assistant", content: data.answer }]);
     } catch (e: any) {
       setMessages((msgs) => [...msgs, { role: "assistant", content: "Sorry, I couldn't process your request." }]);
     } finally {

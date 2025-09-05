@@ -76,10 +76,12 @@ Question: ${question}`;
       };
       
       // Store in database
+      log(`Attempting to insert into coach_answers table for user ${userId}`);
       await db.execute(
         'INSERT INTO coach_answers (user_id, question, answer) VALUES (?, ?, ?)',
         [userId, question, aiAnswer]
       );
+      log(`Successfully inserted coach answer for user ${userId}`);
       
       log(`AI nutrition coach response generated for user ${userId}`);
       return answer;
@@ -99,10 +101,12 @@ Question: ${question}`;
         created_at: new Date()
       };
       
+      log(`Attempting fallback insert into coach_answers table for user ${userId}`);
       await db.execute(
         'INSERT INTO coach_answers (user_id, question, answer) VALUES (?, ?, ?)',
         [userId, question, fallbackAnswer]
       );
+      log(`Successfully inserted fallback coach answer for user ${userId}`);
       
       return answer;
     }
@@ -157,10 +161,12 @@ Question: ${question}`;
   },
 
   async getHistory(userId: number): Promise<CoachAnswer[]> {
+    log(`Attempting to query coach_answers table for user ${userId} history`);
     const [answers] = await db.execute(
       'SELECT * FROM coach_answers WHERE user_id = ? ORDER BY created_at DESC',
       [userId]
     );
+    log(`Successfully retrieved ${answers.length} coach answers for user ${userId}`);
     return (answers as any[]).map(row => ({
       id: row.id,
       user_id: row.user_id,
@@ -173,10 +179,12 @@ Question: ${question}`;
   },
 
   async submitFeedback(userId: number, answerId: number, rating: number, comment?: string) {
+    log(`Attempting to update coach_answers table for answer ${answerId}, user ${userId}`);
     await db.execute(
       'UPDATE coach_answers SET rating = ?, comment = ? WHERE id = ? AND user_id = ?',
       [rating, comment, answerId, userId]
     );
+    log(`Successfully updated feedback for coach answer ${answerId}`);
   },
 
   async getRecommendations(userId: number) {
