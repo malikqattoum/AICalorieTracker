@@ -278,7 +278,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageData: z.string()
       });
 
-      const validatedData = requestSchema.parse(req.body);
+      // Normalize body to support multiple field names and URL-encoded forms
+      const body: any = req.body || {};
+      const normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
+
+      const validatedData = requestSchema.parse({ imageData: normalizedImageData });
       const userId = req.user!.id;
 
       // Remove data URL prefix if present
