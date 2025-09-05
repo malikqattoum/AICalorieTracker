@@ -4,33 +4,6 @@
 -- Enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Drop existing tables if they exist (for migration purposes)
-DROP TABLE IF EXISTS meal_image_archive;
-DROP TABLE IF EXISTS meal_images;
-DROP TABLE IF EXISTS wearable_data;
-DROP TABLE IF EXISTS health_scores;
-DROP TABLE IF EXISTS health_goals;
-DROP TABLE IF EXISTS health_insights;
-DROP TABLE IF EXISTS real_time_monitoring;
-DROP TABLE IF EXISTS pattern_analysis;
-DROP TABLE IF EXISTS health_reports;
-DROP TABLE IF EXISTS healthcare_integration;
-DROP TABLE IF EXISTS favorite_meals;
-DROP TABLE IF EXISTS imported_recipes;
-DROP TABLE IF EXISTS referral_settings;
-DROP TABLE IF EXISTS referral_commissions;
-DROP TABLE IF EXISTS languages;
-DROP TABLE IF EXISTS translations;
-DROP TABLE IF EXISTS workouts;
-DROP TABLE IF EXISTS weekly_stats;
-DROP TABLE IF EXISTS site_content;
-DROP TABLE IF EXISTS app_config;
-DROP TABLE IF EXISTS planned_meals;
-DROP TABLE IF EXISTS nutrition_goals;
-DROP TABLE IF EXISTS user_preferences;
-DROP TABLE IF EXISTS user_activity;
-DROP TABLE IF EXISTS analytics_events;
-
 -- Core User and Authentication Tables
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,

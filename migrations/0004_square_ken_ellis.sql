@@ -1,4 +1,4 @@
-CREATE TABLE `app_config` (
+CREATE TABLE IF NOT EXISTS `app_config` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`key` varchar(255) NOT NULL,
 	`value` text,

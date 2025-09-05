@@ -1,5 +1,5 @@
 -- Create wearable data table for storing fitness tracker information
-CREATE TABLE wearable_data (
+CREATE TABLE IF NOT EXISTS wearable_data (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   device_type VARCHAR(100) NOT NULL,

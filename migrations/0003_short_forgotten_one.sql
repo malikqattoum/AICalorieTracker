@@ -1,4 +1,4 @@
-CREATE TABLE `imported_recipes` (
+CREATE TABLE IF NOT EXISTS `imported_recipes` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`source_url` varchar(2048),

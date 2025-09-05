@@ -1,4 +1,4 @@
-CREATE TABLE `user_preferences` (
+CREATE TABLE IF NOT EXISTS `user_preferences` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`theme` varchar(20) DEFAULT 'light',
@@ -14,7 +14,7 @@ CREATE TABLE `user_preferences` (
 	CONSTRAINT `user_preferences_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `ai_config` (
+CREATE TABLE IF NOT EXISTS `ai_config` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`provider` varchar(50) NOT NULL DEFAULT 'openai',
 	`api_key_encrypted` text,
@@ -28,7 +28,7 @@ CREATE TABLE `ai_config` (
 	CONSTRAINT `ai_config_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `languages` (
+CREATE TABLE IF NOT EXISTS `languages` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`code` varchar(10) NOT NULL,
 	`name` varchar(100) NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE `languages` (
 	CONSTRAINT `languages_code_unique` UNIQUE(`code`)
 );
 --> statement-breakpoint
-CREATE TABLE `translations` (
+CREATE TABLE IF NOT EXISTS `translations` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`language_id` int NOT NULL,
 	`key` varchar(255) NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE `translations` (
 	CONSTRAINT `translations_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `referral_settings` (
+CREATE TABLE IF NOT EXISTS `referral_settings` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`commission_percent` decimal(5,2) NOT NULL DEFAULT 10.00,
 	`is_recurring` boolean NOT NULL DEFAULT false,
@@ -60,7 +60,7 @@ CREATE TABLE `referral_settings` (
 	CONSTRAINT `referral_settings_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `referral_commissions` (
+CREATE TABLE IF NOT EXISTS `referral_commissions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`referrer_id` int NOT NULL,
 	`referee_id` int NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE `referral_commissions` (
 	CONSTRAINT `referral_commissions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `health_goals` (
+CREATE TABLE IF NOT EXISTS `health_goals` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`goal_type` varchar(50) NOT NULL,
@@ -99,7 +99,7 @@ CREATE TABLE `health_goals` (
 	CONSTRAINT `health_goals_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `health_insights` (
+CREATE TABLE IF NOT EXISTS `health_insights` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`insight_type` varchar(50) NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE `health_insights` (
 	CONSTRAINT `health_insights_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `health_predictions` (
+CREATE TABLE IF NOT EXISTS `health_predictions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`prediction_type` varchar(50) NOT NULL,
@@ -135,7 +135,7 @@ CREATE TABLE `health_predictions` (
 	CONSTRAINT `health_predictions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `health_reports` (
+CREATE TABLE IF NOT EXISTS `health_reports` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`report_type` varchar(20) NOT NULL,
@@ -155,7 +155,7 @@ CREATE TABLE `health_reports` (
 	CONSTRAINT `health_reports_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `health_scores` (
+CREATE TABLE IF NOT EXISTS `health_scores` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`score_type` varchar(50) NOT NULL,
@@ -171,7 +171,7 @@ CREATE TABLE `health_scores` (
 	CONSTRAINT `health_scores_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `healthcare_integration` (
+CREATE TABLE IF NOT EXISTS `healthcare_integration` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`professional_id` varchar(100) NOT NULL,
@@ -190,7 +190,7 @@ CREATE TABLE `healthcare_integration` (
 	CONSTRAINT `healthcare_integration_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `pattern_analysis` (
+CREATE TABLE IF NOT EXISTS `pattern_analysis` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`pattern_type` varchar(50) NOT NULL,
@@ -212,7 +212,7 @@ CREATE TABLE `pattern_analysis` (
 	CONSTRAINT `pattern_analysis_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `real_time_monitoring` (
+CREATE TABLE IF NOT EXISTS `real_time_monitoring` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`metric_type` varchar(50) NOT NULL,
@@ -228,7 +228,7 @@ CREATE TABLE `real_time_monitoring` (
 	CONSTRAINT `real_time_monitoring_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_album_items` (
+CREATE TABLE IF NOT EXISTS `image_album_items` (
 	`id` varchar(255) NOT NULL,
 	`album_id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE `image_album_items` (
 	CONSTRAINT `image_album_items_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_albums` (
+CREATE TABLE IF NOT EXISTS `image_albums` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`name` varchar(100) NOT NULL,
@@ -250,7 +250,7 @@ CREATE TABLE `image_albums` (
 	CONSTRAINT `image_albums_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_analytics` (
+CREATE TABLE IF NOT EXISTS `image_analytics` (
 	`id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
@@ -262,7 +262,7 @@ CREATE TABLE `image_analytics` (
 	CONSTRAINT `image_analytics_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_cache` (
+CREATE TABLE IF NOT EXISTS `image_cache` (
 	`id` varchar(255) NOT NULL,
 	`cache_key` varchar(255),
 	`image_id` varchar(255) NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE `image_cache` (
 	CONSTRAINT `image_cache_cache_key_unique` UNIQUE(`cache_key`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_metadata` (
+CREATE TABLE IF NOT EXISTS `image_metadata` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`original_filename` varchar(255) NOT NULL,
@@ -304,7 +304,7 @@ CREATE TABLE `image_metadata` (
 	CONSTRAINT `image_metadata_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_moderation` (
+CREATE TABLE IF NOT EXISTS `image_moderation` (
 	`id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
 	`moderated_by` int,
@@ -317,7 +317,7 @@ CREATE TABLE `image_moderation` (
 	CONSTRAINT `image_moderation_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_processing_jobs` (
+CREATE TABLE IF NOT EXISTS `image_processing_jobs` (
 	`id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
 	`job_type` varchar(20) NOT NULL,
@@ -332,7 +332,7 @@ CREATE TABLE `image_processing_jobs` (
 	CONSTRAINT `image_processing_jobs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_sharing` (
+CREATE TABLE IF NOT EXISTS `image_sharing` (
 	`id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
 	`shared_by` int NOT NULL,
@@ -344,7 +344,7 @@ CREATE TABLE `image_sharing` (
 	CONSTRAINT `image_sharing_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_storage_quotas` (
+CREATE TABLE IF NOT EXISTS `image_storage_quotas` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`total_quota` bigint DEFAULT 5368709120,
@@ -356,7 +356,7 @@ CREATE TABLE `image_storage_quotas` (
 	CONSTRAINT `image_storage_quotas_user_id_unique` UNIQUE(`user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `image_thumbnails` (
+CREATE TABLE IF NOT EXISTS `image_thumbnails` (
 	`id` varchar(255) NOT NULL,
 	`image_id` varchar(255) NOT NULL,
 	`size` varchar(20) NOT NULL,
@@ -370,7 +370,7 @@ CREATE TABLE `image_thumbnails` (
 	CONSTRAINT `image_thumbnails_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `meal_image_archive` (
+CREATE TABLE IF NOT EXISTS `meal_image_archive` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`meal_analysis_id` int NOT NULL,
 	`file_path` varchar(500) NOT NULL,
@@ -380,7 +380,7 @@ CREATE TABLE `meal_image_archive` (
 	CONSTRAINT `meal_image_archive_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `meal_images` (
+CREATE TABLE IF NOT EXISTS `meal_images` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`meal_analysis_id` int NOT NULL,
 	`file_path` varchar(500) NOT NULL,
@@ -396,7 +396,7 @@ CREATE TABLE `meal_images` (
 	CONSTRAINT `meal_images_image_hash_unique` UNIQUE(`image_hash`)
 );
 --> statement-breakpoint
-CREATE TABLE `device_tokens` (
+CREATE TABLE IF NOT EXISTS `device_tokens` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`token` varchar(500) NOT NULL,
@@ -409,7 +409,7 @@ CREATE TABLE `device_tokens` (
 	CONSTRAINT `device_tokens_token_unique` UNIQUE(`token`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_campaigns` (
+CREATE TABLE IF NOT EXISTS `notification_campaigns` (
 	`id` varchar(255) NOT NULL,
 	`name` varchar(100) NOT NULL,
 	`description` text,
@@ -428,7 +428,7 @@ CREATE TABLE `notification_campaigns` (
 	CONSTRAINT `notification_campaigns_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_logs` (
+CREATE TABLE IF NOT EXISTS `notification_logs` (
 	`id` varchar(255) NOT NULL,
 	`notification_id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
@@ -442,7 +442,7 @@ CREATE TABLE `notification_logs` (
 	CONSTRAINT `notification_logs_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_preferences` (
+CREATE TABLE IF NOT EXISTS `notification_preferences` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`categories` json,
@@ -455,7 +455,7 @@ CREATE TABLE `notification_preferences` (
 	CONSTRAINT `notification_preferences_user_id_unique` UNIQUE(`user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_settings` (
+CREATE TABLE IF NOT EXISTS `notification_settings` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`meal_reminders` boolean DEFAULT true,
@@ -474,7 +474,7 @@ CREATE TABLE `notification_settings` (
 	CONSTRAINT `notification_settings_user_id_unique` UNIQUE(`user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_stats` (
+CREATE TABLE IF NOT EXISTS `notification_stats` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`date` varchar(10) NOT NULL,
@@ -488,7 +488,7 @@ CREATE TABLE `notification_stats` (
 	CONSTRAINT `notification_stats_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `notification_templates` (
+CREATE TABLE IF NOT EXISTS `notification_templates` (
 	`id` varchar(255) NOT NULL,
 	`name` varchar(100) NOT NULL,
 	`title` varchar(255) NOT NULL,
@@ -503,7 +503,7 @@ CREATE TABLE `notification_templates` (
 	CONSTRAINT `notification_templates_name_unique` UNIQUE(`name`)
 );
 --> statement-breakpoint
-CREATE TABLE `push_notifications` (
+CREATE TABLE IF NOT EXISTS `push_notifications` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`title` varchar(255) NOT NULL,
@@ -523,7 +523,7 @@ CREATE TABLE `push_notifications` (
 	CONSTRAINT `push_notifications_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `customers` (
+CREATE TABLE IF NOT EXISTS `customers` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`stripe_customer_id` varchar(255),
@@ -537,7 +537,7 @@ CREATE TABLE `customers` (
 	CONSTRAINT `customers_stripe_customer_id_unique` UNIQUE(`stripe_customer_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `invoices` (
+CREATE TABLE IF NOT EXISTS `invoices` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`subscription_id` varchar(255),
@@ -554,7 +554,7 @@ CREATE TABLE `invoices` (
 	CONSTRAINT `invoices_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `payment_intents` (
+CREATE TABLE IF NOT EXISTS `payment_intents` (
 	`id` varchar(255) NOT NULL,
 	`amount` decimal(10,2) NOT NULL,
 	`currency` varchar(3) DEFAULT 'usd',
@@ -568,7 +568,7 @@ CREATE TABLE `payment_intents` (
 	CONSTRAINT `payment_intents_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `payment_methods` (
+CREATE TABLE IF NOT EXISTS `payment_methods` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`type` varchar(50) NOT NULL,
@@ -583,7 +583,7 @@ CREATE TABLE `payment_methods` (
 	CONSTRAINT `payment_methods_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `payment_webhooks` (
+CREATE TABLE IF NOT EXISTS `payment_webhooks` (
 	`id` varchar(255) NOT NULL,
 	`event_type` varchar(100) NOT NULL,
 	`event_data` text NOT NULL,
@@ -594,7 +594,7 @@ CREATE TABLE `payment_webhooks` (
 	CONSTRAINT `payment_webhooks_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `refunds` (
+CREATE TABLE IF NOT EXISTS `refunds` (
 	`id` varchar(255) NOT NULL,
 	`transaction_id` varchar(255) NOT NULL,
 	`amount` decimal(10,2) NOT NULL,
@@ -608,7 +608,7 @@ CREATE TABLE `refunds` (
 	CONSTRAINT `refunds_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `subscription_items` (
+CREATE TABLE IF NOT EXISTS `subscription_items` (
 	`id` varchar(255) NOT NULL,
 	`subscription_id` varchar(255) NOT NULL,
 	`price_id` varchar(255) NOT NULL,
@@ -618,7 +618,7 @@ CREATE TABLE `subscription_items` (
 	CONSTRAINT `subscription_items_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `subscriptions` (
+CREATE TABLE IF NOT EXISTS `subscriptions` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`plan_id` varchar(50) NOT NULL,
@@ -636,7 +636,7 @@ CREATE TABLE `subscriptions` (
 	CONSTRAINT `subscriptions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `transactions` (
+CREATE TABLE IF NOT EXISTS `transactions` (
 	`id` varchar(255) NOT NULL,
 	`user_id` int NOT NULL,
 	`amount` decimal(10,2) NOT NULL,
@@ -654,7 +654,7 @@ CREATE TABLE `transactions` (
 	CONSTRAINT `transactions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `wearable_data` (
+CREATE TABLE IF NOT EXISTS `wearable_data` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`device_type` varchar(50) NOT NULL,

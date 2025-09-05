@@ -1,8 +1,8 @@
--- Add food density column
-ALTER TABLE foods ADD COLUMN density REAL;
+-- Add food density column to meal_analyses
+ALTER TABLE meal_analyses ADD COLUMN IF NOT EXISTS density REAL;
 
 -- Create reference objects table
-CREATE TABLE reference_objects (
+CREATE TABLE IF NOT EXISTS reference_objects (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   width_cm REAL NOT NULL,

@@ -1,24 +1,4 @@
-CREATE TABLE `meal_analyses` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`user_id` int NOT NULL,
-	`food_name` varchar(255) NOT NULL,
-	`calories` int NOT NULL,
-	`protein` int NOT NULL,
-	`carbs` int NOT NULL,
-	`fat` int NOT NULL,
-	`fiber` int NOT NULL,
-	`image_data` text NOT NULL,
-	`timestamp` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	CONSTRAINT `meal_analyses_id` PRIMARY KEY(`id`)
-);
---> statement-breakpoint
-CREATE TABLE `site_content` (
-	`key` varchar(64) NOT NULL,
-	`value` text NOT NULL,
-	CONSTRAINT `site_content_key` PRIMARY KEY(`key`)
-);
---> statement-breakpoint
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`username` varchar(255) NOT NULL,
 	`password` varchar(255) NOT NULL,
@@ -35,7 +15,22 @@ CREATE TABLE `users` (
 	CONSTRAINT `users_username_unique` UNIQUE(`username`)
 );
 --> statement-breakpoint
-CREATE TABLE `weekly_stats` (
+CREATE TABLE IF NOT EXISTS `meal_analyses` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`user_id` int NOT NULL,
+	`food_name` varchar(255) NOT NULL,
+	`calories` int NOT NULL,
+	`protein` int NOT NULL,
+	`carbs` int NOT NULL,
+	`fat` int NOT NULL,
+	`fiber` int NOT NULL,
+	`image_data` text NOT NULL,
+	`timestamp` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT `meal_analyses_id` PRIMARY KEY(`id`),
+	CONSTRAINT `fk_meal_analyses_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `weekly_stats` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_id` int NOT NULL,
 	`average_calories` int NOT NULL,
@@ -45,5 +40,12 @@ CREATE TABLE `weekly_stats` (
 	`week_starting` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`calories_by_day` json NOT NULL,
 	`macros_by_day` json,
-	CONSTRAINT `weekly_stats_id` PRIMARY KEY(`id`)
+	CONSTRAINT `weekly_stats_id` PRIMARY KEY(`id`),
+	CONSTRAINT `fk_weekly_stats_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `site_content` (
+	`key` varchar(64) NOT NULL,
+	`value` text NOT NULL,
+	CONSTRAINT `site_content_key` PRIMARY KEY(`key`)
 );
