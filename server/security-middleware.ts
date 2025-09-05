@@ -78,7 +78,7 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
  */
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const allowedOrigins = process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] 
+    ? ['https://aical.scanitix.com'] 
     : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'];
 
   const origin = req.headers.origin;

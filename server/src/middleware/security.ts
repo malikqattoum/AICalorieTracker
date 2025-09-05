@@ -83,13 +83,33 @@ export const aiRateLimiter = createRateLimiter(
   'Too many AI service requests, please try again later'
 );
 
-// CORS configuration
+// CORS configuration - environment-aware
 export const corsOptions = {
   origin: function (origin: string | undefined, callback: Function) {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:4173'
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isStaging = process.env.NODE_ENV === 'staging';
+
+    const allowedOrigins = [
+      // Environment variable override
+      ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
+      // Development origins
+      ...(isDevelopment ? [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:4173'
+      ] : []),
+      // Production origins
+      ...(isProduction ? [
+        'https://aicalorietracker.com',
+        'https://www.aicalorietracker.com',
+        'https://aical.scanitix.com',
+        'https://www.aical.scanitix.com'
+      ] : []),
+      // Staging origins
+      ...(isStaging ? [
+        'https://staging.aicalorietracker.com'
+      ] : [])
     ];
     
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {

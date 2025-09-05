@@ -36,16 +36,31 @@ export const getDetailedIpInfo = (req: Request): {
 };
 
 /**
- * Enhanced CORS validation
+ * Enhanced CORS validation - environment-aware
  */
 export const validateCORS = (origin: string): boolean => {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isStaging = process.env.NODE_ENV === 'staging';
+
   const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:4173',
-    'https://aicalorietracker.com',
-    'https://www.aicalorietracker.com',
-    'https://staging.aicalorietracker.com'
+    // Development origins
+    ...(isDevelopment ? [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:4173'
+    ] : []),
+    // Production origins
+    ...(isProduction ? [
+      'https://aicalorietracker.com',
+      'https://www.aicalorietracker.com',
+      'https://aical.scanitix.com',
+      'https://www.aical.scanitix.com'
+    ] : []),
+    // Staging origins
+    ...(isStaging ? [
+      'https://staging.aicalorietracker.com'
+    ] : [])
   ];
   
   if (!origin) return false;

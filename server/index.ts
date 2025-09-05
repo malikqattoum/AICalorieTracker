@@ -148,9 +148,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use((req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type') || 'unknown';
   console.log('[POST-PARSING] Content-Type:', contentType);
-  console.log('[POST-PARSING] Body:', req.body);
-  console.log('[POST-PARSING] Body type:', typeof req.body);
-  console.log('[POST-PARSING] Body keys:', Object.keys(req.body || {}));
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[POST-PARSING] Body:', req.body);
+    console.log('[POST-PARSING] Body type:', typeof req.body);
+    console.log('[POST-PARSING] Body keys:', Object.keys(req.body || {}));
+  }
   next();
 });
 

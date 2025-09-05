@@ -1,13 +1,13 @@
 // API Configuration for Web App
 const API_CONFIG = {
   // Development API URL - Use HTTP for development, HTTPS for security in production
-  development: 'http://localhost:3002',
+  development: import.meta.env.VITE_API_URL_DEV || 'http://localhost:3000',
 
   // Production API URL
-  production: 'https://aical.scanitix.com',
+  production: import.meta.env.VITE_API_URL_PROD || 'https://aical.scanitix.com',
 
   // Staging API URL
-  staging: 'https://staging-api.aicalorietracker.com',
+  staging: import.meta.env.VITE_API_URL_STAGING || 'https://staging-api.aicalorietracker.com',
 };
 
 // Get current environment
@@ -252,17 +252,26 @@ export const SECURITY_CONFIG = {
     'Expires': '0'
   },
   
-  // CORS configuration
+  // CORS configuration - environment-aware
   cors: {
     allowedOrigins: [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:4173',
-      'https://aicalorietracker.com',
-      'https://www.aicalorietracker.com',
-      'https://staging.aicalorietracker.com',
-      'https://aical.scanitix.com',
-      'https://www.aical.scanitix.com'
+      // Development origins
+      ...(currentEnv === 'development' ? [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:4173'
+      ] : []),
+      // Production origins
+      ...(currentEnv === 'production' ? [
+        'https://aicalorietracker.com',
+        'https://www.aicalorietracker.com',
+        'https://aical.scanitix.com',
+        'https://www.aical.scanitix.com'
+      ] : []),
+      // Staging origins
+      ...(currentEnv === 'staging' ? [
+        'https://staging.aicalorietracker.com'
+      ] : [])
     ],
     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [

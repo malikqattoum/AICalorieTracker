@@ -24,6 +24,7 @@ import ProfilePage from "./pages/profile-page";
 import PremiumAnalyticsPage from "./pages/PremiumAnalytics";
 import { ProtectedRoute } from "./lib/protected-route";
 import { ReactElement } from "react";
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const RedirectToLogin = () => {
   const [, setLocation] = useLocation();
@@ -62,11 +63,13 @@ function Router(): ReactElement {
 
 function App(): ReactElement {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light">
-      <TooltipProvider>
-        <Router />
-      </TooltipProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider attribute="class" defaultTheme="light">
+        <TooltipProvider>
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

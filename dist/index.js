@@ -14973,7 +14973,9 @@ var securityConfig2 = {
       "http://localhost:5173",
       "http://localhost:4173",
       "http://localhost:5000",
-      "http://localhost:5001"
+      "http://localhost:5001",
+      "https://aical.scanitix.com",
+      "https://www.aical.scanitix.com"
     ],
     credentials: process.env.CORS_CREDENTIALS !== "false",
     optionsSuccessStatus: 200,
