@@ -283,30 +283,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageData: z.string()
       });
 
-      // Normalize body to support multiple field names and URL-encoded forms
+      // Normalize body to support multiple field names
       const body: any = req.body || {};
-      console.log('[ANALYZE-FOOD] Raw request body keys:', Object.keys(body));
+      console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(body));
       console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
 
       let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
 
-      // Handle case where imageData might be a JSON string due to parsing issues
-      if (normalizedImageData && typeof normalizedImageData === 'string') {
-        if (normalizedImageData.startsWith('{')) {
+      // Handle case where JSON was parsed as URL-encoded form data
+      if (!normalizedImageData && Object.keys(body).length === 1) {
+        const singleKey = Object.keys(body)[0];
+        const singleValue = body[singleKey];
+
+        // Check if the key looks like JSON and value is empty (URL-encoded parsing issue)
+        if (singleKey.startsWith('{') && singleKey.endsWith('}') && (!singleValue || singleValue === '')) {
           try {
-            const parsed = JSON.parse(normalizedImageData);
+            console.log('[ANALYZE-FOOD] Attempting to parse malformed JSON from URL-encoded key');
+            const parsed = JSON.parse(singleKey);
             normalizedImageData = parsed.imageData || parsed.image || parsed.data || null;
-            console.log('[ANALYZE-FOOD] Parsed imageData from JSON string');
+            console.log('[ANALYZE-FOOD] Successfully parsed JSON from URL-encoded key');
           } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to parse imageData as JSON string');
-          }
-        } else if (normalizedImageData.startsWith('"') && normalizedImageData.endsWith('"')) {
-          // Handle case where the string is double-quoted
-          try {
-            normalizedImageData = JSON.parse(normalizedImageData);
-            console.log('[ANALYZE-FOOD] Unquoted imageData string');
-          } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to unquote imageData string');
+            console.log('[ANALYZE-FOOD] Failed to parse JSON from URL-encoded key:', e);
           }
         }
       }
