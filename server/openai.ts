@@ -94,16 +94,41 @@ export async function analyzeFoodImage(base64Image: string): Promise<FoodAnalysi
       max_tokens: 500,
     });
 
-    const result = JSON.parse(response.choices[0].message.content ?? '{}') as FoodAnalysisResult;
+    const rawContent = response.choices?.[0]?.message?.content ?? '';
+
+    // Robust JSON parsing to handle occasional extra text or code fences
+    const tryParse = (s: string): any => {
+      const trimmed = s.trim();
+      // Strip Markdown code fences
+      const fence = trimmed.replace(/^```json\s*|```$/g, '');
+      try { return JSON.parse(fence); } catch {}
+      // Extract first top-level JSON object
+      const start = fence.indexOf('{');
+      const end = fence.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        const candidate = fence.substring(start, end + 1);
+        try { return JSON.parse(candidate); } catch {}
+      }
+      // Extract first top-level JSON array
+      const aStart = fence.indexOf('[');
+      const aEnd = fence.lastIndexOf(']');
+      if (aStart !== -1 && aEnd !== -1 && aEnd > aStart) {
+        const candidate = fence.substring(aStart, aEnd + 1);
+        try { return JSON.parse(candidate); } catch {}
+      }
+      throw new Error(`Model returned non-JSON content: ${fence.substring(0, 120)}...`);
+    };
+
+    const result = tryParse(rawContent) as FoodAnalysisResult;
     
     // Ensure all values are numbers
     return {
-      foodName: result.foodName,
-      calories: Math.round(result.calories),
-      protein: Math.round(result.protein),
-      carbs: Math.round(result.carbs),
-      fat: Math.round(result.fat),
-      fiber: Math.round(result.fiber)
+      foodName: String(result.foodName || ''),
+      calories: Math.round(Number(result.calories || 0)),
+      protein: Math.round(Number(result.protein || 0)),
+      carbs: Math.round(Number(result.carbs || 0)),
+      fat: Math.round(Number(result.fat || 0)),
+      fiber: Math.round(Number(result.fiber || 0))
     };
   } catch (error) {
     console.error("Error analyzing food image:", error);
