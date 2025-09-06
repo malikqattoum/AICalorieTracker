@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { writeFile, readFile, unlink, mkdir, access, constants } from 'fs/promises';
 import { join, dirname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { fileTypeFromBuffer } from 'file-type';
 import db from '../db';
 
 // Image storage configuration
@@ -131,15 +132,16 @@ class ImageStorageService {
   /**
    * Validate image file
    */
-  private async validateImage(buffer: Buffer, mimeType: string): Promise<void> {
+  private async validateImage(buffer: Buffer, clientMimeType: string): Promise<string> {
     // Check file size
     if (buffer.length > IMAGE_STORAGE_CONFIG.local.maxFileSize) {
       throw new Error(`Image size exceeds maximum limit of ${IMAGE_STORAGE_CONFIG.local.maxFileSize} bytes`);
     }
 
-    // Check MIME type
-    if (!IMAGE_STORAGE_CONFIG.local.allowedMimeTypes.includes(mimeType)) {
-      throw new Error(`Unsupported image type: ${mimeType}`);
+    // Detect actual MIME type from buffer
+    const detected = await fileTypeFromBuffer(buffer);
+    if (!detected || !IMAGE_STORAGE_CONFIG.local.allowedMimeTypes.includes(detected.mime)) {
+      throw new Error(`Unsupported or invalid image type: ${detected?.mime || 'unknown'}`);
     }
 
     // Basic image validation by checking if buffer starts with image signatures
@@ -149,10 +151,12 @@ class ImageStorageService {
       'image/webp': Buffer.from([0x52, 0x49, 0x46, 0x46]),
     };
 
-    const expectedSignature = signatures[mimeType];
+    const expectedSignature = signatures[detected.mime];
     if (!expectedSignature || !buffer.slice(0, expectedSignature.length).equals(expectedSignature)) {
       throw new Error('Invalid image file');
     }
+
+    return detected.mime;
   }
 
   /**
@@ -166,19 +170,19 @@ class ImageStorageService {
   ): Promise<ProcessedImage> {
     try {
       await this.initialize();
-      await this.validateImage(imageBuffer, mimeType);
+      const actualMimeType = await this.validateImage(imageBuffer, mimeType);
 
       const hash = this.generateImageHash(imageBuffer);
-      const filename = this.generateFilename(originalName, mimeType);
+      const filename = this.generateFilename(originalName, actualMimeType);
 
       // Store original image
       const originalPath = await this.storeOriginalImage(imageBuffer, filename);
 
       // Process and store optimized image
-      const optimizedPath = await this.storeOptimizedImage(imageBuffer, filename, mimeType);
+      const optimizedPath = await this.storeOptimizedImage(imageBuffer, filename, actualMimeType);
 
       // Generate thumbnail
-      const thumbnailPath = await this.storeThumbnail(imageBuffer, filename, mimeType);
+      const thumbnailPath = await this.storeThumbnail(imageBuffer, filename, actualMimeType);
 
       // Create image metadata
       const originalMetadata: ImageMetadata = {
@@ -187,7 +191,7 @@ class ImageStorageService {
         filename,
         path: originalPath,
         size: imageBuffer.length,
-        mimeType,
+        mimeType: actualMimeType,
         hash,
         uploadedAt: new Date(),
         uploadedBy,
