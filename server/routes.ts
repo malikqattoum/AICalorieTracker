@@ -236,36 +236,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Demo route - Analyze food image without authentication
   app.post("/api/demo-analyze", async (req, res) => {
+    console.log('[SERVER-DEBUG] /api/demo-analyze request received');
+    console.log('[SERVER-DEBUG] Request headers:', req.headers);
+    console.log('[SERVER-DEBUG] Request body type:', typeof req.body);
+    console.log('[SERVER-DEBUG] Request body keys:', Object.keys(req.body || {}));
+
     try {
       const requestSchema = z.object({
         imageData: z.string()
       });
 
       const validatedData = requestSchema.parse(req.body);
+      console.log('[SERVER-DEBUG] Validation passed, imageData length:', validatedData.imageData.length);
 
       // Remove data URL prefix if present
       const base64Data = validatedData.imageData.includes('base64,')
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
+      console.log('[SERVER-DEBUG] Base64 data length after prefix removal:', base64Data.length);
 
       // Check cache first
       let analysis = aiCache.get(base64Data);
-      
+      console.log('[SERVER-DEBUG] Cache hit:', !!analysis);
+
       if (!analysis) {
+        console.log('[SERVER-DEBUG] Cache miss, calling AI service');
         // Analyze the food image using configured AI service
         analysis = await aiService.analyzeFoodImage(base64Data);
-        
+        console.log('[SERVER-DEBUG] AI analysis completed:', !!analysis);
+
         // Cache the result
         aiCache.set(base64Data, analysis);
+        console.log('[SERVER-DEBUG] Analysis cached');
       }
 
+      console.log('[SERVER-DEBUG] Sending successful response');
       // Return the analysis but don't save it
       res.status(200).json(analysis);
     } catch (error) {
-      console.error("Error analyzing food in demo:", error);
+      console.error("[SERVER-DEBUG] Error analyzing food in demo:", error);
+      console.error("[SERVER-DEBUG] Error type:", error instanceof Error ? error.constructor.name : typeof error);
       if (error instanceof z.ZodError) {
+        console.error("[SERVER-DEBUG] Zod validation errors:", error.errors);
         res.status(400).json({ message: "Invalid request data", errors: error.errors });
       } else {
+        console.error("[SERVER-DEBUG] Sending 500 error response");
         res.status(500).json({ message: "Failed to analyze food" });
       }
     }

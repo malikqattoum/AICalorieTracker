@@ -21,12 +21,24 @@ export default function TryItPage() {
 
   const analyzeImageMutation = useMutation({
     mutationFn: async (imageData: string) => {
+      console.log('[CLIENT-DEBUG] Starting analyze request');
       const res = await apiRequest("POST", "/api/demo-analyze", { imageData });
+      console.log('[CLIENT-DEBUG] Response received:', {
+        status: res.status,
+        statusText: res.statusText,
+        headers: Object.fromEntries(res.headers.entries()),
+        ok: res.ok
+      });
       const text = await res.text(); // avoid JSON parse on non-JSON
+      console.log('[CLIENT-DEBUG] Response text (first 200 chars):', text.substring(0, 200));
+      console.log('[CLIENT-DEBUG] Response text length:', text.length);
+      console.log('[CLIENT-DEBUG] Is response HTML?', text.trim().startsWith('<'));
       if (!res.ok) throw new Error(`${res.status}: ${text.slice(0,160)}`);
       try {
         return JSON.parse(text);
-      } catch {
+      } catch (parseError) {
+        console.error('[CLIENT-DEBUG] JSON parse error:', parseError);
+        console.error('[CLIENT-DEBUG] Full response text:', text);
         throw new Error(`Invalid JSON response: ${text.slice(0,160)}`);
       }
     },
