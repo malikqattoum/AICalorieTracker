@@ -25,7 +25,10 @@ export function CameraUploadCard() {
 
   const analyzeImageMutation = useMutation({
     mutationFn: async (imageData: string) => {
-      const res = await apiRequest("POST", "/api/analyze-food", { imageData });
+      // Extract base64 data from data URL if needed
+      const base64Data = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
+      console.log('[CAMERA-UPLOAD] Sending base64 data length:', base64Data.length);
+      const res = await apiRequest("POST", "/api/analyze-food", { imageData: base64Data });
       return res.json();
     },
     onSuccess: (analysis: MealAnalysis) => {
@@ -51,8 +54,12 @@ export function CameraUploadCard() {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const imageData = event.target?.result as string;
-      setUploadedImage(imageData);
+      const fullDataUrl = event.target?.result as string;
+      // Extract base64 data without the data URL prefix
+      const base64Data = fullDataUrl.split(',')[1];
+      console.log('[CAMERA-UPLOAD] File processed, base64 length:', base64Data.length);
+      setUploadedImage(fullDataUrl); // Keep full data URL for display
+      // But we'll send only the base64 part to the API
     };
     reader.readAsDataURL(file);
   };
@@ -73,7 +80,10 @@ export function CameraUploadCard() {
 
   const analyzeMultiFood = async (imageData: string) => {
     try {
-      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData });
+      // Extract base64 data from data URL if needed
+      const base64Data = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
+      console.log('[CAMERA-UPLOAD] Sending multi-food base64 data length:', base64Data.length);
+      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData: base64Data });
       const data = await res.json();
       setMultiFoodResult(data);
       toast({

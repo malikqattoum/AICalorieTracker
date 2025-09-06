@@ -24,8 +24,10 @@ router.post(
 
     if (possibleImage && !body.imageData) {
       const img = typeof possibleImage === 'string' ? possibleImage : String(possibleImage);
+      console.log('[NUTRITION-COACH-ROUTE] Processing image data, original length:', img.length);
       // Strip data URL prefix if present
       body.imageData = img.includes('base64,') ? img.split('base64,')[1] : img;
+      console.log('[NUTRITION-COACH-ROUTE] Processed image data length:', body.imageData.length);
     }
 
     req.body = body;

@@ -273,6 +273,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Analyze food image and create meal analysis
   app.post("/api/analyze-food", authenticate, async (req, res) => {
+    console.log('[ANALYZE-FOOD] Starting food analysis request');
+    console.log('[ANALYZE-FOOD] User ID:', req.user!.id);
+    console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(req.body || {}));
+    console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
+
     try {
       const requestSchema = z.object({
         imageData: z.string()
@@ -280,41 +285,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Normalize body to support multiple field names and URL-encoded forms
       const body: any = req.body || {};
+      console.log('[ANALYZE-FOOD] Raw request body:', body);
+      console.log('[ANALYZE-FOOD] Body keys:', Object.keys(body));
       const normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
+      console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
+      console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
+
+      // Check if image data is missing before Zod validation
+      if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
+        console.error('[ANALYZE-FOOD] Missing or invalid image data');
+        console.error('[ANALYZE-FOOD] Available body fields:', Object.keys(body));
+        return res.status(400).json({
+          message: "Image data is required. Please provide imageData, image, or data field with base64 encoded image.",
+          receivedFields: Object.keys(body),
+          expectedFields: ['imageData', 'image', 'data']
+        });
+      }
 
       const validatedData = requestSchema.parse({ imageData: normalizedImageData });
       const userId = req.user!.id;
+      console.log('[ANALYZE-FOOD] Validation passed, userId:', userId);
 
       // Remove data URL prefix if present
       const base64Data = validatedData.imageData.includes('base64,')
         ? validatedData.imageData.split('base64,')[1]
         : validatedData.imageData;
+      console.log('[ANALYZE-FOOD] Base64 data length after prefix removal:', base64Data.length);
 
       // Check cache first
       let analysis = aiCache.get(base64Data);
-      
+      console.log('[ANALYZE-FOOD] Cache hit:', !!analysis);
+
       if (!analysis) {
+        console.log('[ANALYZE-FOOD] Cache miss, calling AI service');
         // Analyze the food image using configured AI service
         analysis = await aiService.analyzeFoodImage(base64Data);
-        
+        console.log('[ANALYZE-FOOD] AI analysis completed:', !!analysis);
+
         // Cache the result
         aiCache.set(base64Data, analysis);
+        console.log('[ANALYZE-FOOD] Analysis cached');
       }
 
+      console.log('[ANALYZE-FOOD] Starting image storage process');
       // Persist image to storage (original, optimized, thumbnail)
       const { imageStorageService } = await import('./src/services/imageStorageService');
       const buffer = Buffer.from(base64Data, 'base64');
+      console.log('[ANALYZE-FOOD] Buffer created, size:', buffer.length);
       const mimeType = (validatedData.imageData.startsWith('data:image/')
         ? validatedData.imageData.substring(5, validatedData.imageData.indexOf(';'))
         : 'image/jpeg');
+      console.log('[ANALYZE-FOOD] MIME type detected:', mimeType);
+
       const processed = await imageStorageService.processAndStoreImage(
         buffer,
         'camera.jpg',
         mimeType,
         userId
       );
+      console.log('[ANALYZE-FOOD] Image processed successfully');
       const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
+      console.log('[ANALYZE-FOOD] Optimized URL generated:', optimizedUrl);
 
+      console.log('[ANALYZE-FOOD] Creating meal analysis record');
       // Create a meal analysis record referencing the stored file and hash
       const mealAnalysis = await storage.createMealAnalysis({
         userId,
@@ -328,7 +361,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageHash: processed.original.hash,
         analysisDetails: analysis.analysisDetails
       });
+      console.log('[ANALYZE-FOOD] Meal analysis record created, ID:', mealAnalysis.id);
 
+      console.log('[ANALYZE-FOOD] Inserting into meal_images table');
       // Insert into meal_images table
       const { db } = await import('./db');
       const { mealImages } = await import('./src/db/schemas/mealImages');
@@ -354,12 +389,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updatedAt: sql`CURRENT_TIMESTAMP`
           }
         });
+      console.log('[ANALYZE-FOOD] Database operations completed successfully');
 
+      console.log('[ANALYZE-FOOD] Sending successful response');
       res.status(201).json(mealAnalysis);
     } catch (error) {
-      console.error("Error analyzing food:", error);
+      console.error("[ANALYZE-FOOD] Error analyzing food:", error);
+      console.error("[ANALYZE-FOOD] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        console.error("[ANALYZE-FOOD] Zod validation error:", error.errors);
+        // Provide more specific error message for imageData validation
+        const imageDataError = error.errors.find(err => err.path.includes('imageData'));
+        if (imageDataError) {
+          res.status(400).json({
+            message: "Image data is required and must be a valid string",
+            error: imageDataError.message,
+            code: imageDataError.code
+          });
+        } else {
+          res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        }
       } else {
         res.status(500).json({ message: "Failed to analyze food" });
       }

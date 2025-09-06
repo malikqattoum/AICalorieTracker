@@ -16,11 +16,18 @@ export function NutritionCoachChatbot({ userId }: { userId?: number }) {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      console.log('[NUTRITION-COACH] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
       setSelectedImage(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64 = e.target?.result as string;
-        setImageData(base64.split(',')[1]); // Remove the data:image/jpeg;base64, prefix
+        console.log('[NUTRITION-COACH] FileReader result length:', base64.length);
+        const base64Data = base64.split(',')[1];
+        console.log('[NUTRITION-COACH] Base64 data length after split:', base64Data.length);
+        setImageData(base64Data); // Remove the data:image/jpeg;base64, prefix
+      };
+      reader.onerror = (error) => {
+        console.error('[NUTRITION-COACH] FileReader error:', error);
       };
       reader.readAsDataURL(file);
     }
