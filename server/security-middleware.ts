@@ -108,23 +108,17 @@ export const corsMiddleware = (req: Request, res: Response, next: NextFunction) 
 
 /**
  * Input validation and sanitization middleware
- * Modified to preserve base64 image data while still preventing XSS attacks
  */
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
   // Sanitize user input to prevent XSS attacks
   const sanitize = (obj: any) => {
     for (const key in obj) {
       if (typeof obj[key] === 'string') {
-        // Check if this might be base64 image data (preserve it)
-        const isBase64Data = obj[key].includes('base64,') || /^[A-Za-z0-9+/]*={0,2}$/.test(obj[key]);
-        
-        if (!isBase64Data) {
-          // Only sanitize non-base64 strings
-          obj[key] = obj[key]
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/javascript:/gi, '')
-            .replace(/on\w+\s*=/gi, '');
-        }
+        // Remove potentially dangerous characters
+        obj[key] = obj[key]
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/javascript:/gi, '')
+          .replace(/on\w+\s*=/gi, '');
       } else if (typeof obj[key] === 'object' && obj[key] !== null) {
         sanitize(obj[key]);
       }

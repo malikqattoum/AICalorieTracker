@@ -225,23 +225,16 @@ export const inputValidation = (req: Request, res: Response, next: NextFunction)
     });
   }
   
-  // Sanitize input with base64 preservation
+  // Sanitize input
   const sanitize = (value: any): any => {
     if (typeof value === 'string') {
-      // Check if this might be base64 image data (preserve it)
-      const isBase64Data = value.includes('base64,') || /^[A-Za-z0-9+/]*={0,2}$/.test(value);
-      
-      if (!isBase64Data) {
-        // Only sanitize non-base64 strings
-        return value
-          .replace(/&/g, '&')
-          .replace(/</g, '<')
-          .replace(/>/g, '>')
-          .replace(/"/g, '"')
-          .replace(/'/g, '&#x27;')
-          .replace(/\//g, '&#x2F;');
-      }
-      return value; // Return base64 data unchanged
+      return value
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
     }
     if (Array.isArray(value)) {
       return value.map(sanitize);
