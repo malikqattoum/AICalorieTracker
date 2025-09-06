@@ -22,6 +22,8 @@ import * as path from "path";
 import multer from "multer";
 // Import admin auth middleware
 import { isAdmin } from "./admin-auth";
+// Import mime-types for MIME type detection
+import mime from "mime-types";
 // Import route modules
 import adminDashboardRouter from "./src/routes/admin/dashboard";
 import adminUsersRouter from "./src/routes/admin/users";
@@ -58,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image serving routes - must be before API routes
-  app.get('/api/images/:size/:filename', (req, res) => {
+  app.get('/api/images/:size/:filename', async (req, res) => {
     console.log('[IMAGE-SERVE] Image request received:', req.params);
     try {
       const { size, filename } = req.params;
@@ -79,16 +81,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if file exists and serve it
       if (fs.existsSync(filePath)) {
+        // Detect MIME type from file extension
+        const mimeType = mime.lookup(filename) || 'image/jpeg';
+
         // Set appropriate headers
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-        res.setHeader('Content-Type', 'image/jpeg'); // Default to JPEG, could be improved
+        res.setHeader('Content-Type', mimeType);
 
         // Stream the file
         const fileStream = fs.createReadStream(filePath);
         fileStream.pipe(res);
 
         fileStream.on('error', (error: Error) => {
-          console.error('Error streaming image file:', error);
+          console.error(`[IMAGE-SERVE] Error streaming image file ${filename}:`, error);
           res.status(500).json({ message: 'Error serving image' });
         });
       } else {
