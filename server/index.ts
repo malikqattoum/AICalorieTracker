@@ -67,10 +67,15 @@ app.use(express.json({
   verify: (req: Request, res: Response, buf: Buffer, encoding: string) => {
     // Add custom verification for JSON parsing
     try {
-      JSON.parse(buf.toString(encoding as BufferEncoding || 'utf8'));
+      const rawBody = buf.toString(encoding as BufferEncoding || 'utf8');
+      // Check if this looks like JSON before parsing
+      if (rawBody.trim().startsWith('{') && rawBody.trim().endsWith('}')) {
+        JSON.parse(rawBody);
+      }
     } catch (e) {
       // If JSON parsing fails, let the request continue
       // This allows form data to be handled by urlencoded middleware
+      console.log('[BODY-PARSING] JSON parsing failed, falling back to URL-encoded');
     }
   }
 }));

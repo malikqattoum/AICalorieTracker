@@ -285,20 +285,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Normalize body to support multiple field names and URL-encoded forms
       const body: any = req.body || {};
-      console.log('[ANALYZE-FOOD] Raw request body:', body);
-      console.log('[ANALYZE-FOOD] Body keys:', Object.keys(body));
-      const normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
-      console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
+      console.log('[ANALYZE-FOOD] Raw request body keys:', Object.keys(body));
+      console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
+
+      let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
+
+      // Handle case where imageData might be a JSON string due to parsing issues
+      if (normalizedImageData && typeof normalizedImageData === 'string') {
+        if (normalizedImageData.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(normalizedImageData);
+            normalizedImageData = parsed.imageData || parsed.image || parsed.data || null;
+            console.log('[ANALYZE-FOOD] Parsed imageData from JSON string');
+          } catch (e) {
+            console.log('[ANALYZE-FOOD] Failed to parse imageData as JSON string');
+          }
+        } else if (normalizedImageData.startsWith('"') && normalizedImageData.endsWith('"')) {
+          // Handle case where the string is double-quoted
+          try {
+            normalizedImageData = JSON.parse(normalizedImageData);
+            console.log('[ANALYZE-FOOD] Unquoted imageData string');
+          } catch (e) {
+            console.log('[ANALYZE-FOOD] Failed to unquote imageData string');
+          }
+        }
+      }
+
       console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
+      console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
 
       // Check if image data is missing before Zod validation
       if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
         console.error('[ANALYZE-FOOD] Missing or invalid image data');
         console.error('[ANALYZE-FOOD] Available body fields:', Object.keys(body));
+        console.error('[ANALYZE-FOOD] Body values:', Object.values(body).map(v => typeof v + ' (' + (typeof v === 'string' ? v.substring(0, 100) : 'non-string') + ')'));
         return res.status(400).json({
           message: "Image data is required. Please provide imageData, image, or data field with base64 encoded image.",
           receivedFields: Object.keys(body),
-          expectedFields: ['imageData', 'image', 'data']
+          expectedFields: ['imageData', 'image', 'data'],
+          bodyTypes: Object.keys(body).reduce((acc, key) => {
+            acc[key] = typeof body[key];
+            return acc;
+          }, {} as Record<string, string>)
         });
       }
 
