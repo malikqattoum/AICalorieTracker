@@ -22,7 +22,13 @@ export default function TryItPage() {
   const analyzeImageMutation = useMutation({
     mutationFn: async (imageData: string) => {
       const res = await apiRequest("POST", "/api/demo-analyze", { imageData });
-      return res.json();
+      const text = await res.text(); // avoid JSON parse on non-JSON
+      if (!res.ok) throw new Error(`${res.status}: ${text.slice(0,160)}`);
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON response: ${text.slice(0,160)}`);
+      }
     },
     onSuccess: (result) => {
       setAnalysisResult(result);

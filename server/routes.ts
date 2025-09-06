@@ -315,8 +315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               normalizedImageData = parsed.imageData;
               console.log('[ANALYZE-FOOD] Successfully extracted imageData from reconstructed JSON');
             }
-          } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to parse reconstructed JSON:', e.message);
+          } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            console.log('[ANALYZE-FOOD] Failed to parse reconstructed JSON:', errorMessage);
             console.log('[ANALYZE-FOOD] JSON preview:', completeJson.substring(0, 200) + '...');
           }
         }
@@ -342,8 +343,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.log('[ANALYZE-FOOD] Successfully extracted imageData from JSON key, length:', normalizedImageData.length);
                 break;
               }
-            } catch (e) {
-              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', e.message);
+            } catch (e: unknown) {
+              const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', errorMessage);
             }
           }
           

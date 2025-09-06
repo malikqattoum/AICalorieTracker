@@ -453,21 +453,23 @@ function AITestingPanel({ configs }: { configs: AIConfig[] }) {
         body: JSON.stringify({ imageData: testImage }),
       });
 
-      if (!response.ok) {
-        throw new Error('AI analysis failed');
+      const text = await response.text(); // avoid JSON parse on non-JSON
+      if (!response.ok) throw new Error(`${response.status}: ${text.slice(0,160)}`);
+      try {
+        const result = JSON.parse(text);
+        setTestResult(result);
+        toast({
+          title: "Success",
+          description: "AI analysis completed successfully",
+        });
+      } catch {
+        throw new Error(`Invalid JSON response: ${text.slice(0,160)}`);
       }
-
-      const result = await response.json();
-      setTestResult(result);
-      toast({
-        title: "Success",
-        description: "AI analysis completed successfully",
-      });
     } catch (error) {
       console.error('Error testing AI:', error);
       toast({
         title: "Error",
-        description: "AI analysis failed. Check your configuration.",
+        description: error instanceof Error ? error.message : "AI analysis failed. Check your configuration.",
         variant: "destructive",
       });
     } finally {

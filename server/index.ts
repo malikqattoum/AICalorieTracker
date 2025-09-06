@@ -53,6 +53,9 @@ export const app = express();
 // Use a numeric hop count to avoid permissive trust proxy issues with rate limiters
 app.set('trust proxy', 1);
 
+// Apply CORS middleware first
+app.use(corsMiddleware);
+
 // Apply JSON middleware before any routes with enhanced logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log('[PRE-PARSING] Headers:', req.headers);
@@ -225,8 +228,12 @@ console.log('[SERVER] Static file serving configured for uploads directory');
 console.log('[SERVER] Registering routes...');
 console.log('[SERVER] NODE_ENV:', process.env.NODE_ENV);
 console.log('[SERVER] Environment is development:', process.env.NODE_ENV === "development");
-registerRoutes(app);
-console.log('[SERVER] Routes registered');
+try {
+  registerRoutes(app);
+  console.log('[SERVER] Routes registered successfully');
+} catch (error) {
+  console.error('[SERVER] Error registering routes:', error);
+}
 
 // Remove duplicate JSON middleware - already applied above
 

@@ -77,13 +77,17 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
  * CORS middleware with secure configuration
  */
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const allowedOrigins = process.env.NODE_ENV === 'production' 
-    ? ['https://aical.scanitix.com'] 
+  const allowedOrigins = process.env.NODE_ENV === 'production'
+    ? ['https://aical.scanitix.com']
     : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'];
 
+  // Also check ALLOWED_ORIGINS environment variable
+  const envOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+  const allAllowedOrigins = [...allowedOrigins, ...envOrigins];
+
   const origin = req.headers.origin;
-  
-  if (allowedOrigins.includes(origin as string)) {
+
+  if (allAllowedOrigins.includes(origin as string)) {
     res.setHeader('Access-Control-Allow-Origin', origin as string);
   }
 
