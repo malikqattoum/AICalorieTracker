@@ -38,6 +38,35 @@ export interface FoodAnalysisResult {
 
 export async function analyzeFoodImage(base64Image: string): Promise<FoodAnalysisResult> {
   try {
+    // Normalize possible URL-encoded/base64 anomalies from form submissions
+    let b64 = (base64Image || '').trim();
+    // If spaces exist (common from x-www-form-urlencoded where '+' -> ' '), revert them to '+'
+    if (b64.includes(' ')) b64 = b64.replace(/ /g, '+');
+    // Remove line breaks
+    b64 = b64.replace(/\r?\n|\r/g, '');
+    // Pad to multiple of 4
+    const pad = b64.length % 4;
+    if (pad) b64 = b64 + '='.repeat(4 - pad);
+
+    // Quick validation
+    try {
+      const buf = Buffer.from(b64, 'base64');
+      if (!buf || buf.length === 0) throw new Error('Empty buffer after base64 decode');
+    } catch (e) {
+      throw new Error('Invalid base64 image data after normalization');
+    }
+
+    // Detect MIME by magic header
+    const mime = b64.startsWith('/9j/')
+      ? 'image/jpeg'
+      : b64.startsWith('iVBORw0KGgo')
+        ? 'image/png'
+        : b64.startsWith('R0lGOD')
+          ? 'image/gif'
+          : b64.startsWith('UklGR')
+            ? 'image/webp'
+            : 'image/jpeg'; // default
+
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages: [
@@ -55,7 +84,7 @@ export async function analyzeFoodImage(base64Image: string): Promise<FoodAnalysi
             {
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
+                url: `data:${mime};base64,${b64}`
               }
             }
           ],
