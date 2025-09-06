@@ -287,8 +287,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Normalize body to support multiple field names and handle malformed requests
       const body: any = req.body || {};
       let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
+      
+      // Special handling for URL-encoded JSON where the entire JSON becomes a key
+      if (!normalizedImageData && Object.keys(body).length === 1) {
+        const singleKey = Object.keys(body)[0];
+        const singleValue = body[singleKey];
+        
+        // Check if the key looks like a complete JSON object
+        if (singleKey.startsWith('{"imageData":')) {
+          // Try to reconstruct the complete JSON by combining key and value
+          let completeJson = singleKey;
+          
+          // If the value is not empty, it might be the end of the JSON
+          if (singleValue && typeof singleValue === 'string' && singleValue.trim()) {
+            completeJson = singleKey + singleValue;
+          }
+          
+          // Ensure the JSON ends properly
+          if (!completeJson.endsWith('}')) {
+            completeJson += '}';
+          }
+          
+          try {
+            console.log('[ANALYZE-FOOD] Attempting to parse reconstructed JSON, length:', completeJson.length);
+            const parsed = JSON.parse(completeJson);
+            if (parsed && parsed.imageData) {
+              normalizedImageData = parsed.imageData;
+              console.log('[ANALYZE-FOOD] Successfully extracted imageData from reconstructed JSON');
+            }
+          } catch (e) {
+            console.log('[ANALYZE-FOOD] Failed to parse reconstructed JSON:', e.message);
+            console.log('[ANALYZE-FOOD] JSON preview:', completeJson.substring(0, 200) + '...');
+          }
+        }
+      }
 
-      // Handle case where JSON was parsed as URL-encoded form data
+      // Handle other malformed cases
       if (!normalizedImageData && Object.keys(body).length >= 1) {
         const bodyKeys = Object.keys(body);
         console.log('[ANALYZE-FOOD] Checking for malformed JSON in body keys:', bodyKeys.length);
@@ -296,20 +330,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Try to find JSON-like key
         for (const key of bodyKeys) {
           const value = body[key];
-          console.log('[ANALYZE-FOOD] Checking key:', key.substring(0, 50) + '...', 'value type:', typeof value);
+          console.log('[ANALYZE-FOOD] Checking key:', key.substring(0, 50) + '...', 'value type:', typeof value, 'value:', typeof value === 'string' ? value.substring(0, 10) : value);
           
-          // Case 1: Entire JSON object as key with empty value
-          if (key.startsWith('{') && key.includes('imageData') && (!value || value === '')) {
+          // Case 1: Entire JSON object as key - try to parse it
+          if (key.startsWith('{') && key.includes('imageData')) {
             try {
               console.log('[ANALYZE-FOOD] Attempting to parse JSON from key');
               const parsed = JSON.parse(key);
-              if (parsed && typeof parsed === 'object') {
-                normalizedImageData = parsed.imageData || parsed.image || parsed.data;
-                console.log('[ANALYZE-FOOD] Successfully extracted imageData from JSON key');
+              if (parsed && typeof parsed === 'object' && parsed.imageData) {
+                normalizedImageData = parsed.imageData;
+                console.log('[ANALYZE-FOOD] Successfully extracted imageData from JSON key, length:', normalizedImageData.length);
                 break;
               }
             } catch (e) {
-              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', e);
+              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', e.message);
             }
           }
           
@@ -324,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
       console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
-      console.log('[ANALYZE-FOOD] Image data preview:', normalizedImageData?.substring(0, 50) + '...');
+      console.log('[ANALYZE-FOOD] Image data preview:', normalizedImageData ? normalizedImageData.substring(0, 50) + '...' : 'null/undefined');
 
       // Check if image data is missing before Zod validation
       if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
