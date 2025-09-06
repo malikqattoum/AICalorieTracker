@@ -167,7 +167,15 @@ export class AIService {
   }
 
   isConfigured(): boolean {
-    return this.currentConfig !== null && this.currentConfig.apiKeyEncrypted !== null;
+    if (!this.currentConfig) return false;
+    
+    // For OpenAI, check environment variable
+    if (this.currentConfig.provider === 'openai') {
+      return !!process.env.OPENAI_API_KEY;
+    }
+    
+    // For other providers, check encrypted API key
+    return this.currentConfig.apiKeyEncrypted !== null;
   }
 }
 
