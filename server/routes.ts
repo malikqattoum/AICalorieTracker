@@ -275,55 +275,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/analyze-food", authenticate, async (req, res) => {
     console.log('[ANALYZE-FOOD] Starting food analysis request');
     console.log('[ANALYZE-FOOD] User ID:', req.user!.id);
-    console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(req.body || {}));
     console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
+    console.log('[ANALYZE-FOOD] Raw body type:', typeof req.body);
+    console.log('[ANALYZE-FOOD] Raw body keys:', Object.keys(req.body || {}));
 
     try {
       const requestSchema = z.object({
         imageData: z.string()
       });
 
-      // Normalize body to support multiple field names
+      // Normalize body to support multiple field names and handle malformed requests
       const body: any = req.body || {};
-      console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(body));
-      console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
-
       let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
 
       // Handle case where JSON was parsed as URL-encoded form data
-      if (!normalizedImageData && Object.keys(body).length === 1) {
-        const singleKey = Object.keys(body)[0];
-        const singleValue = body[singleKey];
-
-        // Check if the key looks like JSON and value is empty (URL-encoded parsing issue)
-        if (singleKey.startsWith('{') && singleKey.endsWith('}') && (!singleValue || singleValue === '')) {
-          try {
-            console.log('[ANALYZE-FOOD] Attempting to parse malformed JSON from URL-encoded key');
-            const parsed = JSON.parse(singleKey);
-            normalizedImageData = parsed.imageData || parsed.image || parsed.data || null;
-            console.log('[ANALYZE-FOOD] Successfully parsed JSON from URL-encoded key');
-          } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to parse JSON from URL-encoded key:', e);
+      if (!normalizedImageData && Object.keys(body).length >= 1) {
+        const bodyKeys = Object.keys(body);
+        console.log('[ANALYZE-FOOD] Checking for malformed JSON in body keys:', bodyKeys.length);
+        
+        // Try to find JSON-like key
+        for (const key of bodyKeys) {
+          const value = body[key];
+          console.log('[ANALYZE-FOOD] Checking key:', key.substring(0, 50) + '...', 'value type:', typeof value);
+          
+          // Case 1: Entire JSON object as key with empty value
+          if (key.startsWith('{') && key.includes('imageData') && (!value || value === '')) {
+            try {
+              console.log('[ANALYZE-FOOD] Attempting to parse JSON from key');
+              const parsed = JSON.parse(key);
+              if (parsed && typeof parsed === 'object') {
+                normalizedImageData = parsed.imageData || parsed.image || parsed.data;
+                console.log('[ANALYZE-FOOD] Successfully extracted imageData from JSON key');
+                break;
+              }
+            } catch (e) {
+              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', e);
+            }
+          }
+          
+          // Case 2: Check if value itself contains the image data
+          if (typeof value === 'string' && (value.startsWith('data:image/') || value.startsWith('/9j/') || value.length > 1000)) {
+            normalizedImageData = value;
+            console.log('[ANALYZE-FOOD] Found image data in value');
+            break;
           }
         }
       }
 
       console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
       console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
+      console.log('[ANALYZE-FOOD] Image data preview:', normalizedImageData?.substring(0, 50) + '...');
 
       // Check if image data is missing before Zod validation
       if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
         console.error('[ANALYZE-FOOD] Missing or invalid image data');
         console.error('[ANALYZE-FOOD] Available body fields:', Object.keys(body));
-        console.error('[ANALYZE-FOOD] Body values:', Object.values(body).map(v => typeof v + ' (' + (typeof v === 'string' ? v.substring(0, 100) : 'non-string') + ')'));
+        console.error('[ANALYZE-FOOD] Body structure debug:');
+        Object.keys(body).forEach(key => {
+          const value = body[key];
+          console.error(`  Key: "${key.substring(0, 100)}..." (${key.length} chars)`);
+          console.error(`  Value type: ${typeof value}`);
+          console.error(`  Value preview: ${typeof value === 'string' ? value.substring(0, 50) + '...' : JSON.stringify(value).substring(0, 50) + '...'}`);
+        });
+        
         return res.status(400).json({
           message: "Image data is required. Please provide imageData, image, or data field with base64 encoded image.",
           receivedFields: Object.keys(body),
           expectedFields: ['imageData', 'image', 'data'],
-          bodyTypes: Object.keys(body).reduce((acc, key) => {
-            acc[key] = typeof body[key];
-            return acc;
-          }, {} as Record<string, string>)
+          debug: {
+            contentType: req.get('Content-Type'),
+            bodyType: typeof req.body,
+            bodyKeys: Object.keys(body),
+            firstKeyPreview: Object.keys(body)[0]?.substring(0, 100)
+          }
         });
       }
 

@@ -92,32 +92,32 @@ app.use(express.urlencoded({
 // Handles cases like:
 // 1) {"a":1,"b":2} as the only key with empty value
 // 2) {"...","allergies": as key and the value object containing selected items as keys
+// 3) Mobile app sending JSON as form-encoded data
 app.use((req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type') || '';
   if (contentType.includes('application/x-www-form-urlencoded') && req.body && typeof req.body === 'object') {
     const keys = Object.keys(req.body);
+    
+    // Handle single key cases
     if (keys.length === 1) {
       const soleKey = keys[0].trim();
       const soleVal: any = (req.body as any)[keys[0]];
+      
       // Case 1: entire JSON string used as a key with empty value
-      if (soleKey.startsWith('{') && soleKey.endsWith('}') && soleVal === '') {
+      if (soleKey.startsWith('{') && soleKey.endsWith('}') && (soleVal === '' || soleVal === undefined)) {
         try {
           const parsed = JSON.parse(soleKey);
           if (parsed && typeof parsed === 'object') {
+            console.log('[MIDDLEWARE] Successfully parsed JSON from URL-encoded key');
             req.body = parsed;
           }
         } catch (e) {
-          // Ignore parsing errors and continue
+          console.log('[MIDDLEWARE] Failed to parse JSON from URL-encoded key:', e);
         }
       }
-      // Case 2: partial JSON where last property (e.g., allergies) is missing its value,
-      // and the value came through as an object whose keys are the chosen items.
-      // Example:
-      // key: '{"name":"x", ... , "allergies":'
-      // val: { '"Peanuts"': '' }
+      // Case 2: partial JSON where last property (e.g., allergies) is missing its value
       else if (soleKey.startsWith('{') && /"(allergies|dietaryPreferences)":\s*$/.test(soleKey) && soleVal && typeof soleVal === 'object') {
         try {
-          // Convert object keys to an array of strings, unwrapping extra quotes if present
           const arr = Object.keys(soleVal).map(k => {
             try { return JSON.parse(k); } catch { return k.replace(/^\"|\"$/g, '').replace(/^"|"$/g, ''); }
           });
@@ -131,6 +131,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         }
       }
     }
+    
+    // Handle multiple keys - look for JSON-like patterns
+    else if (keys.length > 1) {
+      for (const key of keys) {
+        const value = req.body[key];
+        // Check if any key looks like a JSON fragment and try to reconstruct
+        if (key.startsWith('{') && key.includes('"imageData"')) {
+          try {
+            // Try to parse as complete JSON first
+            const parsed = JSON.parse(key);
+            if (parsed && typeof parsed === 'object' && parsed.imageData) {
+              console.log('[MIDDLEWARE] Found complete JSON in multi-key body');
+              req.body = parsed;
+              break;
+            }
+          } catch (e) {
+            // If that fails, try to reconstruct from fragments
+            console.log('[MIDDLEWARE] Attempting to reconstruct JSON from fragments');
+          }
+        }
+      }
+    }
   }
   next();
 });
@@ -140,9 +162,22 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type') || 'unknown';
   console.log('[POST-PARSING] Content-Type:', contentType);
   if (process.env.NODE_ENV !== 'production') {
-    console.log('[POST-PARSING] Body:', req.body);
     console.log('[POST-PARSING] Body type:', typeof req.body);
     console.log('[POST-PARSING] Body keys:', Object.keys(req.body || {}));
+    
+    // Enhanced logging for debugging mobile app issues
+    if (req.path === '/api/analyze-food' && req.method === 'POST') {
+      console.log('[POST-PARSING] ANALYZE-FOOD Debug:');
+      const body = req.body || {};
+      Object.keys(body).forEach((key, index) => {
+        const value = body[key];
+        console.log(`  Key ${index}: "${key.substring(0, 100)}${key.length > 100 ? '...' : ''}" (${key.length} chars)`);
+        console.log(`  Value ${index}: ${typeof value} (${typeof value === 'string' ? value.length + ' chars' : 'object'})`);
+        if (typeof value === 'string') {
+          console.log(`  Preview ${index}: "${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"`);
+        }
+      });
+    }
   }
   next();
 });
@@ -247,6 +282,60 @@ app.post('/api/test-form-data', (req: Request, res: Response) => {
     bodyType: typeof req.body,
     bodyKeys: Object.keys(req.body || {}),
     contentType: req.get('Content-Type')
+  });
+});
+
+// Add a test endpoint that accepts both JSON and form data for image analysis
+app.post('/api/test-analyze-format', (req: Request, res: Response) => {
+  log('=== ANALYZE FORMAT TEST ENDPOINT HIT ===');
+  log('Content-Type:', req.get('Content-Type'));
+  
+  const body = req.body || {};
+  let imageData = null;
+  let extractionMethod = 'none';
+  
+  // Try multiple extraction methods
+  if (body.imageData) {
+    imageData = body.imageData;
+    extractionMethod = 'direct imageData field';
+  } else if (body.image) {
+    imageData = body.image;
+    extractionMethod = 'direct image field';
+  } else if (Object.keys(body).length === 1) {
+    const key = Object.keys(body)[0];
+    const value = body[key];
+    
+    if (key.startsWith('{') && key.includes('imageData')) {
+      try {
+        const parsed = JSON.parse(key);
+        if (parsed.imageData) {
+          imageData = parsed.imageData;
+          extractionMethod = 'parsed from JSON key';
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+    
+    if (!imageData && typeof value === 'string' && value.length > 100) {
+      imageData = value;
+      extractionMethod = 'from single value';
+    }
+  }
+  
+  res.json({
+    success: true,
+    message: 'Format test completed',
+    timestamp: new Date().toISOString(),
+    analysis: {
+      contentType: req.get('Content-Type'),
+      bodyType: typeof req.body,
+      keyCount: Object.keys(body).length,
+      extractionMethod,
+      hasImageData: !!imageData,
+      imageDataLength: imageData ? imageData.length : 0,
+      imageDataPreview: imageData ? imageData.substring(0, 50) + '...' : null
+    }
   });
 });
 
