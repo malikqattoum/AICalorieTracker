@@ -57,7 +57,10 @@ export class AIService {
   private async getActiveConfig(): Promise<AIConfig | null> {
     try {
       const configs = await storage.getAIConfigs();
-      return configs.find(config => config.isActive) || null;
+      console.log(`AI Config Debug: Found ${configs.length} configs`);
+      const activeConfig = configs.find(config => config.isActive) || null;
+      console.log(`AI Config Debug: Active config: ${activeConfig ? activeConfig.provider : 'none'}`);
+      return activeConfig;
     } catch (error) {
       console.error('Error getting AI config:', error);
       return null;
@@ -97,8 +100,11 @@ export class AIService {
   }
 
   async analyzeFoodImage(imageData: string, prompt?: string): Promise<any> {
+    console.log(`AI Service Debug: Initialized: ${this.initialized}, Current Config: ${this.currentConfig ? this.currentConfig.provider : 'null'}`);
     if (!this.initialized) {
+      console.log('AI Service Debug: Initializing service...');
       await this.initialize();
+      console.log(`AI Service Debug: After init - Initialized: ${this.initialized}, Current Config: ${this.currentConfig ? this.currentConfig.provider : 'null'}`);
     }
 
     if (!this.currentConfig) {
