@@ -56,13 +56,45 @@ export class AIService {
 
   private async getActiveConfig(): Promise<AIConfig | null> {
     try {
-      const configs = await storage.getAIConfigs();
-      console.log(`AI Config Debug: Found ${configs.length} configs`);
-      const activeConfig = configs.find(config => config.isActive) || null;
-      console.log(`AI Config Debug: Active config: ${activeConfig ? activeConfig.provider : 'none'}`);
-      return activeConfig;
+      const configs = await storage.getAIConfigs().catch(() => [] as any[]);
+      if (Array.isArray(configs)) {
+        console.log(`AI Config Debug: Found ${configs.length} configs`);
+        const activeConfig = configs.find((config: any) => config.isActive) || null;
+        console.log(`AI Config Debug: Active config: ${activeConfig ? activeConfig.provider : 'none'}`);
+        if (activeConfig) return activeConfig as AIConfig;
+      }
+      // Fallback: if no DB config found, but OPENAI_API_KEY exists, use OpenAI as default provider
+      if (process.env.OPENAI_API_KEY) {
+        console.warn('AI Config Debug: No active AI config found in DB. Falling back to OpenAI via environment variable.');
+        const now = new Date();
+        return {
+          id: 0,
+          provider: 'openai',
+          apiKeyEncrypted: null,
+          modelName: 'gpt-4o',
+          promptTemplate: null,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        } as AIConfig;
+      }
+      return null;
     } catch (error) {
       console.error('Error getting AI config:', error);
+      // Same fallback on error
+      if (process.env.OPENAI_API_KEY) {
+        const now = new Date();
+        return {
+          id: 0,
+          provider: 'openai',
+          apiKeyEncrypted: null,
+          modelName: 'gpt-4o',
+          promptTemplate: null,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        } as AIConfig;
+      }
       return null;
     }
   }
