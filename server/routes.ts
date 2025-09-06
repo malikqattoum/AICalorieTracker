@@ -160,24 +160,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analyze complex meal with multiple food items
+  // Simplified complex meal analysis with robust image data handling
   app.post("/api/analyze-complex-meal", authenticate, async (req, res) => {
     try {
-      const requestSchema = z.object({
-        images: z.array(z.string()).min(1).max(10)
-      });
+      console.log('[COMPLEX-MEAL] Starting complex meal analysis');
+      console.log('[COMPLEX-MEAL] User ID:', req.user!.id);
+      console.log('[COMPLEX-MEAL] Content-Type:', req.get('Content-Type'));
 
-      const validatedData = requestSchema.parse(req.body);
-      const userId = req.user!.id;
+      // Validate request structure
+      const images = req.body?.images;
+      if (!images || !Array.isArray(images)) {
+        return res.status(400).json({
+          message: "Images field is required and must be an array",
+          error: "INVALID_IMAGES_ARRAY",
+          received: images
+        });
+      }
 
-      // Process each image
+      if (images.length === 0) {
+        return res.status(400).json({
+          message: "At least one image is required",
+          error: "NO_IMAGES_PROVIDED"
+        });
+      }
+
+      if (images.length > 10) {
+        return res.status(400).json({
+          message: "Maximum 10 images allowed",
+          error: "TOO_MANY_IMAGES"
+        });
+      }
+
+      // Process each image with robust validation
       const analysisResults = [];
       
-      for (const imageData of validatedData.images) {
-        // Remove data URL prefix if present
-        const base64Data = imageData.includes('base64,')
-          ? imageData.split('base64,')[1]
-          : imageData;
+      for (let i = 0; i < images.length; i++) {
+        const imageData = images[i];
+        
+        // Validate each image
+        if (typeof imageData !== 'string' || imageData.trim() === '') {
+          return res.status(400).json({
+            message: `Image ${i + 1} must be a valid base64 string`,
+            error: "INVALID_IMAGE_DATA",
+            imageIndex: i
+          });
+        }
+
+        // Extract base64 data
+        let base64Data: string;
+        if (imageData.includes('base64,')) {
+          base64Data = imageData.split('base64,')[1];
+        } else {
+          base64Data = imageData;
+        }
+
+        // Validate base64 format
+        const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+        if (!base64Regex.test(base64Data)) {
+          return res.status(400).json({
+            message: `Image ${i + 1} has invalid base64 format`,
+            error: "INVALID_BASE64_FORMAT",
+            imageIndex: i
+          });
+        }
+
+        console.log(`[COMPLEX-MEAL] Processing image ${i + 1}/${images.length}, base64 length:`, base64Data.length);
 
         // Check cache first
         let analysis = aiCache.get(base64Data);
@@ -206,14 +253,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
-        userId,
+        userId: req.user!.id,
         mealId: 0, // Will be set by database or can be updated later
         foodName: `Complex Meal (${analysisResults.length} items)`,
         estimatedCalories: combinedAnalysis.totalCalories,
         estimatedProtein: combinedAnalysis.totalProtein.toString(),
         estimatedCarbs: combinedAnalysis.totalCarbs.toString(),
         estimatedFat: combinedAnalysis.totalFat.toString(),
-        imageUrl: validatedData.images[0], // Store first image only
+        imageUrl: images[0], // Store first image only
         analysisDetails: {
           mealScore: combinedAnalysis.mealScore,
           nutritionalBalance: combinedAnalysis.nutritionalBalance,
@@ -223,35 +270,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
+      console.log('[COMPLEX-MEAL] Complex meal analysis completed successfully');
       res.status(201).json(mealAnalysis);
     } catch (error) {
-      console.error("Error analyzing complex meal:", error);
+      console.error("[COMPLEX-MEAL] Error analyzing complex meal:", error);
+      
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        res.status(400).json({
+          message: "Invalid request data",
+          error: "VALIDATION_ERROR",
+          errors: error.errors
+        });
       } else {
-        res.status(500).json({ message: "Failed to analyze complex meal" });
+        res.status(500).json({
+          message: "Failed to analyze complex meal",
+          error: "ANALYSIS_FAILED",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   });
 
-  // Demo route - Analyze food image without authentication
+  // Simplified demo route - Analyze food image without authentication
   app.post("/api/demo-analyze", async (req, res) => {
     try {
-      const requestSchema = z.object({
-        imageData: z.string()
-      });
+      console.log('[DEMO-ANALYZE] Starting demo food analysis');
+      console.log('[DEMO-ANALYZE] Content-Type:', req.get('Content-Type'));
 
-      const validatedData = requestSchema.parse(req.body);
+      // Extract and validate image data
+      const imageData = req.body?.imageData;
+      
+      if (!imageData || typeof imageData !== 'string' || imageData.trim() === '') {
+        return res.status(400).json({
+          message: "Image data is required and must be a valid base64 string",
+          error: "MISSING_OR_INVALID_IMAGE_DATA",
+          receivedBody: req.body
+        });
+      }
 
-      // Remove data URL prefix if present
-      const base64Data = validatedData.imageData.includes('base64,')
-        ? validatedData.imageData.split('base64,')[1]
-        : validatedData.imageData;
+      // Extract base64 data
+      let base64Data: string;
+      if (imageData.includes('base64,')) {
+        base64Data = imageData.split('base64,')[1];
+      } else {
+        base64Data = imageData;
+      }
+
+      // Validate base64 format
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Regex.test(base64Data)) {
+        return res.status(400).json({
+          message: "Invalid base64 format",
+          error: "INVALID_BASE64_FORMAT"
+        });
+      }
+
+      console.log('[DEMO-ANALYZE] Base64 data extracted, length:', base64Data.length);
 
       // Check cache first
       let analysis = aiCache.get(base64Data);
       
       if (!analysis) {
+        console.log('[DEMO-ANALYZE] No cache hit, performing AI analysis');
         // Analyze the food image using configured AI service
         analysis = await aiService.analyzeFoodImage(base64Data);
         
@@ -260,123 +340,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Return the analysis but don't save it
+      console.log('[DEMO-ANALYZE] Demo analysis completed successfully');
       res.status(200).json(analysis);
     } catch (error) {
-      console.error("Error analyzing food in demo:", error);
+      console.error("[DEMO-ANALYZE] Error analyzing food in demo:", error);
+      
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        res.status(400).json({
+          message: "Invalid request data",
+          error: "VALIDATION_ERROR",
+          errors: error.errors
+        });
       } else {
-        res.status(500).json({ message: "Failed to analyze food" });
+        res.status(500).json({
+          message: "Failed to analyze food",
+          error: "ANALYSIS_FAILED",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   });
 
-  // Analyze food image and create meal analysis
+  // Simplified food analysis endpoint with robust image data handling
   app.post("/api/analyze-food", authenticate, async (req, res) => {
     console.log('[ANALYZE-FOOD] Starting food analysis request');
     console.log('[ANALYZE-FOOD] User ID:', req.user!.id);
-    console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(req.body || {}));
     console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
+    console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(req.body || {}));
 
     try {
-      const requestSchema = z.object({
-        imageData: z.string()
-      });
-
-      // Normalize body to support multiple field names
-      const body: any = req.body || {};
-      console.log('[ANALYZE-FOOD] Request body keys:', Object.keys(body));
-      console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
-
-      let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
-
-      // Handle case where JSON was parsed as URL-encoded form data
-      if (!normalizedImageData && Object.keys(body).length === 1) {
-        const singleKey = Object.keys(body)[0];
-        const singleValue = body[singleKey];
-
-        // Check if the key looks like JSON and value is empty (URL-encoded parsing issue)
-        if (singleKey.startsWith('{') && singleKey.endsWith('}') && (!singleValue || singleValue === '')) {
-          try {
-            console.log('[ANALYZE-FOOD] Attempting to parse malformed JSON from URL-encoded key');
-            const parsed = JSON.parse(singleKey);
-            normalizedImageData = parsed.imageData || parsed.image || parsed.data || null;
-            console.log('[ANALYZE-FOOD] Successfully parsed JSON from URL-encoded key');
-          } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to parse JSON from URL-encoded key:', e);
-          }
-        }
-      }
-
-      console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
-      console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
-
-      // Check if image data is missing before Zod validation
-      if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
-        console.error('[ANALYZE-FOOD] Missing or invalid image data');
-        console.error('[ANALYZE-FOOD] Available body fields:', Object.keys(body));
-        console.error('[ANALYZE-FOOD] Body values:', Object.values(body).map(v => typeof v + ' (' + (typeof v === 'string' ? v.substring(0, 100) : 'non-string') + ')'));
+      // Direct and simple image data extraction
+      const imageData = req.body?.imageData;
+      
+      // Enhanced validation with detailed error reporting
+      if (!imageData) {
+        console.error('[ANALYZE-FOOD] ERROR: imageData field is missing');
         return res.status(400).json({
-          message: "Image data is required. Please provide imageData, image, or data field with base64 encoded image.",
-          receivedFields: Object.keys(body),
-          expectedFields: ['imageData', 'image', 'data'],
-          bodyTypes: Object.keys(body).reduce((acc, key) => {
-            acc[key] = typeof body[key];
-            return acc;
-          }, {} as Record<string, string>)
+          message: "Image data is required. Please provide imageData field with base64 encoded image.",
+          error: "MISSING_IMAGE_DATA",
+          receivedBody: req.body,
+          bodyType: typeof req.body
         });
       }
 
-      const validatedData = requestSchema.parse({ imageData: normalizedImageData });
-      const userId = req.user!.id;
-      console.log('[ANALYZE-FOOD] Validation passed, userId:', userId);
+      if (typeof imageData !== 'string') {
+        console.error('[ANALYZE-FOOD] ERROR: imageData is not a string, type:', typeof imageData);
+        return res.status(400).json({
+          message: "Image data must be a string (base64 encoded)",
+          error: "INVALID_IMAGE_DATA_TYPE",
+          receivedType: typeof imageData,
+          receivedValue: imageData
+        });
+      }
 
-      // Remove data URL prefix if present
-      const base64Data = validatedData.imageData.includes('base64,')
-        ? validatedData.imageData.split('base64,')[1]
-        : validatedData.imageData;
-      console.log('[ANALYZE-FOOD] Base64 data length after prefix removal:', base64Data.length);
+      if (imageData.trim() === '') {
+        console.error('[ANALYZE-FOOD] ERROR: imageData is empty string');
+        return res.status(400).json({
+          message: "Image data cannot be empty",
+          error: "EMPTY_IMAGE_DATA"
+        });
+      }
+
+      // Simple base64 data extraction - no complex parsing
+      let base64Data: string;
+      if (imageData.includes('base64,')) {
+        base64Data = imageData.split('base64,')[1];
+        console.log('[ANALYZE-FOOD] Extracted base64 data from data URL, length:', base64Data.length);
+      } else {
+        base64Data = imageData;
+        console.log('[ANALYZE-FOOD] Using raw base64 data, length:', base64Data.length);
+      }
+
+      // Validate base64 data format
+      if (!base64Data || base64Data.trim() === '') {
+        console.error('[ANALYZE-FOOD] ERROR: Base64 data is empty after extraction');
+        return res.status(400).json({
+          message: "Invalid base64 image data",
+          error: "INVALID_BASE64_DATA"
+        });
+      }
+
+      // Basic base64 validation (check if it's valid base64)
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Regex.test(base64Data)) {
+        console.error('[ANALYZE-FOOD] ERROR: Base64 data format is invalid');
+        return res.status(400).json({
+          message: "Base64 data format is invalid",
+          error: "INVALID_BASE64_FORMAT",
+          sampleData: base64Data.substring(0, 20) + '...'
+        });
+      }
+
+      console.log('[ANALYZE-FOOD] Base64 data validation passed, length:', base64Data.length);
 
       // Check cache first
       let analysis = aiCache.get(base64Data);
-      console.log('[ANALYZE-FOOD] Cache hit:', !!analysis);
-
+      
       if (!analysis) {
-        console.log('[ANALYZE-FOOD] Cache miss, calling AI service');
+        console.log('[ANALYZE-FOOD] No cache hit, analyzing image with AI service');
         // Analyze the food image using configured AI service
         analysis = await aiService.analyzeFoodImage(base64Data);
-        console.log('[ANALYZE-FOOD] AI analysis completed:', !!analysis);
-
+        
         // Cache the result
         aiCache.set(base64Data, analysis);
-        console.log('[ANALYZE-FOOD] Analysis cached');
+        console.log('[ANALYZE-FOOD] AI analysis completed and cached');
+      } else {
+        console.log('[ANALYZE-FOOD] Cache hit, returning cached analysis');
       }
 
-      console.log('[ANALYZE-FOOD] Starting image storage process');
       // Persist image to storage (original, optimized, thumbnail)
       const { imageStorageService } = await import('./src/services/imageStorageService');
       const buffer = Buffer.from(base64Data, 'base64');
-      console.log('[ANALYZE-FOOD] Buffer created, size:', buffer.length);
-      const mimeType = (validatedData.imageData.startsWith('data:image/')
-        ? validatedData.imageData.substring(5, validatedData.imageData.indexOf(';'))
-        : 'image/jpeg');
-      console.log('[ANALYZE-FOOD] MIME type detected:', mimeType);
+      
+      // Extract mimeType from original data if present
+      const mimeType = imageData.startsWith('data:image/')
+        ? imageData.substring(5, imageData.indexOf(';'))
+        : 'image/jpeg';
 
+      console.log('[ANALYZE-FOOD] Processing image for storage, mimeType:', mimeType);
       const processed = await imageStorageService.processAndStoreImage(
         buffer,
         'camera.jpg',
         mimeType,
-        userId
+        req.user!.id
       );
-      console.log('[ANALYZE-FOOD] Image processed successfully');
-      const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
-      console.log('[ANALYZE-FOOD] Optimized URL generated:', optimizedUrl);
 
-      console.log('[ANALYZE-FOOD] Creating meal analysis record');
-      // Create a meal analysis record referencing the stored file and hash
+      const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
+
+      // Create a meal analysis record
       const mealAnalysis = await storage.createMealAnalysis({
-        userId,
-        mealId: 0, // Will be set by database or can be updated later
+        userId: req.user!.id,
+        mealId: 0,
         foodName: analysis.foodName,
         estimatedCalories: analysis.calories,
         estimatedProtein: analysis.protein?.toString(),
@@ -386,13 +480,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageHash: processed.original.hash,
         analysisDetails: analysis.analysisDetails
       });
-      console.log('[ANALYZE-FOOD] Meal analysis record created, ID:', mealAnalysis.id);
 
-      console.log('[ANALYZE-FOOD] Inserting into meal_images table');
       // Insert into meal_images table
       const { db } = await import('./db');
       const { mealImages } = await import('./src/db/schemas/mealImages');
-      // Upsert by unique image_hash to avoid duplicate errors for re-uploads
+      
       await db.insert(mealImages)
         .values({
           mealAnalysisId: mealAnalysis.id,
@@ -414,28 +506,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updatedAt: sql`CURRENT_TIMESTAMP`
           }
         });
-      console.log('[ANALYZE-FOOD] Database operations completed successfully');
 
-      console.log('[ANALYZE-FOOD] Sending successful response');
+      console.log('[ANALYZE-FOOD] Food analysis completed successfully');
       res.status(201).json(mealAnalysis);
     } catch (error) {
       console.error("[ANALYZE-FOOD] Error analyzing food:", error);
-      console.error("[ANALYZE-FOOD] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Enhanced error handling with specific error types
       if (error instanceof z.ZodError) {
-        console.error("[ANALYZE-FOOD] Zod validation error:", error.errors);
-        // Provide more specific error message for imageData validation
         const imageDataError = error.errors.find(err => err.path.includes('imageData'));
         if (imageDataError) {
           res.status(400).json({
-            message: "Image data is required and must be a valid string",
-            error: imageDataError.message,
-            code: imageDataError.code
+            message: "Image data validation failed",
+            error: "IMAGE_DATA_VALIDATION_ERROR",
+            details: imageDataError.message
           });
         } else {
-          res.status(400).json({ message: "Invalid request data", errors: error.errors });
+          res.status(400).json({
+            message: "Request data validation failed",
+            error: "VALIDATION_ERROR",
+            errors: error.errors
+          });
         }
       } else {
-        res.status(500).json({ message: "Failed to analyze food" });
+        res.status(500).json({
+          message: "Failed to analyze food",
+          error: "ANALYSIS_FAILED",
+          details: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   });

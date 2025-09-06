@@ -53,111 +53,31 @@ export const app = express();
 // Use a numeric hop count to avoid permissive trust proxy issues with rate limiters
 app.set('trust proxy', 1);
 
-// Apply JSON middleware before any routes with enhanced logging
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log('[PRE-PARSING] Headers:', req.headers);
-  console.log('[PRE-PARSING] Raw headers:', req.rawHeaders);
-  next();
-});
-
-// Enhanced body parsing middleware with proper Content-Type validation
+// Simplified body parsing middleware - NO custom preprocessing
 app.use(express.json({
   limit: '50mb',
-  strict: false
+  strict: false, // Allow non-strict parsing for flexibility
+  verify: (req, res, buf, encoding) => {
+    // No custom verification that could corrupt base64 data
+  }
 }));
 
-// Use extended: true to handle complex form data and nested objects
+// Only use URL-encoded parsing for form data, not JSON
 app.use(express.urlencoded({
   extended: true,
-  limit: '50mb',
-  parameterLimit: 10000,
-  verify: (req: Request, res: Response, buf: Buffer, encoding: string) => {
-    // Add custom verification for URL-encoded data
-    try {
-      const str = buf.toString(encoding as BufferEncoding || 'utf8');
-      // Basic validation for URL-encoded format
-      if (str && str.includes('=')) {
-        // Parse the URL-encoded string to validate it
-        const urlSearchParams = new URLSearchParams(str);
-        urlSearchParams.toString(); // This will throw if the format is invalid
-      }
-    } catch (e) {
-      // If URL-encoded parsing fails, let the request continue
-      // The error will be handled by the error handling middleware
-    }
-  }
+  limit: '10mb',
+  parameterLimit: 1000
 }));
 
-// Fix misformatted URL-encoded payloads where JSON was stringified as a key
-// Handles cases like:
-// 1) {"a":1,"b":2} as the only key with empty value
-// 2) {"...","allergies": as key and the value object containing selected items as keys
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const contentType = req.get('Content-Type') || '';
-  if (contentType.includes('application/x-www-form-urlencoded') && req.body && typeof req.body === 'object') {
-    const keys = Object.keys(req.body);
-    if (keys.length === 1) {
-      const soleKey = keys[0].trim();
-      const soleVal: any = (req.body as any)[keys[0]];
-      // Case 1: entire JSON string used as a key with empty value
-      if (soleKey.startsWith('{') && soleKey.endsWith('}') && soleVal === '') {
-        try {
-          const parsed = JSON.parse(soleKey);
-          if (parsed && typeof parsed === 'object') {
-            req.body = parsed;
-          }
-        } catch (e) {
-          // Ignore parsing errors and continue
-        }
-      }
-      // Case 2: partial JSON where last property (e.g., allergies) is missing its value,
-      // and the value came through as an object whose keys are the chosen items.
-      // Example:
-      // key: '{"name":"x", ... , "allergies":'
-      // val: { '"Peanuts"': '' }
-      else if (soleKey.startsWith('{') && /"(allergies|dietaryPreferences)":\s*$/.test(soleKey) && soleVal && typeof soleVal === 'object') {
-        try {
-          // Convert object keys to an array of strings, unwrapping extra quotes if present
-          const arr = Object.keys(soleVal).map(k => {
-            try { return JSON.parse(k); } catch { return k.replace(/^\"|\"$/g, '').replace(/^"|"$/g, ''); }
-          });
-          const reconstructed = `${soleKey}${JSON.stringify(arr)}}`;
-          const parsed = JSON.parse(reconstructed);
-          if (parsed && typeof parsed === 'object') {
-            req.body = parsed;
-          }
-        } catch (e) {
-          // Ignore parsing errors and continue
-        }
-      }
-    }
-  }
-  next();
-});
-
-// Enhanced body logging with Content-Type information
+// Simple logging middleware (no data manipulation)
 app.use((req: Request, res: Response, next: NextFunction) => {
   const contentType = req.get('Content-Type') || 'unknown';
-  console.log('[POST-PARSING] Content-Type:', contentType);
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[POST-PARSING] Body:', req.body);
-    console.log('[POST-PARSING] Body type:', typeof req.body);
-    console.log('[POST-PARSING] Body keys:', Object.keys(req.body || {}));
-  }
-  next();
-});
-
-// Add Content-Type validation middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const contentType = req.get('Content-Type');
+  const method = req.method;
+  const path = req.path;
   
-  // Validate Content-Type for JSON and form data
-  if (contentType) {
-    if (contentType.includes('application/json') && typeof req.body !== 'object') {
-      console.warn('[CONTENT-TYPE-WARNING] Content-Type indicates JSON but body is not an object');
-    } else if (contentType.includes('application/x-www-form-urlencoded') && typeof req.body !== 'object') {
-      console.warn('[CONTENT-TYPE-WARNING] Content-Type indicates form data but body is not an object');
-    }
+  // Only log basic info for debugging, don't log actual body content
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[${method}] ${path} - Content-Type: ${contentType}`);
   }
   
   next();
