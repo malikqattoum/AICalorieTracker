@@ -1,4 +1,5 @@
 import { getAccessToken } from './tokenManager';
+import { API_URL } from './config';
 
 /**
  * Makes an authenticated API request with automatic token inclusion
@@ -9,33 +10,40 @@ import { getAccessToken } from './tokenManager';
 export async function apiRequest(url: string, options: RequestInit = {}): Promise<Response> {
   const token = getAccessToken();
 
+  // Normalize URL: prepend API base if relative
+  const fullUrl = url.startsWith('/api/') ? `${API_URL}${url}` : url;
+
   const headers = new Headers(options.headers);
 
+  // Always set JSON Content-Type unless explicitly provided
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   // Add Authorization header if token exists
-  if (token) {
+  if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Ensure Content-Type is set for JSON requests and stringify body if needed
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
+  // Stringify plain object bodies when sending JSON
+  if (options.body && headers.get('Content-Type')?.includes('application/json')) {
     if (typeof options.body === 'object' && options.body !== null) {
       options.body = JSON.stringify(options.body);
     }
   }
 
   const requestOptions: RequestInit = {
+    credentials: 'include',
     ...options,
     headers,
   };
 
   try {
-    const response = await fetch(url, requestOptions);
+    const response = await fetch(fullUrl, requestOptions);
 
     // Handle 401 Unauthorized - token might be expired
     if (response.status === 401) {
       console.warn('API request failed with 401 - token might be expired');
-      // You could trigger token refresh here if needed
     }
 
     return response;

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MealAnalysis } from "@shared/schema";
 import { Switch } from "@/components/ui/switch";
 import { API_URL } from "@/lib/config";
+import { getAccessToken } from "@/lib/tokenManager";
 
 export function CameraUploadCard() {
   const { toast } = useToast();
@@ -29,10 +30,12 @@ export function CameraUploadCard() {
       // Ensure we send a full data URL so the server can detect MIME type
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending imageData length:', payloadImageData.length);
+      const token = getAccessToken();
       const res = await fetch(`${API_URL}/api/analyze-food`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ imageData: payloadImageData }),
         credentials: 'include'
@@ -91,10 +94,12 @@ export function CameraUploadCard() {
       // Ensure full data URL is sent for MIME detection on server
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending multi-food imageData length:', payloadImageData.length);
+      const token = getAccessToken();
       const res = await fetch(`${API_URL}/api/analyze-multi-food`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ imageData: payloadImageData }),
         credentials: 'include'
