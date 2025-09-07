@@ -31,16 +31,23 @@ export function CameraUploadCard() {
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending imageData length:', payloadImageData.length);
       const token = getAccessToken();
+      const params = new URLSearchParams();
+      params.set('imageData', payloadImageData);
       const res = await fetch(`${API_URL}/api/analyze-food`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ imageData: payloadImageData }),
+        body: params.toString(),
         credentials: 'include'
       });
-      return res.json();
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok) {
+        const errText = await res.text().catch(() => res.statusText);
+        throw new Error(`${res.status}: ${errText}`);
+      }
+      return ct.includes('application/json') ? res.json() : res.text();
     },
     onSuccess: (analysis: MealAnalysis) => {
       queryClient.invalidateQueries({ queryKey: ["/api/meal-analyses"] });
@@ -95,16 +102,19 @@ export function CameraUploadCard() {
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending multi-food imageData length:', payloadImageData.length);
       const token = getAccessToken();
+      const params = new URLSearchParams();
+      params.set('imageData', payloadImageData);
       const res = await fetch(`${API_URL}/api/analyze-multi-food`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ imageData: payloadImageData }),
+        body: params.toString(),
         credentials: 'include'
       });
-      const data = await res.json();
+      const ct = res.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await res.json() : await res.text();
       setMultiFoodResult(data);
       toast({
         title: "Multi-Food Analysis complete!",
