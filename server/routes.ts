@@ -391,23 +391,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if the key looks like JSON
         if (singleKey.startsWith('{') && singleKey.includes('imageData')) {
           try {
-            // URL decode the key first in case it's encoded
-            const decodedKey = decodeURIComponent(singleKey);
-            console.log('[ANALYZE-FOOD] Decoded key length:', decodedKey.length);
-            
-            const parsed = JSON.parse(decodedKey);
+            // First try direct JSON parsing
+            const parsed = JSON.parse(singleKey);
             req.body = parsed;
-            console.log('[ANALYZE-FOOD] Successfully parsed URL-encoded JSON');
+            console.log('[ANALYZE-FOOD] Successfully parsed direct JSON');
             console.log('[ANALYZE-FOOD] Parsed body keys:', Object.keys(parsed));
           } catch (e) {
-            console.log('[ANALYZE-FOOD] Failed to parse URL-encoded JSON:', e);
-            // Try without URL decoding as fallback
+            console.log('[ANALYZE-FOOD] Direct JSON parse failed, trying URL decode:', e);
             try {
-              const parsed = JSON.parse(singleKey);
+              // Try URL decoding first
+              const decodedKey = decodeURIComponent(singleKey);
+              console.log('[ANALYZE-FOOD] Decoded key length:', decodedKey.length);
+              
+              const parsed = JSON.parse(decodedKey);
               req.body = parsed;
-              console.log('[ANALYZE-FOOD] Successfully parsed without URL decoding');
+              console.log('[ANALYZE-FOOD] Successfully parsed URL-decoded JSON');
+              console.log('[ANALYZE-FOOD] Parsed body keys:', Object.keys(parsed));
             } catch (e2) {
-              console.log('[ANALYZE-FOOD] Both parsing attempts failed:', e2);
+              console.log('[ANALYZE-FOOD] Both parsing attempts failed. Trying to extract imageData directly...');
+              // Last resort: try to extract imageData from the malformed JSON
+              const imageDataMatch = singleKey.match(/"imageData":"([^"]+)"/); 
+              if (imageDataMatch) {
+                req.body = { imageData: imageDataMatch[1] };
+                console.log('[ANALYZE-FOOD] Extracted imageData directly from malformed JSON');
+              } else {
+                console.log('[ANALYZE-FOOD] All parsing attempts failed:', e2);
+              }
             }
           }
         }
