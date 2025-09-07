@@ -374,15 +374,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Analyze food image and create meal analysis
   app.post("/api/analyze-food", authenticate, (req, res, next) => {
+    console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
+    console.log('[ANALYZE-FOOD] Raw body type:', typeof req.body);
+    console.log('[ANALYZE-FOOD] Raw body keys:', Object.keys(req.body || {}));
+    
     // Handle URL-encoded JSON parsing
-    if (req.get('Content-Type') === 'application/x-www-form-urlencoded') {
+    if (req.get('Content-Type')?.includes('application/x-www-form-urlencoded')) {
       const bodyKeys = Object.keys(req.body || {});
-      if (bodyKeys.length === 1 && bodyKeys[0].startsWith('{')) {
-        try {
-          req.body = JSON.parse(bodyKeys[0]);
-          console.log('[ANALYZE-FOOD] Parsed URL-encoded JSON successfully');
-        } catch (e) {
-          console.log('[ANALYZE-FOOD] Failed to parse URL-encoded JSON');
+      console.log('[ANALYZE-FOOD] URL-encoded body keys:', bodyKeys);
+      
+      if (bodyKeys.length === 1) {
+        const singleKey = bodyKeys[0];
+        console.log('[ANALYZE-FOOD] Single key found:', singleKey.substring(0, 100) + '...');
+        
+        // Check if the key looks like JSON
+        if (singleKey.startsWith('{') && singleKey.includes('imageData')) {
+          try {
+            const parsed = JSON.parse(singleKey);
+            req.body = parsed;
+            console.log('[ANALYZE-FOOD] Successfully parsed URL-encoded JSON');
+            console.log('[ANALYZE-FOOD] Parsed body keys:', Object.keys(parsed));
+          } catch (e) {
+            console.log('[ANALYZE-FOOD] Failed to parse URL-encoded JSON:', e);
+          }
         }
       }
     }
