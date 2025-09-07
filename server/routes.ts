@@ -137,22 +137,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if file exists and serve it
       if (actualFilePath && fs.existsSync(actualFilePath)) {
+        console.log(`[IMAGE-SERVE] Serving file: ${actualFilePath}`);
+        console.log(`[IMAGE-SERVE] File size: ${fs.statSync(actualFilePath).size} bytes`);
+        
         // Set appropriate headers
-        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
         res.setHeader('Content-Type', actualMimeType);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET');
 
         // Stream the file
         const fileStream = fs.createReadStream(actualFilePath);
-        fileStream.pipe(res);
-
+        
         fileStream.on('error', (error: Error) => {
           console.error(`[IMAGE-SERVE] Error streaming image file ${filename}:`, error);
           if (!res.headersSent) {
             res.status(500).json({ message: 'Error serving image' });
           }
         });
+        
+        fileStream.on('end', () => {
+          console.log(`[IMAGE-SERVE] Successfully served: ${filename}`);
+        });
+        
+        fileStream.pipe(res);
       } else {
         console.log(`[IMAGE-SERVE] Image not found: ${filename} in ${folderName}`);
         console.log(`[IMAGE-SERVE] Searched in: ${uploadsPath}`);
@@ -365,7 +373,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analyze food image and create meal analysis
-  app.post("/api/analyze-food", authenticate, async (req, res) => {
+  app.post("/api/analyze-food", authenticate, (req, res, next) => {
+    // Handle URL-encoded JSON parsing
+    if (req.get('Content-Type') === 'application/x-www-form-urlencoded') {
+      const bodyKeys = Object.keys(req.body || {});
+      if (bodyKeys.length === 1 && bodyKeys[0].startsWith('{')) {
+        try {
+          req.body = JSON.parse(bodyKeys[0]);
+          console.log('[ANALYZE-FOOD] Parsed URL-encoded JSON successfully');
+        } catch (e) {
+          console.log('[ANALYZE-FOOD] Failed to parse URL-encoded JSON');
+        }
+      }
+    }
+    next();
+  }, async (req, res) => {
     console.log('[ANALYZE-FOOD] Starting food analysis request');
     console.log('[ANALYZE-FOOD] User ID:', req.user!.id);
     console.log('[ANALYZE-FOOD] Content-Type:', req.get('Content-Type'));
@@ -377,110 +399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageData: z.string()
       });
 
-      // Normalize body to support multiple field names and handle malformed requests
-      const body: any = req.body || {};
-      let normalizedImageData = body.imageData ?? body.image ?? body.data ?? null;
-      
-      // Special handling for URL-encoded JSON where the entire JSON becomes a key
-      if (!normalizedImageData && Object.keys(body).length === 1) {
-        const singleKey = Object.keys(body)[0];
-        const singleValue = body[singleKey];
-        
-        // Check if the key looks like a complete JSON object
-        if (singleKey.startsWith('{"imageData":')) {
-          // Try to reconstruct the complete JSON by combining key and value
-          let completeJson = singleKey;
-          
-          // If the value is not empty, it might be the end of the JSON
-          if (singleValue && typeof singleValue === 'string' && singleValue.trim()) {
-            completeJson = singleKey + singleValue;
-          }
-          
-          // Ensure the JSON ends properly
-          if (!completeJson.endsWith('}')) {
-            completeJson += '}';
-          }
-          
-          try {
-            console.log('[ANALYZE-FOOD] Attempting to parse reconstructed JSON, length:', completeJson.length);
-            const parsed = JSON.parse(completeJson);
-            if (parsed && parsed.imageData) {
-              normalizedImageData = parsed.imageData;
-              console.log('[ANALYZE-FOOD] Successfully extracted imageData from reconstructed JSON');
-            }
-          } catch (e: unknown) {
-            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-            console.log('[ANALYZE-FOOD] Failed to parse reconstructed JSON:', errorMessage);
-            console.log('[ANALYZE-FOOD] JSON preview:', completeJson.substring(0, 200) + '...');
-          }
-        }
-      }
+      const validatedData = requestSchema.parse(req.body);
 
-      // Handle other malformed cases
-      if (!normalizedImageData && Object.keys(body).length >= 1) {
-        const bodyKeys = Object.keys(body);
-        console.log('[ANALYZE-FOOD] Checking for malformed JSON in body keys:', bodyKeys.length);
-        
-        // Try to find JSON-like key
-        for (const key of bodyKeys) {
-          const value = body[key];
-          console.log('[ANALYZE-FOOD] Checking key:', key.substring(0, 50) + '...', 'value type:', typeof value, 'value:', typeof value === 'string' ? value.substring(0, 10) : value);
-          
-          // Case 1: Entire JSON object as key - try to parse it
-          if (key.startsWith('{') && key.includes('imageData')) {
-            try {
-              console.log('[ANALYZE-FOOD] Attempting to parse JSON from key');
-              const parsed = JSON.parse(key);
-              if (parsed && typeof parsed === 'object' && parsed.imageData) {
-                normalizedImageData = parsed.imageData;
-                console.log('[ANALYZE-FOOD] Successfully extracted imageData from JSON key, length:', normalizedImageData.length);
-                break;
-              }
-            } catch (e: unknown) {
-              const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-              console.log('[ANALYZE-FOOD] Failed to parse JSON from key:', errorMessage);
-            }
-          }
-          
-          // Case 2: Check if value itself contains the image data
-          if (typeof value === 'string' && (value.startsWith('data:image/') || value.startsWith('/9j/') || value.length > 1000)) {
-            normalizedImageData = value;
-            console.log('[ANALYZE-FOOD] Found image data in value');
-            break;
-          }
-        }
-      }
 
-      console.log('[ANALYZE-FOOD] Normalized image data type:', typeof normalizedImageData);
-      console.log('[ANALYZE-FOOD] Normalized image data length:', normalizedImageData?.length || 0);
-      console.log('[ANALYZE-FOOD] Image data preview:', normalizedImageData ? normalizedImageData.substring(0, 50) + '...' : 'null/undefined');
-
-      // Check if image data is missing before Zod validation
-      if (!normalizedImageData || typeof normalizedImageData !== 'string' || normalizedImageData.trim() === '') {
-        console.error('[ANALYZE-FOOD] Missing or invalid image data');
-        console.error('[ANALYZE-FOOD] Available body fields:', Object.keys(body));
-        console.error('[ANALYZE-FOOD] Body structure debug:');
-        Object.keys(body).forEach(key => {
-          const value = body[key];
-          console.error(`  Key: "${key.substring(0, 100)}..." (${key.length} chars)`);
-          console.error(`  Value type: ${typeof value}`);
-          console.error(`  Value preview: ${typeof value === 'string' ? value.substring(0, 50) + '...' : JSON.stringify(value).substring(0, 50) + '...'}`);
-        });
-        
-        return res.status(400).json({
-          message: "Image data is required. Please provide imageData, image, or data field with base64 encoded image.",
-          receivedFields: Object.keys(body),
-          expectedFields: ['imageData', 'image', 'data'],
-          debug: {
-            contentType: req.get('Content-Type'),
-            bodyType: typeof req.body,
-            bodyKeys: Object.keys(body),
-            firstKeyPreview: Object.keys(body)[0]?.substring(0, 100)
-          }
-        });
-      }
-
-      const validatedData = requestSchema.parse({ imageData: normalizedImageData });
       const userId = req.user!.id;
       console.log('[ANALYZE-FOOD] Validation passed, userId:', userId);
 
