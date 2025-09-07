@@ -2,12 +2,12 @@ import { Router } from 'express';
 import { db } from '../../db';
 import { mealAnalyses } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
 // Get today's nutrition stats for the authenticated user
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -23,8 +23,8 @@ router.get('/', authenticateToken, async (req, res) => {
     const todayMeals = await db.query.mealAnalyses.findMany({
       where: and(
         eq(mealAnalyses.userId, userId),
-        gte(mealAnalyses.timestamp, startOfDay),
-        lte(mealAnalyses.timestamp, endOfDay)
+        gte(mealAnalyses.createdAt, startOfDay),
+        lte(mealAnalyses.createdAt, endOfDay)
       ),
     });
 
@@ -52,7 +52,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Update water intake for today
-router.post('/water', authenticateToken, async (req, res) => {
+router.post('/water', authenticate, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
