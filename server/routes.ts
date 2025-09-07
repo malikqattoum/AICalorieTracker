@@ -381,21 +381,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Handle URL-encoded JSON parsing
     if (req.get('Content-Type')?.includes('application/x-www-form-urlencoded')) {
       const bodyKeys = Object.keys(req.body || {});
-      console.log('[ANALYZE-FOOD] URL-encoded body keys:', bodyKeys);
+      console.log('[ANALYZE-FOOD] URL-encoded body keys count:', bodyKeys.length);
       
       if (bodyKeys.length === 1) {
         const singleKey = bodyKeys[0];
-        console.log('[ANALYZE-FOOD] Single key found:', singleKey.substring(0, 100) + '...');
+        console.log('[ANALYZE-FOOD] Single key length:', singleKey.length);
+        console.log('[ANALYZE-FOOD] Single key preview:', singleKey.substring(0, 100) + '...');
         
         // Check if the key looks like JSON
         if (singleKey.startsWith('{') && singleKey.includes('imageData')) {
           try {
-            const parsed = JSON.parse(singleKey);
+            // URL decode the key first in case it's encoded
+            const decodedKey = decodeURIComponent(singleKey);
+            console.log('[ANALYZE-FOOD] Decoded key length:', decodedKey.length);
+            
+            const parsed = JSON.parse(decodedKey);
             req.body = parsed;
             console.log('[ANALYZE-FOOD] Successfully parsed URL-encoded JSON');
             console.log('[ANALYZE-FOOD] Parsed body keys:', Object.keys(parsed));
           } catch (e) {
             console.log('[ANALYZE-FOOD] Failed to parse URL-encoded JSON:', e);
+            // Try without URL decoding as fallback
+            try {
+              const parsed = JSON.parse(singleKey);
+              req.body = parsed;
+              console.log('[ANALYZE-FOOD] Successfully parsed without URL decoding');
+            } catch (e2) {
+              console.log('[ANALYZE-FOOD] Both parsing attempts failed:', e2);
+            }
           }
         }
       }
