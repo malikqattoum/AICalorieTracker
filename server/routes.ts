@@ -420,7 +420,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 req.body = { imageData: extracted };
                 console.log('[ANALYZE-FOOD] Extracted imageData directly from malformed JSON');
               } else {
-                console.log('[ANALYZE-FOOD] All parsing attempts failed:', e2);
+                // Fallback: extract everything after "imageData":" even if closing quote/brace is missing
+                const marker = '"imageData":"';
+                const startIdx = singleKey.indexOf(marker);
+                if (startIdx !== -1) {
+                  let extracted = singleKey.substring(startIdx + marker.length);
+                  const endQuote = extracted.indexOf('"');
+                  if (endQuote !== -1) extracted = extracted.substring(0, endQuote);
+                  // Normalize urlencoded '+' that may have become spaces
+                  if (req.get('Content-Type')?.includes('application/x-www-form-urlencoded') && extracted.includes(' ')) {
+                    extracted = extracted.replace(/ /g, '+');
+                  }
+                  req.body = { imageData: extracted };
+                  console.log('[ANALYZE-FOOD] Fallback-extracted imageData from truncated JSON');
+                } else {
+                  console.log('[ANALYZE-FOOD] All parsing attempts failed:', e2);
+                }
               }
             }
           }

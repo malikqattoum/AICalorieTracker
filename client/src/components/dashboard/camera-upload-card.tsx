@@ -5,10 +5,11 @@ import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { useCamera } from "@/hooks/use-camera";
 import { CameraView } from "@/components/camera/camera-view";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { MealAnalysis } from "@shared/schema";
 import { Switch } from "@/components/ui/switch";
+import { API_URL } from "@/lib/config";
 
 export function CameraUploadCard() {
   const { toast } = useToast();
@@ -28,7 +29,14 @@ export function CameraUploadCard() {
       // Ensure we send a full data URL so the server can detect MIME type
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending imageData length:', payloadImageData.length);
-      const res = await apiRequest("POST", "/api/analyze-food", { imageData: payloadImageData });
+      const res = await fetch(`${API_URL}/api/analyze-food`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ imageData: payloadImageData }),
+        credentials: 'include'
+      });
       return res.json();
     },
     onSuccess: (analysis: MealAnalysis) => {
@@ -83,7 +91,14 @@ export function CameraUploadCard() {
       // Ensure full data URL is sent for MIME detection on server
       const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
       console.log('[CAMERA-UPLOAD] Sending multi-food imageData length:', payloadImageData.length);
-      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData: payloadImageData });
+      const res = await fetch(`${API_URL}/api/analyze-multi-food`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ imageData: payloadImageData }),
+        credentials: 'include'
+      });
       const data = await res.json();
       setMultiFoodResult(data);
       toast({
@@ -193,6 +208,30 @@ export function CameraUploadCard() {
               >
                 <Camera className="h-5 w-5 mr-2" />
                 Take Photo
+              </Button>
+
+              {/* Temporary debug button to verify request format on production */}
+              <Button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`${API_URL}/api/test-analyze-format`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ imageData: 'data:image/jpeg;base64,AAAA' }),
+                      credentials: 'include'
+                    });
+                    const data = await res.json();
+                    console.log('[FORMAT-TEST]', data);
+                    toast({ title: 'Format Test', description: `JSON: ${data.analysis?.extractionMethod} (${data.analysis?.contentType})` });
+                  } catch (e: any) {
+                    toast({ title: 'Format Test Failed', description: e.message, variant: 'destructive' });
+                  }
+                }}
+                variant="secondary"
+                className="inline-flex items-center px-4 py-2.5 text-sm"
+                disabled={isLoading}
+              >
+                Test Request Format
               </Button>
 
               <input
