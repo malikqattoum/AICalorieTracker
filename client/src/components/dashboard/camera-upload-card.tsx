@@ -225,30 +225,6 @@ export function CameraUploadCard() {
                 Take Photo
               </Button>
 
-              {/* Temporary debug button to verify request format on production */}
-              <Button
-                onClick={async () => {
-                  try {
-                    const res = await fetch(`${API_URL}/api/test-analyze-format`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ imageData: 'data:image/jpeg;base64,AAAA' }),
-                      credentials: 'include'
-                    });
-                    const data = await res.json();
-                    console.log('[FORMAT-TEST]', data);
-                    toast({ title: 'Format Test', description: `JSON: ${data.analysis?.extractionMethod} (${data.analysis?.contentType})` });
-                  } catch (e: any) {
-                    toast({ title: 'Format Test Failed', description: e.message, variant: 'destructive' });
-                  }
-                }}
-                variant="secondary"
-                className="inline-flex items-center px-4 py-2.5 text-sm"
-                disabled={isLoading}
-              >
-                Test Request Format
-              </Button>
-
               <input
                 type="file"
                 ref={fileInputRef}
