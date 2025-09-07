@@ -76,32 +76,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Invalid filename' });
       }
 
-      // Construct the file path
-      const filePath = path.join(process.cwd(), 'uploads', size === 'original' ? 'originals' : size === 'optimized' ? 'optimized' : 'thumbnails', filename);
+      // Extract base filename without extension
+      const baseFilename = filename.replace(/\.[^/.]+$/, '');
+      const requestedExtension = filename.split('.').pop()?.toLowerCase();
+      
+      // Try multiple file extensions to find the actual file
+      const possibleExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+      const folderName = size === 'original' ? 'originals' : size === 'optimized' ? 'optimized' : 'thumbnails';
+      const uploadsPath = path.join(process.cwd(), 'uploads', folderName);
+      
+      let actualFilePath = null;
+      let actualMimeType = 'image/jpeg';
+      
+      console.log(`[IMAGE-SERVE] Looking for file: ${filename} in ${uploadsPath}`);
+      
+      // First try the requested filename as-is
+      let testPath = path.join(uploadsPath, filename);
+      console.log(`[IMAGE-SERVE] Trying exact match: ${testPath}`);
+      
+      if (fs.existsSync(testPath)) {
+        actualFilePath = testPath;
+        actualMimeType = mime.lookup(filename) || 'image/jpeg';
+        console.log(`[IMAGE-SERVE] Found exact match: ${actualFilePath}`);
+      } else {
+        console.log(`[IMAGE-SERVE] Exact match not found, trying alternative extensions...`);
+        
+        // If not found, try different extensions
+        for (const ext of possibleExtensions) {
+          testPath = path.join(uploadsPath, `${baseFilename}.${ext}`);
+          console.log(`[IMAGE-SERVE] Trying: ${testPath}`);
+          
+          if (fs.existsSync(testPath)) {
+            actualFilePath = testPath;
+            actualMimeType = mime.lookup(ext) || 'image/jpeg';
+            console.log(`[IMAGE-SERVE] Found file with different extension: ${actualFilePath}`);
+            break;
+          }
+        }
+        
+        // If still not found, list all files in directory for debugging
+        if (!actualFilePath && fs.existsSync(uploadsPath)) {
+          const allFiles = fs.readdirSync(uploadsPath);
+          console.log(`[IMAGE-SERVE] Available files in ${folderName}:`, allFiles.slice(0, 10));
+          
+          // Try to find files with similar names
+          const similarFiles = allFiles.filter(f => f.includes(baseFilename.substring(0, 8)));
+          if (similarFiles.length > 0) {
+            console.log(`[IMAGE-SERVE] Similar files found:`, similarFiles);
+          }
+        }
+      }
 
       // Check if file exists and serve it
-      if (fs.existsSync(filePath)) {
-        // Detect MIME type from file extension
-        const mimeType = mime.lookup(filename) || 'image/jpeg';
-
+      if (actualFilePath && fs.existsSync(actualFilePath)) {
         // Set appropriate headers
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Type', actualMimeType);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET');
 
         // Stream the file
-        const fileStream = fs.createReadStream(filePath);
+        const fileStream = fs.createReadStream(actualFilePath);
         fileStream.pipe(res);
 
         fileStream.on('error', (error: Error) => {
           console.error(`[IMAGE-SERVE] Error streaming image file ${filename}:`, error);
-          res.status(500).json({ message: 'Error serving image' });
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Error serving image' });
+          }
         });
       } else {
-        res.status(404).json({ message: 'Image not found' });
+        console.log(`[IMAGE-SERVE] Image not found: ${filename} in ${folderName}`);
+        console.log(`[IMAGE-SERVE] Searched in: ${uploadsPath}`);
+        console.log(`[IMAGE-SERVE] Base filename: ${baseFilename}`);
+        console.log(`[IMAGE-SERVE] Requested extension: ${requestedExtension}`);
+        
+        res.status(404).json({ 
+          message: 'Image not found',
+          debug: {
+            filename,
+            folderName,
+            baseFilename,
+            requestedExtension,
+            searchPath: uploadsPath
+          }
+        });
       }
     } catch (error) {
       console.error('Error serving image:', error);
-      res.status(500).json({ message: 'Internal server error' });
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Internal server error' });
+      }
     }
   });
 
@@ -451,6 +516,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[ANALYZE-FOOD] Image processed successfully');
       const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
       console.log('[ANALYZE-FOOD] Optimized URL generated:', optimizedUrl);
+      console.log('[ANALYZE-FOOD] Original filename:', processed.original.filename);
+      console.log('[ANALYZE-FOOD] Original MIME type:', processed.original.mimeType);
 
       console.log('[ANALYZE-FOOD] Creating meal analysis record');
       // Create a meal analysis record referencing the stored file and hash
@@ -590,6 +657,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const filename = processed.original.filename;
       const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
+      
+      console.log('[MEALS-ANALYZE] Processed image details:', {
+        filename: processed.original.filename,
+        mimeType: processed.original.mimeType,
+        optimizedUrl
+      });
 
       await db.insert(mealImages).values({
         mealAnalysisId: mealAnalysis.id,

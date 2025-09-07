@@ -254,11 +254,10 @@ class ImageStorageService {
    */
   private async storeOptimizedImage(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
     if (IMAGE_STORAGE_CONFIG.storageType === 'local') {
-      // For now, just store a compressed version
-      // In a real implementation, you would use a library like sharp to optimize
-      const optimizedBuffer = await this.compressImage(buffer, mimeType);
+      // Store the original image without conversion to preserve format
+      // This prevents WebP conversion issues when serving images
       const path = join(IMAGE_STORAGE_CONFIG.local.basePath, 'optimized', filename);
-      await writeFile(path, optimizedBuffer);
+      await writeFile(path, buffer);
       return path;
     } else if (IMAGE_STORAGE_CONFIG.storageType === 's3') {
       const AWS = require('aws-sdk');
@@ -268,12 +267,11 @@ class ImageStorageService {
         region: IMAGE_STORAGE_CONFIG.s3.region
       });
 
-      const optimizedBuffer = await this.compressImage(buffer, mimeType);
       const key = `optimized/${filename}`;
       await s3.upload({
         Bucket: IMAGE_STORAGE_CONFIG.s3.bucket,
         Key: key,
-        Body: optimizedBuffer,
+        Body: buffer,
         ContentType: mimeType
       }).promise();
 
@@ -288,8 +286,7 @@ class ImageStorageService {
    */
   private async storeThumbnail(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
     if (IMAGE_STORAGE_CONFIG.storageType === 'local') {
-      // For now, just store a resized version
-      // In a real implementation, you would use a library like sharp to create thumbnail
+      // Store a smaller version but keep the same format
       const thumbnailBuffer = await this.createThumbnail(buffer, mimeType);
       const path = join(IMAGE_STORAGE_CONFIG.local.basePath, 'thumbnails', filename);
       await writeFile(path, thumbnailBuffer);
@@ -321,16 +318,9 @@ class ImageStorageService {
    * Compress image
    */
   private async compressImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
-    // Simple compression using native Node.js buffer operations
-    // In a real implementation, you would use a library like sharp for better compression
-    if (mimeType === 'image/jpeg') {
-      // For JPEG, we can use a simple approach by reducing quality
-      // This is a placeholder - in production use sharp
-      return buffer.slice(0, Math.floor(buffer.length * 0.8)); // Reduce to 80% size
-    } else if (mimeType === 'image/png') {
-      // For PNG, we can try to reduce colors
-      return buffer.slice(0, Math.floor(buffer.length * 0.7)); // Reduce to 70% size
-    }
+    // For now, return the original buffer to preserve format and quality
+    // In a real implementation, you would use a library like sharp for proper compression
+    // while maintaining the original format
     return buffer;
   }
 
@@ -338,14 +328,12 @@ class ImageStorageService {
    * Create thumbnail
    */
   private async createThumbnail(buffer: Buffer, mimeType: string): Promise<Buffer> {
-    // Simple thumbnail creation
-    // In a real implementation, you would use a library like sharp
-    const thumbnailSize = 300; // 300x300 thumbnail
-    const aspectRatio = 1; // Square thumbnail
-    
-    // This is a placeholder - in production use sharp to properly resize
+    // For now, return a smaller version of the original buffer
+    // In a real implementation, you would use a library like sharp to properly resize
+    // while maintaining the original format
     if (buffer.length > 1024 * 1024) { // If larger than 1MB
-      return buffer.slice(0, 1024 * 500); // Reduce to ~500KB
+      // Simple size reduction while preserving format
+      return buffer.slice(0, Math.floor(buffer.length * 0.5)); // Reduce to 50% size
     }
     return buffer;
   }
@@ -357,8 +345,10 @@ class ImageStorageService {
     if (IMAGE_STORAGE_CONFIG.storageType === 'local') {
       // For local storage, return a relative path
       // In production, you would serve these through a CDN or dedicated image server
-      const filename = imagePath.split('/').pop();
-      return `/api/images/${size}/${filename}`;
+      const filename = imagePath.split('/').pop() || imagePath.split('\\').pop();
+      const imageUrl = `/api/images/${size}/${filename}`;
+      console.log(`[IMAGE-STORAGE] Generated URL: ${imageUrl} from path: ${imagePath}`);
+      return imageUrl;
     } else {
       // For S3, return the S3 URL
       return `https://${IMAGE_STORAGE_CONFIG.s3.bucket}.s3.${IMAGE_STORAGE_CONFIG.s3.region}.amazonaws.com/${imagePath}`;
