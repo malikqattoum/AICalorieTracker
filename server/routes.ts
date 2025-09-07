@@ -410,9 +410,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (e2) {
               console.log('[ANALYZE-FOOD] Both parsing attempts failed. Trying to extract imageData directly...');
               // Last resort: try to extract imageData from the malformed JSON
-              const imageDataMatch = singleKey.match(/"imageData":"([^"]+)"/); 
+              const imageDataMatch = singleKey.match(/"imageData"\s*:\s*"([\s\S]*?)"/);
               if (imageDataMatch) {
-                req.body = { imageData: imageDataMatch[1] };
+                let extracted = imageDataMatch[1];
+                // Fix '+' converted to spaces by urlencoded parser
+                if (req.get('Content-Type')?.includes('application/x-www-form-urlencoded') && extracted.includes(' ')) {
+                  extracted = extracted.replace(/ /g, '+');
+                }
+                req.body = { imageData: extracted };
                 console.log('[ANALYZE-FOOD] Extracted imageData directly from malformed JSON');
               } else {
                 console.log('[ANALYZE-FOOD] All parsing attempts failed:', e2);

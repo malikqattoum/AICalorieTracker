@@ -25,10 +25,10 @@ export function CameraUploadCard() {
 
   const analyzeImageMutation = useMutation({
     mutationFn: async (imageData: string) => {
-      // Extract base64 data from data URL if needed
-      const base64Data = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
-      console.log('[CAMERA-UPLOAD] Sending base64 data length:', base64Data.length);
-      const res = await apiRequest("POST", "/api/analyze-food", { imageData: base64Data });
+      // Ensure we send a full data URL so the server can detect MIME type
+      const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+      console.log('[CAMERA-UPLOAD] Sending imageData length:', payloadImageData.length);
+      const res = await apiRequest("POST", "/api/analyze-food", { imageData: payloadImageData });
       return res.json();
     },
     onSuccess: (analysis: MealAnalysis) => {
@@ -80,10 +80,10 @@ export function CameraUploadCard() {
 
   const analyzeMultiFood = async (imageData: string) => {
     try {
-      // Extract base64 data from data URL if needed
-      const base64Data = imageData.startsWith('data:') ? imageData.split(',')[1] : imageData;
-      console.log('[CAMERA-UPLOAD] Sending multi-food base64 data length:', base64Data.length);
-      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData: base64Data });
+      // Ensure full data URL is sent for MIME detection on server
+      const payloadImageData = imageData.startsWith('data:') ? imageData : `data:image/jpeg;base64,${imageData}`;
+      console.log('[CAMERA-UPLOAD] Sending multi-food imageData length:', payloadImageData.length);
+      const res = await apiRequest("POST", "/api/analyze-multi-food", { imageData: payloadImageData });
       const data = await res.json();
       setMultiFoodResult(data);
       toast({
