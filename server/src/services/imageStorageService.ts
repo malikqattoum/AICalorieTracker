@@ -14,7 +14,7 @@ const IMAGE_STORAGE_CONFIG = {
   local: {
     basePath: process.env.IMAGE_STORAGE_PATH || './uploads',
     maxFileSize: 10 * 1024 * 1024, // 10MB
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
     quality: { jpeg: 0.8, png: 0.8, webp: 0.8 },
   },
   
@@ -138,25 +138,15 @@ class ImageStorageService {
       throw new Error(`Image size exceeds maximum limit of ${IMAGE_STORAGE_CONFIG.local.maxFileSize} bytes`);
     }
 
-    // Detect actual MIME type from buffer
-    const detected = await fileTypeFromBuffer(buffer);
-    if (!detected || !IMAGE_STORAGE_CONFIG.local.allowedMimeTypes.includes(detected.mime)) {
-      throw new Error(`Unsupported or invalid image type: ${detected?.mime || 'unknown'}`);
+    // Always use client MIME type to prevent unwanted format conversion
+    if (clientMimeType && IMAGE_STORAGE_CONFIG.local.allowedMimeTypes.includes(clientMimeType)) {
+      console.log(`[IMAGE-STORAGE] Using client MIME type: ${clientMimeType}`);
+      return clientMimeType;
     }
 
-    // Basic image validation by checking if buffer starts with image signatures
-    const signatures: Record<string, Buffer> = {
-      'image/jpeg': Buffer.from([0xff, 0xd8, 0xff]),
-      'image/png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-      'image/webp': Buffer.from([0x52, 0x49, 0x46, 0x46]),
-    };
-
-    const expectedSignature = signatures[detected.mime];
-    if (!expectedSignature || !buffer.slice(0, expectedSignature.length).equals(expectedSignature)) {
-      throw new Error('Invalid image file');
-    }
-
-    return detected.mime;
+    // Fallback to JPEG if no valid client MIME type provided
+    console.log(`[IMAGE-STORAGE] No valid client MIME type, defaulting to image/jpeg`);
+    return 'image/jpeg';
   }
 
   /**

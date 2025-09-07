@@ -97,6 +97,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (fs.existsSync(testPath)) {
         actualFilePath = testPath;
         actualMimeType = mime.lookup(filename) || 'image/jpeg';
+        // Ensure JPG files are served with correct MIME type
+        if (filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')) {
+          actualMimeType = 'image/jpeg';
+        }
         console.log(`[IMAGE-SERVE] Found exact match: ${actualFilePath}`);
       } else {
         console.log(`[IMAGE-SERVE] Exact match not found, trying alternative extensions...`);
@@ -109,6 +113,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (fs.existsSync(testPath)) {
             actualFilePath = testPath;
             actualMimeType = mime.lookup(ext) || 'image/jpeg';
+            // Ensure JPG files are served with correct MIME type
+            if (ext === 'jpg' || ext === 'jpeg') {
+              actualMimeType = 'image/jpeg';
+            }
             console.log(`[IMAGE-SERVE] Found file with different extension: ${actualFilePath}`);
             break;
           }
@@ -502,9 +510,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { imageStorageService } = await import('./src/services/imageStorageService');
       const buffer = Buffer.from(base64Data, 'base64');
       console.log('[ANALYZE-FOOD] Buffer created, size:', buffer.length);
-      const mimeType = (validatedData.imageData.startsWith('data:image/')
-        ? validatedData.imageData.substring(5, validatedData.imageData.indexOf(';'))
-        : 'image/jpeg');
+      // Extract MIME type from data URL or default to JPEG
+      let mimeType = 'image/jpeg';
+      if (validatedData.imageData.startsWith('data:image/')) {
+        const extractedType = validatedData.imageData.substring(5, validatedData.imageData.indexOf(';'));
+        // Force JPEG for JPG uploads to prevent WebP conversion
+        if (extractedType === 'image/jpg' || extractedType === 'image/jpeg') {
+          mimeType = 'image/jpeg';
+        } else {
+          mimeType = extractedType;
+        }
+      }
       console.log('[ANALYZE-FOOD] MIME type detected:', mimeType);
 
       const processed = await imageStorageService.processAndStoreImage(
