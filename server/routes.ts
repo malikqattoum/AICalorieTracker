@@ -40,6 +40,8 @@ import securityRouter from "./src/routes/security";
 import userRouter from "./src/routes/user/index";
 import wearableRouter from "./src/routes/wearables";
 import authRouter from "./src/routes/auth";
+import analyticsRouter from "./src/routes/analytics";
+import todayStatsRouter from "./src/routes/today-stats";
 
 // Initialize Stripe client if secret key is available
 let stripe: Stripe | null = null;
@@ -1354,6 +1356,22 @@ app.post("/api/onboarding/complete", authenticate, async (req, res) => {
     app.use('/api/wearable', wearableRouter);
   } catch (error) {
     console.error('Error loading wearable routes:', error);
+  }
+
+  // Mount analytics routes
+  try {
+    app.use('/api/analytics', analyticsRouter);
+    console.log('✓ Analytics routes mounted at /api/analytics');
+  } catch (error) {
+    console.error('Error loading analytics routes:', error);
+  }
+
+  // Mount today-stats routes
+  try {
+    app.use('/api/today-stats', todayStatsRouter);
+    console.log('✓ Today-stats routes mounted at /api/today-stats');
+  } catch (error) {
+    console.error('Error loading today-stats routes:', error);
   }
 
   // Set up authentication routes after public routes are defined

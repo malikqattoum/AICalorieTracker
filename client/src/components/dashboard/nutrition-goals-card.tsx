@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
+import { APP_CONFIG } from "@/lib/constants";
 
 interface NutritionGoals {
   userId: number;
@@ -40,14 +41,7 @@ export function NutritionGoalsCard() {
         // Return default goals if none exist
         return {
           userId: 0,
-          dailyCalories: 2000,
-          dailyProtein: 150,
-          dailyCarbs: 200,
-          dailyFat: 65,
-          weeklyWorkouts: 3,
-          waterIntake: 2000,
-          weight: 70, // Default weight in kg
-          bodyFatPercentage: 20, // Default body fat percentage
+          ...APP_CONFIG.DEFAULT_NUTRITION_GOALS,
         };
       }
     },
@@ -130,11 +124,12 @@ export function NutritionGoalsCard() {
 
   // Get progress color based on percentage
   const getProgressColor = (percentage: number) => {
-    if (percentage < 25) return "bg-blue-500";
-    if (percentage < 50) return "bg-emerald-500";
-    if (percentage < 75) return "bg-yellow-500";
-    if (percentage < 90) return "bg-orange-500";
-    return "bg-red-500";
+    const colors = APP_CONFIG.PROGRESS_COLORS;
+    if (percentage < colors.low.threshold) return colors.low.color;
+    if (percentage < colors.medium.threshold) return colors.medium.color;
+    if (percentage < colors.high.threshold) return colors.high.color;
+    if (percentage < colors.veryHigh.threshold) return colors.veryHigh.color;
+    return colors.complete.color;
   };
 
   return (
@@ -169,8 +164,8 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Daily Calories</label>
                 <input
                   type="number"
-                  min="1000"
-                  max="5000"
+                  min={APP_CONFIG.NUTRITION_RANGES.dailyCalories.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.dailyCalories.max}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.dailyCalories || 0}
                   onChange={(e) => handleInputChange("dailyCalories", parseInt(e.target.value) || 0)}
@@ -180,8 +175,8 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Daily Protein (g)</label>
                 <input
                   type="number"
-                  min="30"
-                  max="300"
+                  min={APP_CONFIG.NUTRITION_RANGES.dailyProtein.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.dailyProtein.max}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.dailyProtein || 0}
                   onChange={(e) => handleInputChange("dailyProtein", parseInt(e.target.value) || 0)}
@@ -191,8 +186,8 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Daily Carbs (g)</label>
                 <input
                   type="number"
-                  min="50"
-                  max="500"
+                  min={APP_CONFIG.NUTRITION_RANGES.dailyCarbs.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.dailyCarbs.max}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.dailyCarbs || 0}
                   onChange={(e) => handleInputChange("dailyCarbs", parseInt(e.target.value) || 0)}
@@ -202,8 +197,8 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Daily Fat (g)</label>
                 <input
                   type="number"
-                  min="20"
-                  max="200"
+                  min={APP_CONFIG.NUTRITION_RANGES.dailyFat.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.dailyFat.max}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.dailyFat || 0}
                   onChange={(e) => handleInputChange("dailyFat", parseInt(e.target.value) || 0)}
@@ -213,8 +208,8 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Weekly Workouts</label>
                 <input
                   type="number"
-                  min="0"
-                  max="14"
+                  min={APP_CONFIG.NUTRITION_RANGES.weeklyWorkouts.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.weeklyWorkouts.max}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.weeklyWorkouts || 0}
                   onChange={(e) => handleInputChange("weeklyWorkouts", parseInt(e.target.value) || 0)}
@@ -224,9 +219,9 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Water Intake (ml)</label>
                 <input
                   type="number"
-                  min="500"
-                  max="5000"
-                  step="100"
+                  min={APP_CONFIG.NUTRITION_RANGES.waterIntake.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.waterIntake.max}
+                  step={APP_CONFIG.NUTRITION_RANGES.waterIntake.step}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.waterIntake || 0}
                   onChange={(e) => handleInputChange("waterIntake", parseInt(e.target.value) || 0)}
@@ -236,9 +231,9 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Weight (kg)</label>
                 <input
                   type="number"
-                  min="30"
-                  max="200"
-                  step="0.1"
+                  min={APP_CONFIG.NUTRITION_RANGES.weight.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.weight.max}
+                  step={APP_CONFIG.NUTRITION_RANGES.weight.step}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.weight || 0}
                   onChange={(e) => handleInputChange("weight", parseFloat(e.target.value) || 0)}
@@ -248,9 +243,9 @@ export function NutritionGoalsCard() {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Body Fat (%)</label>
                 <input
                   type="number"
-                  min="5"
-                  max="60"
-                  step="0.1"
+                  min={APP_CONFIG.NUTRITION_RANGES.bodyFatPercentage.min}
+                  max={APP_CONFIG.NUTRITION_RANGES.bodyFatPercentage.max}
+                  step={APP_CONFIG.NUTRITION_RANGES.bodyFatPercentage.step}
                   className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                   value={formValues?.bodyFatPercentage || 0}
                   onChange={(e) => handleInputChange("bodyFatPercentage", parseFloat(e.target.value) || 0)}

@@ -11,6 +11,7 @@ import { MealAnalysis } from "@shared/schema";
 import { Switch } from "@/components/ui/switch";
 import { API_URL } from "@/lib/config";
 import { getAccessToken } from "@/lib/tokenManager";
+import { APP_CONFIG } from "@/lib/constants";
 
 export function CameraUploadCard() {
   const { toast } = useToast();
@@ -160,7 +161,7 @@ export function CameraUploadCard() {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="relative bg-neutral-100 rounded-lg overflow-hidden" style={{ minHeight: "300px" }}>
+          <div className="relative bg-neutral-100 rounded-lg overflow-hidden" style={{ minHeight: `${APP_CONFIG.UPLOAD_CONFIG.minHeight}px` }}>
             {uploadedImage ? (
               <div className="absolute inset-0">
                 <img 
@@ -201,7 +202,7 @@ export function CameraUploadCard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 <p className="text-neutral-600 font-medium mb-2">Take a photo or upload an image of your meal</p>
-                <p className="text-neutral-500 text-sm">Supported formats: JPG, PNG</p>
+                <p className="text-neutral-500 text-sm">Supported formats: {APP_CONFIG.UPLOAD_CONFIG.supportedFormatsDisplay}</p>
               </div>
             )}
 
@@ -229,7 +230,7 @@ export function CameraUploadCard() {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept="image/jpeg, image/png"
+                accept={APP_CONFIG.UPLOAD_CONFIG.supportedFormats.join(', ')}
                 className="hidden"
               />
             </div>

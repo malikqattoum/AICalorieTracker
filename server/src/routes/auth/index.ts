@@ -5,6 +5,7 @@ import { storage } from '../../../storage-provider';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { JWTService } from '../../services/auth/jwt.service';
+import { requirePremium, requireOwnership } from '../../middleware/premiumCheck';
 
 console.log('[AUTH-DEBUG] Auth router file loaded');
 
@@ -200,7 +201,7 @@ router.post('/logout', (req, res) => {
 });
 
 // GET /api/auth/me
-router.get('/me', async (req, res) => {
+router.get('/me', requireOwnership('id'), async (req, res) => {
   try {
     // Extract token from Authorization header
     const authHeader = req.headers.authorization;
@@ -244,11 +245,11 @@ router.post('/refresh', async (req, res, next) => {
   try {
     console.log('[REFRESH] Environment check - JWT_SECRET set:', !!process.env.JWT_SECRET);
     const { refreshToken } = req.body;
-    
+
     if (!refreshToken) {
       return res.status(400).json({ message: 'Refresh token is required' });
     }
-    
+
     // Verify refresh token and get new access token
     const result = await JWTService.refreshAccessToken(refreshToken);
     console.log('[REFRESH] Result after refreshAccessToken:', result, 'Type:', typeof result);
@@ -260,6 +261,79 @@ router.post('/refresh', async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
     next(error);
+  }
+});
+
+// GET /api/auth/premium-status
+router.get('/premium-status', async (req, res) => {
+  try {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verify JWT token
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-key-here-1234567890123456';
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number, id: number };
+    const userId = decoded.userId || decoded.id;
+
+    // Get user from database
+    const user = await storage.getUserById(userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Return premium status
+    res.json({
+      isPremium: user.isPremium || false,
+      subscriptionType: user.subscriptionType || null,
+      subscriptionStatus: user.subscriptionStatus || null,
+      subscriptionEndDate: user.subscriptionEndDate || null
+    });
+  } catch (error) {
+    console.error('Error in /api/auth/premium-status:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Check for JWT-specific errors
+    if (errorMessage.includes('invalid') || errorMessage.includes('malformed')) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (errorMessage.includes('expired') || errorMessage.includes('TokenExpiredError')) {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    res.status(401).json({ error: 'Authentication failed' });
+  }
+});
+
+// GET /api/auth/premium-features - Premium-only endpoint
+router.get('/premium-features', requirePremium, async (req, res) => {
+  try {
+    const user = (req as any).user;
+
+    // Return premium features available to the user
+    res.json({
+      features: [
+        'Advanced Analytics',
+        'AI-Powered Insights',
+        'Real-time Monitoring',
+        'Professional Reports',
+        'Healthcare Integration',
+        'Custom Goals',
+        'Priority Support'
+      ],
+      user: {
+        id: user.id,
+        username: user.username,
+        isPremium: user.isPremium,
+        subscriptionType: user.subscriptionType
+      }
+    });
+  } catch (error) {
+    console.error('Error in /api/auth/premium-features:', error);
+    res.status(500).json({ error: 'Failed to retrieve premium features' });
   }
 });
 

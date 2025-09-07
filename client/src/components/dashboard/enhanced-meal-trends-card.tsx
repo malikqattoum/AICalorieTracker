@@ -45,14 +45,15 @@ export function EnhancedMealTrendsCard() {
   // Aggregate daily totals for calories, protein, carbs, fat
   const dailyTotals: Record<string, { calories: number; protein: number; carbs: number; fat: number }> = {};
   filteredAnalyses.forEach(a => {
+    if (!a) return;
     const date = format(new Date(a.analysisTimestamp || a.createdAt || new Date()), "yyyy-MM-dd");
     if (!dailyTotals[date]) {
       dailyTotals[date] = { calories: 0, protein: 0, carbs: 0, fat: 0 };
     }
-    dailyTotals[date].calories += a.estimatedCalories || 0;
-    dailyTotals[date].protein += parseFloat(a.estimatedProtein || '0');
-    dailyTotals[date].carbs += parseFloat(a.estimatedCarbs || '0');
-    dailyTotals[date].fat += parseFloat(a.estimatedFat || '0');
+    dailyTotals[date].calories += a.estimatedCalories ?? 0;
+    dailyTotals[date].protein += parseFloat(a.estimatedProtein ?? '0');
+    dailyTotals[date].carbs += parseFloat(a.estimatedCarbs ?? '0');
+    dailyTotals[date].fat += parseFloat(a.estimatedFat ?? '0');
   });
 
   // Fill in missing dates with zeros
@@ -107,7 +108,7 @@ export function EnhancedMealTrendsCard() {
 
   // Calculate average for selected nutrient
   const calculateAverage = () => {
-    const values = chartData.map(item => item[nutrientType]);
+    const values = chartData.map(item => item?.[nutrientType] ?? 0).filter(v => !isNaN(v));
     const sum = values.reduce((acc, val) => acc + val, 0);
     return Math.round(sum / (values.length || 1));
   };
@@ -115,16 +116,16 @@ export function EnhancedMealTrendsCard() {
   // Calculate trend (up, down, or stable)
   const calculateTrend = () => {
     if (chartData.length < 2) return "stable";
-    
+
     const firstHalf = chartData.slice(0, Math.floor(chartData.length / 2));
     const secondHalf = chartData.slice(Math.floor(chartData.length / 2));
-    
-    const firstHalfAvg = firstHalf.reduce((acc, item) => acc + item[nutrientType], 0) / firstHalf.length;
-    const secondHalfAvg = secondHalf.reduce((acc, item) => acc + item[nutrientType], 0) / secondHalf.length;
-    
+
+    const firstHalfAvg = firstHalf.length > 0 ? firstHalf.reduce((acc, item) => acc + (item[nutrientType] || 0), 0) / firstHalf.length : 0;
+    const secondHalfAvg = secondHalf.length > 0 ? secondHalf.reduce((acc, item) => acc + (item[nutrientType] || 0), 0) / secondHalf.length : 0;
+
     const difference = secondHalfAvg - firstHalfAvg;
-    const percentChange = (difference / firstHalfAvg) * 100;
-    
+    const percentChange = firstHalfAvg !== 0 ? (difference / firstHalfAvg) * 100 : (difference > 0 ? 100 : difference < 0 ? -100 : 0);
+
     if (percentChange > 5) return "up";
     if (percentChange < -5) return "down";
     return "stable";
