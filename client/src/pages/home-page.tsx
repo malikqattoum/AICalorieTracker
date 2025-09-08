@@ -21,6 +21,7 @@ export default function HomePage() {
   const { data: stats } = useQuery<WeeklyStats>({
     queryKey: [`/api/weekly-stats?medicalCondition=${medicalCondition}`],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 0, // Override global staleTime to allow refetching when medicalCondition changes
   });
   const daysOfWeek = [
     "Sunday",
