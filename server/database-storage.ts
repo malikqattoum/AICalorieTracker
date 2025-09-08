@@ -421,16 +421,11 @@ export class DatabaseStorage implements IStorage {
 
   // Weekly stats methods
   async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
-    console.log(`[DEBUG] getWeeklyStats called for userId: ${userId}, medicalCondition: ${medicalCondition}`);
-
     // Calculate current week starting (Sunday)
     const now = new Date();
     const currentWeekStart = new Date(now);
     currentWeekStart.setDate(now.getDate() - now.getDay());
     currentWeekStart.setHours(0, 0, 0, 0);
-
-    console.log(`[DEBUG] Current time: ${now.toISOString()}`);
-    console.log(`[DEBUG] Current week start calculated: ${currentWeekStart.toISOString()}`);
 
     // Try to get stats for current week
     let [stats] = await db.select()
@@ -439,20 +434,11 @@ export class DatabaseStorage implements IStorage {
         eq(weeklyStats.userId, userId),
         eq(weeklyStats.weekStarting, currentWeekStart)
       ));
-    console.log(`[DEBUG] Current week stats query result:`, stats ? 'found' : 'null');
 
     // If no stats for current week, recalculate from meal analyses
     if (!stats) {
-      console.log(`[DEBUG] No current week stats found for user ${userId}, recalculating from meal analyses`);
-
       // Get all meal analyses for this user
       const userMeals = await this.getMealAnalyses(userId);
-      console.log(`[DEBUG] Total meal analyses for user ${userId}: ${userMeals.length}`);
-      console.log(`[DEBUG] Sample meal analyses:`, userMeals.slice(0, 3).map(m => ({
-        id: m.id,
-        estimatedCalories: m.estimatedCalories,
-        analysisTimestamp: m.analysisTimestamp
-      })));
 
       // Filter meals for current week
       const currentWeekMeals = userMeals.filter(meal => {
@@ -460,13 +446,6 @@ export class DatabaseStorage implements IStorage {
         const mealDate = new Date(meal.analysisTimestamp);
         return mealDate >= currentWeekStart;
       });
-
-      console.log(`[DEBUG] Found ${currentWeekMeals.length} meals in current week`);
-      console.log(`[DEBUG] Current week meals:`, currentWeekMeals.map(m => ({
-        id: m.id,
-        estimatedCalories: m.estimatedCalories,
-        analysisTimestamp: m.analysisTimestamp
-      })));
 
       if (currentWeekMeals.length > 0) {
         // Calculate stats from current week meals
@@ -527,11 +506,8 @@ export class DatabaseStorage implements IStorage {
         const insertId = newStats.insertId || newStats[0]?.insertId;
         const [createdStats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, insertId));
         stats = createdStats;
-
-        console.log(`[DEBUG] Created new weekly stats for current week with ${currentWeekMeals.length} meals`);
       } else {
         // No meals in current week, create default stats
-        console.log(`[DEBUG] No meals found in current week for user ${userId}, creating default stats`);
         const defaultStats = await this.createDefaultWeeklyStats(userId);
         stats = defaultStats;
       }

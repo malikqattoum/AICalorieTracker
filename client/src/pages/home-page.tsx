@@ -24,15 +24,6 @@ export default function HomePage() {
     staleTime: 0, // Override global staleTime to allow refetching when medicalCondition changes
   });
 
-  // Debug logging for stats data
-  console.log('[FRONTEND-DEBUG] Weekly stats query result:', stats);
-  console.log('[FRONTEND-DEBUG] Stats type:', typeof stats);
-  if (stats) {
-    console.log('[FRONTEND-DEBUG] Stats keys:', Object.keys(stats));
-    console.log('[FRONTEND-DEBUG] Average calories:', stats.averageCalories);
-    console.log('[FRONTEND-DEBUG] Meals tracked:', stats.mealsTracked);
-    console.log('[FRONTEND-DEBUG] Calories by day:', stats.caloriesByDay);
-  }
   const daysOfWeek = [
     "Sunday",
     "Monday",

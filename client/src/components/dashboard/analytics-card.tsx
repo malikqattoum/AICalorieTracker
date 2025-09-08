@@ -15,28 +15,17 @@ const MEDICAL_CONDITIONS = [
 ];
 
 export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditionChange }: {
-   stats: WeeklyStats | undefined,
-   daysOfWeek: string[],
-   selectedCondition: string,
-   onConditionChange: (condition: string) => void
- }) {
-   console.log('[ANALYTICS-CARD] Received stats:', stats);
-   console.log('[ANALYTICS-CARD] Stats type:', typeof stats);
-   if (stats) {
-     console.log('[ANALYTICS-CARD] Stats keys:', Object.keys(stats));
-     console.log('[ANALYTICS-CARD] averageCalories:', stats.averageCalories);
-     console.log('[ANALYTICS-CARD] mealsTracked:', stats.mealsTracked);
-     console.log('[ANALYTICS-CARD] caloriesByDay:', stats.caloriesByDay);
-   }
+    stats: WeeklyStats | undefined,
+    daysOfWeek: string[],
+    selectedCondition: string,
+    onConditionChange: (condition: string) => void
+  }) {
+    if (!stats) {
+      return null;
+    }
 
-   if (!stats) {
-     console.log('[ANALYTICS-CARD] Stats is null/undefined, returning null');
-     return null;
-   }
-
-   // Ensure caloriesByDay is properly typed
-   const caloriesByDay = stats.caloriesByDay as Record<string, number>;
-   console.log('[ANALYTICS-CARD] Processed caloriesByDay:', caloriesByDay);
+    // Ensure caloriesByDay is properly typed
+    const caloriesByDay = stats.caloriesByDay as Record<string, number>;
 
    const macrosByDay = stats.macrosByDay ?? {};
   // Macro breakdowns and analytics charts from StatsCard

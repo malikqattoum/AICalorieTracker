@@ -3,30 +3,18 @@ import { Flame, BarChart2, PieChart, CalendarCheck, Trophy } from "lucide-react"
 import { WeeklyStats } from "@shared/schema";
 
 export function OverviewCard({ stats, daysOfWeek }: { stats: WeeklyStats | undefined, daysOfWeek: string[] }) {
-   console.log('[OVERVIEW-CARD] Received stats:', stats);
-   console.log('[OVERVIEW-CARD] Stats type:', typeof stats);
-   if (stats) {
-     console.log('[OVERVIEW-CARD] Stats keys:', Object.keys(stats));
-     console.log('[OVERVIEW-CARD] averageCalories:', stats.averageCalories);
-     console.log('[OVERVIEW-CARD] mealsTracked:', stats.mealsTracked);
-     console.log('[OVERVIEW-CARD] caloriesByDay:', stats.caloriesByDay);
-   }
+    if (!stats) {
+      return (
+        <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
+          <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
+          <CardContent className="text-neutral-400 text-center py-8">No stats available.</CardContent>
+        </Card>
+      );
+    }
 
-   if (!stats) {
-     console.log('[OVERVIEW-CARD] Stats is null/undefined, showing no stats message');
-     return (
-       <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
-         <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
-         <CardContent className="text-neutral-400 text-center py-8">No stats available.</CardContent>
-       </Card>
-     );
-   }
-
-   // Ensure numeric values are properly typed
-   const averageCalories = typeof stats.averageCalories === 'number' ? stats.averageCalories : parseFloat(stats.averageCalories as any) || 0;
-   const mealsTracked = typeof stats.mealsTracked === 'number' ? stats.mealsTracked : parseInt(stats.mealsTracked as any) || 0;
-
-   console.log('[OVERVIEW-CARD] Processed values - averageCalories:', averageCalories, 'mealsTracked:', mealsTracked);
+    // Ensure numeric values are properly typed
+    const averageCalories = typeof stats.averageCalories === 'number' ? stats.averageCalories : parseFloat(stats.averageCalories as any) || 0;
+    const mealsTracked = typeof stats.mealsTracked === 'number' ? stats.mealsTracked : parseInt(stats.mealsTracked as any) || 0;
 
    const caloriesByDay = stats.caloriesByDay as Record<string, number>;
   return (

@@ -14,24 +14,11 @@ router.get('/', isAuthenticated, async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    console.log('[NUTRITION-GOALS] Getting nutrition goals for user:', userId);
-
     const userGoals = await db.query.nutritionGoals.findFirst({
       where: eq(nutritionGoals.userId, userId),
     });
 
-    console.log('[NUTRITION-GOALS] Query result:', userGoals ? 'found' : 'not found');
-    if (userGoals) {
-      console.log('[NUTRITION-GOALS] Goals data:', {
-        calories: userGoals.calories,
-        protein: userGoals.protein,
-        carbs: userGoals.carbs,
-        fat: userGoals.fat
-      });
-    }
-
     if (!userGoals) {
-      console.log('[NUTRITION-GOALS] Returning default goals');
       // Return default goals if none exist
       return res.json({
         userId,
@@ -44,7 +31,6 @@ router.get('/', isAuthenticated, async (req, res) => {
       });
     }
 
-    console.log('[NUTRITION-GOALS] Returning user goals');
     res.json(userGoals);
   } catch (error) {
     console.error('Error fetching nutrition goals:', error);

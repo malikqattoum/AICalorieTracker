@@ -683,29 +683,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get weekly stats for the current user
   app.get("/api/weekly-stats", authenticate, async (req, res) => {
     try {
-      console.log('[DEBUG] /api/weekly-stats called');
       const userId = (req as any).user.id;
       const medicalCondition = req.query.medicalCondition as string | undefined;
-      console.log('[DEBUG] userId:', userId, 'medicalCondition:', medicalCondition);
 
       const stats = await storage.getWeeklyStats(userId, medicalCondition);
-      console.log('[DEBUG] getWeeklyStats result:', stats ? 'found' : 'null');
-
-      if (stats) {
-        console.log('[DEBUG] Weekly stats data:', JSON.stringify(stats, null, 2));
-        console.log('[DEBUG] Stats keys:', Object.keys(stats));
-        console.log('[DEBUG] Average calories:', stats.averageCalories);
-        console.log('[DEBUG] Meals tracked:', stats.mealsTracked);
-        console.log('[DEBUG] Calories by day:', stats.caloriesByDay);
-        console.log('[DEBUG] Macros by day:', stats.macrosByDay);
-      }
 
       if (!stats) {
-        console.log('[DEBUG] No weekly stats found, returning 404');
         return res.status(404).json({ message: "No weekly stats found" });
       }
 
-      console.log('[DEBUG] Returning weekly stats successfully');
       res.json(stats);
     } catch (error) {
       console.error("[DEBUG] Error fetching weekly stats:", error);
