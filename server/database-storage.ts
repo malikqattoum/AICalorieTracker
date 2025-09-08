@@ -8,7 +8,7 @@ import type {
 import { users, mealAnalyses, weeklyStats, siteContent, nutritionGoals, aiConfig } from '@shared/schema';
 import { db } from './db';
 import { encryptPHI, decryptPHI } from './security';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import session from 'express-session';
 import { pool } from './db';
 import MySQLStoreImport from 'express-mysql-session';
@@ -422,16 +422,108 @@ export class DatabaseStorage implements IStorage {
   // Weekly stats methods
   async getWeeklyStats(userId: number, medicalCondition?: string): Promise<WeeklyStats | undefined> {
     console.log(`[DEBUG] getWeeklyStats called for userId: ${userId}, medicalCondition: ${medicalCondition}`);
+
+    // Calculate current week starting (Sunday)
+    const now = new Date();
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() - now.getDay());
+    currentWeekStart.setHours(0, 0, 0, 0);
+
+    console.log(`[DEBUG] Current time: ${now.toISOString()}`);
+    console.log(`[DEBUG] Current week start calculated: ${currentWeekStart.toISOString()}`);
+
+    // Try to get stats for current week
     let [stats] = await db.select()
       .from(weeklyStats)
-      .where(eq(weeklyStats.userId, userId));
-    console.log(`[DEBUG] Database query result:`, stats ? 'found' : 'null');
+      .where(and(
+        eq(weeklyStats.userId, userId),
+        eq(weeklyStats.weekStarting, currentWeekStart)
+      ));
+    console.log(`[DEBUG] Current week stats query result:`, stats ? 'found' : 'null');
 
-    // If no stats exist, create default stats
+    // If no stats for current week, recalculate from meal analyses
     if (!stats) {
-      console.log(`[DEBUG] No weekly stats found for user ${userId}, creating default stats`);
-      const defaultStats = await this.createDefaultWeeklyStats(userId);
-      stats = defaultStats;
+      console.log(`[DEBUG] No current week stats found for user ${userId}, recalculating from meal analyses`);
+
+      // Get all meal analyses for this user
+      const userMeals = await this.getMealAnalyses(userId);
+
+      // Filter meals for current week
+      const currentWeekMeals = userMeals.filter(meal => {
+        if (!meal.analysisTimestamp) return false;
+        const mealDate = new Date(meal.analysisTimestamp);
+        return mealDate >= currentWeekStart;
+      });
+
+      console.log(`[DEBUG] Found ${currentWeekMeals.length} meals in current week`);
+
+      if (currentWeekMeals.length > 0) {
+        // Calculate stats from current week meals
+        const totalCalories = currentWeekMeals.reduce((sum, meal) => sum + (meal.estimatedCalories || 0), 0);
+        const totalProtein = currentWeekMeals.reduce((sum, meal) => sum + (parseFloat(meal.estimatedProtein || '0')), 0);
+        const averageCalories = Math.round(totalCalories / currentWeekMeals.length);
+        const averageProtein = Math.round(totalProtein / currentWeekMeals.length);
+
+        // Calculate calories by day
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const caloriesByDay: Record<string, number> = {};
+        const macrosByDay: Record<string, { protein: number; carbs: number; fat: number }> = {};
+
+        dayNames.forEach(day => {
+          caloriesByDay[day] = 0;
+          macrosByDay[day] = { protein: 0, carbs: 0, fat: 0 };
+        });
+
+        currentWeekMeals.forEach(meal => {
+          if (meal.analysisTimestamp) {
+            const mealDay = dayNames[new Date(meal.analysisTimestamp).getDay()];
+            const calories = meal.estimatedCalories || 0;
+            const protein = parseFloat(meal.estimatedProtein || '0');
+            const carbs = parseFloat(meal.estimatedCarbs || '0');
+            const fat = parseFloat(meal.estimatedFat || '0');
+
+            caloriesByDay[mealDay] += calories;
+            macrosByDay[mealDay].protein += protein;
+            macrosByDay[mealDay].carbs += carbs;
+            macrosByDay[mealDay].fat += fat;
+          }
+        });
+
+        // Determine healthiest day
+        let healthiestDay = dayNames[0];
+        let lowestCalories = Number.MAX_VALUE;
+
+        Object.entries(caloriesByDay).forEach(([day, calories]) => {
+          if (calories > 0 && calories < lowestCalories) {
+            healthiestDay = day;
+            lowestCalories = calories;
+          }
+        });
+
+        // Create stats for current week
+        const newStats = await db.insert(weeklyStats).values({
+          userId,
+          averageCalories,
+          mealsTracked: currentWeekMeals.length,
+          averageProtein,
+          healthiestDay,
+          weekStarting: currentWeekStart,
+          caloriesByDay: JSON.stringify(caloriesByDay),
+          macrosByDay: JSON.stringify(macrosByDay)
+        });
+
+        // @ts-ignore drizzle-orm/mysql2 returns insertId
+        const insertId = newStats.insertId || newStats[0]?.insertId;
+        const [createdStats] = await db.select().from(weeklyStats).where(eq(weeklyStats.id, insertId));
+        stats = createdStats;
+
+        console.log(`[DEBUG] Created new weekly stats for current week with ${currentWeekMeals.length} meals`);
+      } else {
+        // No meals in current week, create default stats
+        console.log(`[DEBUG] No meals found in current week for user ${userId}, creating default stats`);
+        const defaultStats = await this.createDefaultWeeklyStats(userId);
+        stats = defaultStats;
+      }
     }
 
     // Parse JSON fields to correct types

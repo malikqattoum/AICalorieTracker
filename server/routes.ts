@@ -681,10 +681,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get weekly stats for the current user
-  app.get("/api/weekly-stats", async (req, res) => {
+  app.get("/api/weekly-stats", authenticate, async (req, res) => {
     try {
       console.log('[DEBUG] /api/weekly-stats called');
-      const userId = 1; // Hardcoded for testing
+      const userId = (req as any).user.id;
       const medicalCondition = req.query.medicalCondition as string | undefined;
       console.log('[DEBUG] userId:', userId, 'medicalCondition:', medicalCondition);
 

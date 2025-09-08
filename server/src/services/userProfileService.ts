@@ -1,7 +1,7 @@
 import db, { db as drizzleDb } from '../db';
 import { UserProfile } from '../models/userProfile';
 import { weeklyStats, mealAnalyses } from '@shared/schema';
-import { eq, gte, lt, and } from 'drizzle-orm';
+import { eq, gte, lt, and, sql } from 'drizzle-orm';
 import type { WeeklyStats } from '@shared/schema';
 
 interface UserSettings {
@@ -96,24 +96,39 @@ export default {
         ));
       console.log('[DEBUG] Database query result for user stats:', stats ? 'found' : 'null');
 
-      // If no stats exist for current week, calculate from meal data
+      // If no stats exist for current week, try to find the most recent week with data
       if (!stats) {
-        console.log(`[DEBUG] No weekly stats found for user ${userId} in current week, calculating from meal data`);
-        const calculatedStats = await this.calculateWeeklyStatsFromMeals(userId);
-        stats = {
-          id: calculatedStats.id,
-          userId: calculatedStats.userId,
-          averageCalories: calculatedStats.averageCalories,
-          mealsTracked: calculatedStats.mealsTracked,
-          averageProtein: calculatedStats.averageProtein,
-          healthiestDay: calculatedStats.healthiestDay,
-          weekStarting: calculatedStats.weekStarting,
-          caloriesByDay: JSON.stringify(calculatedStats.caloriesByDay),
-          macrosByDay: JSON.stringify(calculatedStats.macrosByDay),
-          caloriesBurned: null,
-          createdAt: null,
-          updatedAt: null
-        };
+        console.log(`[DEBUG] No weekly stats found for user ${userId} in current week, looking for most recent week with data`);
+
+        // Find the most recent week with data
+        const [recentStats] = await drizzleDb.select()
+          .from(weeklyStats)
+          .where(eq(weeklyStats.userId, userId))
+          .orderBy(sql`${weeklyStats.weekStarting} DESC`)
+          .limit(1);
+
+        if (recentStats) {
+          console.log(`[DEBUG] Found recent stats from week starting: ${recentStats.weekStarting}`);
+          stats = recentStats;
+        } else {
+          // No stored stats, calculate from meal data for current week
+          console.log(`[DEBUG] No stored weekly stats found for user ${userId}, calculating from meal data`);
+          const calculatedStats = await this.calculateWeeklyStatsFromMeals(userId);
+          stats = {
+            id: calculatedStats.id,
+            userId: calculatedStats.userId,
+            averageCalories: calculatedStats.averageCalories,
+            mealsTracked: calculatedStats.mealsTracked,
+            averageProtein: calculatedStats.averageProtein,
+            healthiestDay: calculatedStats.healthiestDay,
+            weekStarting: calculatedStats.weekStarting,
+            caloriesByDay: JSON.stringify(calculatedStats.caloriesByDay),
+            macrosByDay: JSON.stringify(calculatedStats.macrosByDay),
+            caloriesBurned: null,
+            createdAt: null,
+            updatedAt: null
+          };
+        }
       }
 
       // Parse JSON fields to correct types
