@@ -3,13 +3,32 @@ import { Flame, BarChart2, PieChart, CalendarCheck, Trophy } from "lucide-react"
 import { WeeklyStats } from "@shared/schema";
 
 export function OverviewCard({ stats, daysOfWeek }: { stats: WeeklyStats | undefined, daysOfWeek: string[] }) {
-  if (!stats) return (
-    <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
-      <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
-      <CardContent className="text-neutral-400 text-center py-8">No stats available.</CardContent>
-    </Card>
-  );
-  const caloriesByDay = stats.caloriesByDay as Record<string, number>;
+   console.log('[OVERVIEW-CARD] Received stats:', stats);
+   console.log('[OVERVIEW-CARD] Stats type:', typeof stats);
+   if (stats) {
+     console.log('[OVERVIEW-CARD] Stats keys:', Object.keys(stats));
+     console.log('[OVERVIEW-CARD] averageCalories:', stats.averageCalories);
+     console.log('[OVERVIEW-CARD] mealsTracked:', stats.mealsTracked);
+     console.log('[OVERVIEW-CARD] caloriesByDay:', stats.caloriesByDay);
+   }
+
+   if (!stats) {
+     console.log('[OVERVIEW-CARD] Stats is null/undefined, showing no stats message');
+     return (
+       <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
+         <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
+         <CardContent className="text-neutral-400 text-center py-8">No stats available.</CardContent>
+       </Card>
+     );
+   }
+
+   // Ensure numeric values are properly typed
+   const averageCalories = typeof stats.averageCalories === 'number' ? stats.averageCalories : parseFloat(stats.averageCalories as any) || 0;
+   const mealsTracked = typeof stats.mealsTracked === 'number' ? stats.mealsTracked : parseInt(stats.mealsTracked as any) || 0;
+
+   console.log('[OVERVIEW-CARD] Processed values - averageCalories:', averageCalories, 'mealsTracked:', mealsTracked);
+
+   const caloriesByDay = stats.caloriesByDay as Record<string, number>;
   return (
     <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
       <CardHeader><CardTitle>Overview</CardTitle></CardHeader>
@@ -19,14 +38,14 @@ export function OverviewCard({ stats, daysOfWeek }: { stats: WeeklyStats | undef
             <Flame className="w-8 h-8 text-primary-200 bg-primary-900 rounded-full p-1 shadow" />
             <div>
               <span className="block text-primary-200 text-sm font-medium mb-1">Avg. Daily Calories</span>
-              <span className="text-2xl font-bold text-primary-100" aria-live="polite">{stats.averageCalories ?? '--'}</span>
+              <span className="text-2xl font-bold text-primary-100" aria-live="polite">{averageCalories || '--'}</span>
             </div>
           </div>
           <div className="bg-gradient-to-br from-blue-900 to-neutral-900 rounded-xl p-5 shadow-md flex items-center gap-4" aria-label="Meals Tracked" tabIndex={0}>
             <BarChart2 className="w-8 h-8 text-blue-200 bg-blue-900 rounded-full p-1 shadow" />
             <div>
               <span className="block text-blue-200 text-sm font-medium mb-1">Meals Tracked</span>
-              <span className="text-2xl font-bold text-blue-100" aria-live="polite">{stats.mealsTracked ?? 0}</span>
+              <span className="text-2xl font-bold text-blue-100" aria-live="polite">{mealsTracked}</span>
             </div>
           </div>
           <div className="bg-gradient-to-br from-amber-900 to-neutral-900 rounded-xl p-5 shadow-md flex items-center gap-4" aria-label="Average Protein" tabIndex={0}>

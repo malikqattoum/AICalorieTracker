@@ -15,13 +15,30 @@ const MEDICAL_CONDITIONS = [
 ];
 
 export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditionChange }: {
-  stats: WeeklyStats | undefined,
-  daysOfWeek: string[],
-  selectedCondition: string,
-  onConditionChange: (condition: string) => void
-}) {
-  if (!stats) return null;
-  const macrosByDay = stats.macrosByDay ?? {};
+   stats: WeeklyStats | undefined,
+   daysOfWeek: string[],
+   selectedCondition: string,
+   onConditionChange: (condition: string) => void
+ }) {
+   console.log('[ANALYTICS-CARD] Received stats:', stats);
+   console.log('[ANALYTICS-CARD] Stats type:', typeof stats);
+   if (stats) {
+     console.log('[ANALYTICS-CARD] Stats keys:', Object.keys(stats));
+     console.log('[ANALYTICS-CARD] averageCalories:', stats.averageCalories);
+     console.log('[ANALYTICS-CARD] mealsTracked:', stats.mealsTracked);
+     console.log('[ANALYTICS-CARD] caloriesByDay:', stats.caloriesByDay);
+   }
+
+   if (!stats) {
+     console.log('[ANALYTICS-CARD] Stats is null/undefined, returning null');
+     return null;
+   }
+
+   // Ensure caloriesByDay is properly typed
+   const caloriesByDay = stats.caloriesByDay as Record<string, number>;
+   console.log('[ANALYTICS-CARD] Processed caloriesByDay:', caloriesByDay);
+
+   const macrosByDay = stats.macrosByDay ?? {};
   // Macro breakdowns and analytics charts from StatsCard
   return (
     <Card className="card-gradient glass-effect rounded-xl border border-neutral-800">
@@ -70,8 +87,8 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
           )}
           <div className="h-48 bg-gradient-to-br from-neutral-900 to-neutral-800 rounded-lg flex items-end justify-between p-4 shadow-inner">
             {daysOfWeek.map((day) => {
-              const calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
-              const maxCalories = Math.max(...Object.values(stats.caloriesByDay as Record<string, number>));
+              const calories = caloriesByDay[day] || 0;
+              const maxCalories = Math.max(...Object.values(caloriesByDay));
               const percentage = maxCalories > 0 ? (calories / maxCalories) * 100 : 0;
               const today = new Date().getDay();
               const dayIndex = daysOfWeek.indexOf(day);
@@ -121,7 +138,7 @@ export function AnalyticsCard({ stats, daysOfWeek, selectedCondition, onConditio
                   data={daysOfWeek.map((day) => {
                     const macros = macrosByDay[day] || { protein: 0, carbs: 0, fat: 0 };
                     // --- Clinical Nutrition Logic for Chart Data ---
-                    let calories = (stats.caloriesByDay as Record<string, number>)[day] || 0;
+                    let calories = caloriesByDay[day] || 0;
                     let carbs = macros.carbs;
                     let protein = macros.protein;
                     // Adjust calories for diabetes (flag high-carb days)
