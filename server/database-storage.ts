@@ -447,6 +447,12 @@ export class DatabaseStorage implements IStorage {
 
       // Get all meal analyses for this user
       const userMeals = await this.getMealAnalyses(userId);
+      console.log(`[DEBUG] Total meal analyses for user ${userId}: ${userMeals.length}`);
+      console.log(`[DEBUG] Sample meal analyses:`, userMeals.slice(0, 3).map(m => ({
+        id: m.id,
+        estimatedCalories: m.estimatedCalories,
+        analysisTimestamp: m.analysisTimestamp
+      })));
 
       // Filter meals for current week
       const currentWeekMeals = userMeals.filter(meal => {
@@ -456,6 +462,11 @@ export class DatabaseStorage implements IStorage {
       });
 
       console.log(`[DEBUG] Found ${currentWeekMeals.length} meals in current week`);
+      console.log(`[DEBUG] Current week meals:`, currentWeekMeals.map(m => ({
+        id: m.id,
+        estimatedCalories: m.estimatedCalories,
+        analysisTimestamp: m.analysisTimestamp
+      })));
 
       if (currentWeekMeals.length > 0) {
         // Calculate stats from current week meals

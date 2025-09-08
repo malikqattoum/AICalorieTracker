@@ -19,26 +19,41 @@ router.get('/', authenticate, async (req, res) => {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
+    console.log('[TODAY-STATS] Getting today stats for user:', userId);
+    console.log('[TODAY-STATS] Date range:', startOfDay.toISOString(), 'to', endOfDay.toISOString());
+
     // Query meal analyses for today
     const todayMeals = await db.query.mealAnalyses.findMany({
       where: and(
         eq(mealAnalyses.userId, userId),
-        gte(mealAnalyses.createdAt, startOfDay),
-        lte(mealAnalyses.createdAt, endOfDay)
+        gte(mealAnalyses.analysisTimestamp, startOfDay),
+        lte(mealAnalyses.analysisTimestamp, endOfDay)
       ),
     });
+
+    console.log('[TODAY-STATS] Found meals:', todayMeals.length);
+    console.log('[TODAY-STATS] Meals data:', todayMeals.map(m => ({
+      id: m.id,
+      estimatedCalories: m.estimatedCalories,
+      estimatedProtein: m.estimatedProtein,
+      estimatedCarbs: m.estimatedCarbs,
+      estimatedFat: m.estimatedFat,
+      analysisTimestamp: m.analysisTimestamp
+    })));
 
     // Calculate totals
     const totals = todayMeals.reduce(
       (acc: {calories: number; protein: number; carbs: number; fat: number; water: number}, meal: any) => {
-        acc.calories += meal.calories;
-        acc.protein += meal.protein;
-        acc.carbs += meal.carbs;
-        acc.fat += meal.fat;
+        acc.calories += meal.estimatedCalories || 0;
+        acc.protein += parseFloat(meal.estimatedProtein || '0');
+        acc.carbs += parseFloat(meal.estimatedCarbs || '0');
+        acc.fat += parseFloat(meal.estimatedFat || '0');
         return acc;
       },
       { calories: 0, protein: 0, carbs: 0, fat: 0, water: 0 } // Water is tracked separately
     );
+
+    console.log('[TODAY-STATS] Calculated totals:', totals);
 
     // Get water intake from user's tracking (if implemented)
     // This is a placeholder - in a real implementation, you would query a water tracking table

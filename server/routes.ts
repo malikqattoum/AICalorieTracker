@@ -691,6 +691,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getWeeklyStats(userId, medicalCondition);
       console.log('[DEBUG] getWeeklyStats result:', stats ? 'found' : 'null');
 
+      if (stats) {
+        console.log('[DEBUG] Weekly stats data:', JSON.stringify(stats, null, 2));
+        console.log('[DEBUG] Stats keys:', Object.keys(stats));
+        console.log('[DEBUG] Average calories:', stats.averageCalories);
+        console.log('[DEBUG] Meals tracked:', stats.mealsTracked);
+        console.log('[DEBUG] Calories by day:', stats.caloriesByDay);
+        console.log('[DEBUG] Macros by day:', stats.macrosByDay);
+      }
+
       if (!stats) {
         console.log('[DEBUG] No weekly stats found, returning 404');
         return res.status(404).json({ message: "No weekly stats found" });
