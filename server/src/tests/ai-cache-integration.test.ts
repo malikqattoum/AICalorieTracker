@@ -67,10 +67,6 @@ describe('AI Cache Integration Tests', () => {
   });
 
   beforeEach(() => {
-    // Clear cache before each test
-    aiCacheService.clear();
-    aiCacheService.resetStats();
-
     // Reset mocks
     jest.clearAllMocks();
 
@@ -87,175 +83,180 @@ describe('AI Cache Integration Tests', () => {
   });
 
   afterAll(() => {
-    // Cleanup
-    aiCacheService.cleanup();
+    // No cleanup needed since caching has been removed
   });
 
-  describe('Consecutive Different Images', () => {
-    it('should perform fresh AI analysis for different images', async () => {
+  describe('Fresh AI Analysis', () => {
+    it('should perform fresh AI analysis for every request', async () => {
       // First request with image1
       mockRequest.body = { imageData: testImage1, prompt: 'Analyze this food' };
       await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
       expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(1);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      const response1 = mockResponse.json.mock.calls[0][0];
+      expect(response1).toEqual({
         success: true,
         data: mockAnalysisResult1,
-        cached: false,
         provider: 'mock-provider',
         timestamp: expect.any(String)
       });
+      // Verify no cached field in response
+      expect(response1).not.toHaveProperty('cached');
+      expect(response1).not.toHaveProperty('cacheHit');
+      expect(response1).not.toHaveProperty('fromCache');
 
-      // Reset response mock
-      mockResponse.json.mockClear();
+      // Second request with same image (should still perform fresh analysis)
+      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
-      // Second request with different image2
+      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(2); // Called again for fresh analysis
+      const response2 = mockResponse.json.mock.calls[1][0];
+      expect(response2).toEqual({
+        success: true,
+        data: mockAnalysisResult1,
+        provider: 'mock-provider',
+        timestamp: expect.any(String)
+      });
+      // Verify no cached field in response
+      expect(response2).not.toHaveProperty('cached');
+      expect(response2).not.toHaveProperty('cacheHit');
+      expect(response2).not.toHaveProperty('fromCache');
+
+      // Third request with different image2
       mockRequest.body = { imageData: testImage2, prompt: 'Analyze this food' };
       await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
-      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(2);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(3);
+      const response3 = mockResponse.json.mock.calls[2][0];
+      expect(response3).toEqual({
         success: true,
         data: mockAnalysisResult2,
-        cached: false,
         provider: 'mock-provider',
         timestamp: expect.any(String)
       });
+      // Verify no cached field in response
+      expect(response3).not.toHaveProperty('cached');
+      expect(response3).not.toHaveProperty('cacheHit');
+      expect(response3).not.toHaveProperty('fromCache');
     });
   });
 
-  describe('Identical Image Caching', () => {
-    it('should return cached results for identical images instantly', async () => {
-      // First request
-      mockRequest.body = { imageData: testImage1, prompt: 'Analyze this food' };
-      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
-
-      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(1);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        data: mockAnalysisResult1,
-        cached: false,
-        provider: 'mock-provider',
-        timestamp: expect.any(String)
-      });
-
-      // Reset response mock
-      mockResponse.json.mockClear();
-
-      // Second request with same image (should be cached)
-      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
-
-      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(1); // Should not call AI service again
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        data: mockAnalysisResult1,
-        cached: true,
-        provider: 'mock-provider',
-        timestamp: expect.any(String)
-      });
-    });
-
-    it('should cache multi-food analysis results', async () => {
+  describe('Fresh Multi-Food Analysis', () => {
+    it('should perform fresh multi-food analysis for every request', async () => {
       // First request
       mockRequest.body = { imageData: testImage1, prompt: 'Analyze multiple foods' };
       await AIController.analyzeMultiFoodImage(mockRequest as any, mockResponse as any);
 
       expect(aiService.analyzeMultiFoodImage).toHaveBeenCalledTimes(1);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      const multiResponse1 = mockResponse.json.mock.calls[0][0];
+      expect(multiResponse1).toEqual({
         success: true,
         data: { foods: [mockAnalysisResult1, mockAnalysisResult2], totalCalories: 200 },
-        cached: false,
         provider: 'mock-provider'
       });
+      // Verify no cached field in response
+      expect(multiResponse1).not.toHaveProperty('cached');
+      expect(multiResponse1).not.toHaveProperty('cacheHit');
+      expect(multiResponse1).not.toHaveProperty('fromCache');
 
-      // Reset response mock
-      mockResponse.json.mockClear();
-
-      // Second request with same image
+      // Second request with same image (should still perform fresh analysis)
       await AIController.analyzeMultiFoodImage(mockRequest as any, mockResponse as any);
 
-      expect(aiService.analyzeMultiFoodImage).toHaveBeenCalledTimes(1); // Should not call AI service again
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(aiService.analyzeMultiFoodImage).toHaveBeenCalledTimes(2); // Called again for fresh analysis
+      const multiResponse2 = mockResponse.json.mock.calls[1][0];
+      expect(multiResponse2).toEqual({
         success: true,
         data: { foods: [mockAnalysisResult1, mockAnalysisResult2], totalCalories: 200 },
-        cached: true,
         provider: 'mock-provider'
       });
+      // Verify no cached field in response
+      expect(multiResponse2).not.toHaveProperty('cached');
+      expect(multiResponse2).not.toHaveProperty('cacheHit');
+      expect(multiResponse2).not.toHaveProperty('fromCache');
     });
   });
 
-  describe('Cache Invalidation on Modified Images', () => {
-    it('should invalidate cache when image content changes', async () => {
+  describe('Consecutive Requests', () => {
+    it('should perform fresh AI processing for multiple consecutive image uploads', async () => {
+      const consecutiveImages = [testImage1, testImage2, modifiedImage1, testImage1];
+
+      for (let i = 0; i < consecutiveImages.length; i++) {
+        mockResponse.json.mockClear();
+
+        mockRequest.body = { imageData: consecutiveImages[i], prompt: 'Analyze this food' };
+        await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
+
+        // Each request should call AI service
+        expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(i + 1);
+
+        const response = mockResponse.json.mock.calls[0][0];
+        expect(response.success).toBe(true);
+        expect(response).toHaveProperty('data');
+        expect(response).toHaveProperty('provider', 'mock-provider');
+        expect(response).toHaveProperty('timestamp');
+
+        // Verify no cached fields in response
+        expect(response).not.toHaveProperty('cached');
+        expect(response).not.toHaveProperty('cacheHit');
+        expect(response).not.toHaveProperty('fromCache');
+      }
+
+      // Total calls should equal number of requests
+      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(consecutiveImages.length);
+    });
+  });
+
+  describe('Modified Image Analysis', () => {
+    it('should perform fresh analysis for modified images', async () => {
       // First request with original image
       mockRequest.body = { imageData: testImage1, prompt: 'Analyze this food' };
       await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
       expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(1);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      const modifiedResponse1 = mockResponse.json.mock.calls[0][0];
+      expect(modifiedResponse1).toEqual({
         success: true,
         data: mockAnalysisResult1,
-        cached: false,
         provider: 'mock-provider',
         timestamp: expect.any(String)
       });
+      // Verify no cached field in response
+      expect(modifiedResponse1).not.toHaveProperty('cached');
+      expect(modifiedResponse1).not.toHaveProperty('cacheHit');
+      expect(modifiedResponse1).not.toHaveProperty('fromCache');
 
-      // Reset response mock
-      mockResponse.json.mockClear();
-
-      // Second request with same image (should be cached)
+      // Second request with same image (should still perform fresh analysis)
       await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
-      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(1);
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(2);
+      const modifiedResponse2 = mockResponse.json.mock.calls[1][0];
+      expect(modifiedResponse2).toEqual({
         success: true,
         data: mockAnalysisResult1,
-        cached: true,
         provider: 'mock-provider',
         timestamp: expect.any(String)
       });
+      // Verify no cached field in response
+      expect(modifiedResponse2).not.toHaveProperty('cached');
+      expect(modifiedResponse2).not.toHaveProperty('cacheHit');
+      expect(modifiedResponse2).not.toHaveProperty('fromCache');
 
-      // Reset response mock
-      mockResponse.json.mockClear();
-
-      // Third request with modified image (should invalidate cache)
+      // Third request with modified image (should perform fresh analysis)
       mockRequest.body = { imageData: modifiedImage1, prompt: 'Analyze this food' };
       await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
 
-      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(2); // Should call AI service again
-      expect(mockResponse.json).toHaveBeenCalledWith({
+      expect(aiService.analyzeFoodImage).toHaveBeenCalledTimes(3); // Should call AI service again
+      const modifiedResponse3 = mockResponse.json.mock.calls[2][0];
+      expect(modifiedResponse3).toEqual({
         success: true,
-        data: mockAnalysisResult2, // Modified image has same hash as testImage2
-        cached: false,
+        data: mockAnalysisResult2, // Modified image returns different result
         provider: 'mock-provider',
         timestamp: expect.any(String)
       });
+      // Verify no cached field in response
+      expect(modifiedResponse3).not.toHaveProperty('cached');
+      expect(modifiedResponse3).not.toHaveProperty('cacheHit');
+      expect(modifiedResponse3).not.toHaveProperty('fromCache');
     });
   });
 
-  describe('Cache Statistics and Monitoring', () => {
-    it('should track cache statistics correctly', async () => {
-      // Clear stats
-      aiCacheService.resetStats();
-
-      // First request (miss)
-      mockRequest.body = { imageData: testImage1, prompt: 'Analyze this food' };
-      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
-
-      // Second request (hit)
-      mockResponse.json.mockClear();
-      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
-
-      // Third request with different image (miss)
-      mockResponse.json.mockClear();
-      mockRequest.body = { imageData: testImage2, prompt: 'Analyze this food' };
-      await AIController.analyzeFoodImage(mockRequest as any, mockResponse as any);
-
-      const stats = aiCacheService.getStats();
-
-      expect(stats.hits).toBe(1);
-      expect(stats.misses).toBe(2);
-      expect(stats.hitRate).toBeCloseTo(33.33, 1); // 1 hit out of 3 requests
-      expect(stats.entries).toBeGreaterThan(0);
-    });
-  });
 });
