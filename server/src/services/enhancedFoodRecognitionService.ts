@@ -23,6 +23,7 @@ export interface EnhancedFoodRecognitionOptions {
   provider?: 'openai' | 'google' | 'anthropic' | 'nutritionix';
   language?: string;
   includeAlternatives?: boolean;
+  timeout?: number; // Timeout in milliseconds
 }
 
 export class EnhancedFoodRecognitionService {
@@ -80,7 +81,14 @@ export class EnhancedFoodRecognitionService {
    */
   async analyzeFoodImage(options: EnhancedFoodRecognitionOptions): Promise<FoodRecognitionResult> {
     try {
-      const { imageBuffer, userId, provider = 'openai', language = 'en', includeAlternatives = false } = options;
+      const {
+        imageBuffer,
+        userId,
+        provider = 'openai',
+        language = 'en',
+        includeAlternatives = false,
+        timeout = 45000 // 45 second default timeout
+      } = options;
 
       // Validate input
       if (!imageBuffer || imageBuffer.length === 0) {
@@ -97,8 +105,14 @@ export class EnhancedFoodRecognitionService {
         throw new Error(`Provider ${provider} is not available`);
       }
 
-      // Analyze the image
-      const result = await service.analyze(imageBuffer, { userId, language, includeAlternatives });
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Food analysis timeout after ${timeout}ms`)), timeout);
+      });
+
+      // Analyze with timeout
+      const analysisPromise = service.analyze(imageBuffer, { userId, language, includeAlternatives });
+      const result = await Promise.race([analysisPromise, timeoutPromise]);
 
       // Log the analysis
       log(`Food analysis completed for user ${userId} using provider ${provider}`);
@@ -177,8 +191,10 @@ export class EnhancedFoodRecognitionService {
    * Mock OpenAI analysis implementation
    */
   private async mockOpenAIAnalysis(imageBuffer: Buffer, options: any): Promise<FoodRecognitionResult> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    // Simulate consistent API call delay (1.5-2.5s for stability)
+    const baseDelay = 1500;
+    const variance = Math.random() * 1000; // ±500ms variance
+    await new Promise(resolve => setTimeout(resolve, baseDelay + variance));
 
     const foods = [
       {
@@ -245,8 +261,10 @@ export class EnhancedFoodRecognitionService {
    * Mock Google analysis implementation
    */
   private async mockGoogleAnalysis(imageBuffer: Buffer, options: any): Promise<FoodRecognitionResult> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1500));
+    // Simulate consistent API call delay (1.2-2.0s for stability)
+    const baseDelay = 1200;
+    const variance = Math.random() * 800; // ±400ms variance
+    await new Promise(resolve => setTimeout(resolve, baseDelay + variance));
 
     const foods = [
       {
@@ -296,8 +314,10 @@ export class EnhancedFoodRecognitionService {
    * Mock Anthropic analysis implementation
    */
   private async mockAnthropicAnalysis(imageBuffer: Buffer, options: any): Promise<FoodRecognitionResult> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 2500));
+    // Simulate consistent API call delay (1.8-2.8s for stability)
+    const baseDelay = 1800;
+    const variance = Math.random() * 1000; // ±500ms variance
+    await new Promise(resolve => setTimeout(resolve, baseDelay + variance));
 
     const foods = [
       {
@@ -331,8 +351,10 @@ export class EnhancedFoodRecognitionService {
    * Mock Nutritionix analysis implementation
    */
   private async mockNutritionixAnalysis(imageBuffer: Buffer, options: any): Promise<FoodRecognitionResult> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 1200));
+    // Simulate consistent API call delay (0.9-1.5s for stability)
+    const baseDelay = 900;
+    const variance = Math.random() * 600; // ±300ms variance
+    await new Promise(resolve => setTimeout(resolve, baseDelay + variance));
 
     const foods = [
       {

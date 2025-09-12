@@ -131,7 +131,7 @@ export class AIService {
     }
   }
 
-  async analyzeFoodImage(imageData: string, prompt?: string): Promise<any> {
+  async analyzeFoodImage(imageData: string, prompt?: string, userId?: number): Promise<any> {
     console.log(`AI Service Debug: Initialized: ${this.initialized}, Current Config: ${this.currentConfig ? this.currentConfig.provider : 'null'}`);
     if (!this.initialized) {
       console.log('AI Service Debug: Initializing service...');
@@ -143,17 +143,52 @@ export class AIService {
       throw new Error('No AI provider configured. Please configure an AI provider in the admin panel.');
     }
 
+    // Convert base64 to buffer for hashing
+    let imageBuffer: Buffer;
+    try {
+      imageBuffer = Buffer.from(imageData, 'base64');
+    } catch (error) {
+      throw new Error('Invalid base64 image data');
+    }
+
     const finalPrompt = prompt || this.currentConfig.promptTemplate || 'Analyze this food image and provide nutritional information.';
 
     try {
+      let result;
+
       if (this.currentConfig.provider === 'gemini') {
-        return await analyzeWithGemini(imageData, finalPrompt, this.currentConfig.modelName!);
+        result = await analyzeWithGemini(imageData, finalPrompt, this.currentConfig.modelName!);
       } else {
         // Default to OpenAI
-        return await analyzeWithOpenAI(imageData);
+        result = await analyzeWithOpenAI(imageData);
       }
+
+      // Validate and sanitize result
+      const sanitizedResult = this.sanitizeAnalysisResult(result);
+
+      // Ensure result can be properly JSON serialized
+      try {
+        JSON.stringify(sanitizedResult);
+      } catch (jsonError) {
+        console.error('Analysis result is not JSON serializable:', jsonError);
+        throw new Error('Analysis result contains non-serializable data');
+      }
+
+      return sanitizedResult;
     } catch (error) {
       console.error(`${this.currentConfig.provider} analysis failed:`, error);
+
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('rate limit')) {
+          throw new Error('AI service rate limit exceeded. Please try again later.');
+        } else if (error.message.includes('quota')) {
+          throw new Error('AI service quota exceeded. Please contact support.');
+        } else if (error.message.includes('timeout')) {
+          throw new Error('AI service request timed out. Please try again.');
+        }
+      }
+
       throw error;
     }
   }
@@ -200,14 +235,82 @@ export class AIService {
 
   isConfigured(): boolean {
     if (!this.currentConfig) return false;
-    
+
     // For OpenAI, check environment variable
     if (this.currentConfig.provider === 'openai') {
       return !!process.env.OPENAI_API_KEY;
     }
-    
+
     // For other providers, check encrypted API key
     return this.currentConfig.apiKeyEncrypted !== null;
+  }
+
+  /**
+   * Sanitize and validate analysis result
+   */
+  private sanitizeAnalysisResult(result: any): any {
+    try {
+      // Validate result structure
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid analysis result: expected object');
+      }
+
+      // Ensure required fields are present and valid
+      const sanitized = { ...result };
+
+      // Validate and sanitize foodName
+      if (!result.foodName || typeof result.foodName !== 'string') {
+        throw new Error('Invalid analysis result: missing or invalid foodName');
+      }
+      sanitized.foodName = result.foodName.trim();
+
+      // Validate and sanitize calories
+      if (typeof result.calories !== 'number' || result.calories < 0 || result.calories > 10000) {
+        throw new Error('Invalid analysis result: missing or invalid calories');
+      }
+      sanitized.calories = Math.round(result.calories);
+
+      // Validate and sanitize macronutrients
+      const macros = ['protein', 'carbs', 'fat', 'fiber', 'sugar', 'sodium'];
+      for (const macro of macros) {
+        if (result[macro] !== undefined) {
+          const value = parseFloat(result[macro]);
+          if (isNaN(value) || value < 0) {
+            sanitized[macro] = 0;
+          } else {
+            sanitized[macro] = Math.round(value * 100) / 100; // Round to 2 decimal places
+          }
+        }
+      }
+
+      // Validate confidence score
+      if (result.confidence !== undefined) {
+        const confidence = parseFloat(result.confidence);
+        if (isNaN(confidence) || confidence < 0 || confidence > 1) {
+          sanitized.confidence = 0.5; // Default confidence
+        } else {
+          sanitized.confidence = Math.round(confidence * 100) / 100;
+        }
+      }
+
+      // Sanitize portion size
+      if (result.portionSize && typeof result.portionSize === 'string') {
+        sanitized.portionSize = result.portionSize.trim();
+      }
+
+      // Sanitize tags array
+      if (result.tags && Array.isArray(result.tags)) {
+        sanitized.tags = result.tags
+          .filter((tag: any) => typeof tag === 'string')
+          .map((tag: string) => tag.trim())
+          .slice(0, 10); // Limit to 10 tags
+      }
+
+      return sanitized;
+    } catch (error) {
+      console.error('Error sanitizing analysis result:', error);
+      throw error;
+    }
   }
 }
 

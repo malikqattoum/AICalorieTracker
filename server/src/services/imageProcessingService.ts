@@ -10,6 +10,7 @@ export interface ImageProcessingOptions {
   format?: 'jpeg' | 'png' | 'webp';
   optimize?: boolean;
   stripMetadata?: boolean;
+  timeout?: number; // Timeout in milliseconds
 }
 
 export interface ImageProcessingResult {
@@ -57,7 +58,8 @@ export class ImageProcessingService {
       quality = 85,
       format = 'jpeg',
       optimize = true,
-      stripMetadata = true
+      stripMetadata = true,
+      timeout = 30000 // 30 second default timeout
     } = options;
 
     // Convert string to Buffer if needed
@@ -77,49 +79,23 @@ export class ImageProcessingService {
     await fs.writeFile(originalPath, buffer);
 
     try {
-      // Get image dimensions
-      const dimensions = await this.getImageDimensions(buffer);
+      // Create timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Image processing timeout after ${timeout}ms`)), timeout);
+      });
 
-      // Check if optimization is needed
-      if (dimensions.width <= maxWidth && dimensions.height <= maxHeight && !optimize) {
-        // No optimization needed, just copy to cache
-        await fs.copyFile(originalPath, optimizedPath);
-        const optimizedSize = (await fs.stat(optimizedPath)).size;
-
-        return {
-          originalPath,
-          optimizedPath,
-          originalSize: buffer.length,
-          optimizedSize,
-          compressionRatio: this.calculateCompressionRatio(buffer.length, optimizedSize),
-          format,
-          dimensions
-        };
-      }
-
-      // Optimize image
-      const optimizedBuffer = await this.optimizeImage(buffer, {
+      // Process with timeout
+      const processingPromise = this.processImageWithTimeout(buffer, {
         maxWidth,
         maxHeight,
         quality,
         format,
         optimize,
-        stripMetadata
-      });
+        stripMetadata,
+        timeout
+      }, originalPath, optimizedPath);
 
-      // Save optimized image
-      await fs.writeFile(optimizedPath, optimizedBuffer);
-      const optimizedSize = optimizedBuffer.length;
-
-      return {
-        originalPath,
-        optimizedPath,
-        originalSize: buffer.length,
-        optimizedSize,
-        compressionRatio: this.calculateCompressionRatio(buffer.length, optimizedSize),
-        format,
-        dimensions
-      };
+      return await Promise.race([processingPromise, timeoutPromise]);
     } catch (error) {
       // Clean up files on error
       try {
@@ -135,23 +111,197 @@ export class ImageProcessingService {
   }
 
   /**
-   * Get image dimensions
+   * Get image dimensions using actual image processing
    */
   private async getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
-    // For now, return default dimensions
-    // In a real implementation, you would use a library like sharp or jimp
+    try {
+      // Use sharp for actual image processing if available
+      const sharp = await this.loadSharp();
+      if (sharp) {
+        const metadata = await sharp(buffer).metadata();
+        return {
+          width: metadata.width || 800,
+          height: metadata.height || 600
+        };
+      }
+
+      // Fallback: parse image headers for basic dimensions
+      return this.parseImageDimensions(buffer);
+    } catch (error) {
+      console.error('Error getting image dimensions:', error);
+      // Return default dimensions as fallback
+      return { width: 800, height: 600 };
+    }
+  }
+
+  /**
+   * Parse basic image dimensions from buffer headers
+   */
+  private parseImageDimensions(buffer: Buffer): { width: number; height: number } {
+    try {
+      // JPEG dimensions
+      if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xD8) {
+        return this.parseJPEGDimensions(buffer);
+      }
+      // PNG dimensions
+      if (buffer.length >= 8 &&
+          buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+        return this.parsePNGDimensions(buffer);
+      }
+    } catch (error) {
+      console.error('Error parsing image dimensions:', error);
+    }
     return { width: 800, height: 600 };
   }
 
   /**
-   * Optimize image using various techniques
+   * Parse JPEG dimensions
+   */
+  private parseJPEGDimensions(buffer: Buffer): { width: number; height: number } {
+    let i = 2;
+    while (i < buffer.length) {
+      if (buffer[i] === 0xFF) {
+        const marker = buffer[i + 1];
+        if (marker >= 0xC0 && marker <= 0xC3) {
+          const height = buffer.readUInt16BE(i + 5);
+          const width = buffer.readUInt16BE(i + 7);
+          return { width, height };
+        }
+        i += 2 + buffer.readUInt16BE(i + 2);
+      } else {
+        i++;
+      }
+    }
+    return { width: 800, height: 600 };
+  }
+
+  /**
+   * Parse PNG dimensions
+   */
+  private parsePNGDimensions(buffer: Buffer): { width: number; height: number } {
+    const width = buffer.readUInt32BE(16);
+    const height = buffer.readUInt32BE(20);
+    return { width, height };
+  }
+
+  /**
+   * Load Sharp library dynamically
+   */
+  private async loadSharp(): Promise<any | null> {
+    try {
+      // Use require for dynamic import to avoid TypeScript issues
+      const sharp = require('sharp');
+      return sharp;
+    } catch (error) {
+      // Sharp not available, will use fallback
+      return null;
+    }
+  }
+
+  /**
+   * Process image with timeout handling
+   */
+  private async processImageWithTimeout(
+    buffer: Buffer,
+    options: ImageProcessingOptions,
+    originalPath: string,
+    optimizedPath: string
+  ): Promise<ImageProcessingResult> {
+    // Get image dimensions
+    const dimensions = await this.getImageDimensions(buffer);
+
+    // Check if optimization is needed
+    if (dimensions.width <= options.maxWidth! && dimensions.height <= options.maxHeight! && !options.optimize) {
+      // No optimization needed, just copy to cache
+      await fs.copyFile(originalPath, optimizedPath);
+      const optimizedSize = (await fs.stat(optimizedPath)).size;
+
+      return {
+        originalPath,
+        optimizedPath,
+        originalSize: buffer.length,
+        optimizedSize,
+        compressionRatio: this.calculateCompressionRatio(buffer.length, optimizedSize),
+        format: options.format!,
+        dimensions
+      };
+    }
+
+    // Optimize image
+    const optimizedBuffer = await this.optimizeImage(buffer, options);
+
+    // Save optimized image
+    await fs.writeFile(optimizedPath, optimizedBuffer);
+    const optimizedSize = optimizedBuffer.length;
+
+    return {
+      originalPath,
+      optimizedPath,
+      originalSize: buffer.length,
+      optimizedSize,
+      compressionRatio: this.calculateCompressionRatio(buffer.length, optimizedSize),
+      format: options.format!,
+      dimensions
+    };
+  }
+
+  /**
+   * Optimize image using actual processing
    */
   private async optimizeImage(
     buffer: Buffer,
     options: ImageProcessingOptions
   ): Promise<Buffer> {
-    // For now, return the original buffer
-    // In a real implementation, you would use a library like sharp or jimp
+    try {
+      const sharp = await this.loadSharp();
+      if (sharp) {
+        let pipeline = sharp(buffer);
+
+        // Resize if needed
+        if (options.maxWidth || options.maxHeight) {
+          pipeline = pipeline.resize(options.maxWidth, options.maxHeight, {
+            fit: 'inside',
+            withoutEnlargement: true
+          });
+        }
+
+        // Set quality
+        if (options.quality) {
+          pipeline = pipeline.jpeg({ quality: options.quality });
+        }
+
+        // Convert format if specified
+        if (options.format) {
+          switch (options.format) {
+            case 'jpeg':
+              pipeline = pipeline.jpeg({ quality: options.quality || 85 });
+              break;
+            case 'png':
+              pipeline = pipeline.png();
+              break;
+            case 'webp':
+              pipeline = pipeline.webp({ quality: options.quality || 85 });
+              break;
+          }
+        }
+
+        return await pipeline.toBuffer();
+      }
+
+      // Fallback: basic optimization
+      return this.basicImageOptimization(buffer, options);
+    } catch (error) {
+      console.error('Error optimizing image:', error);
+      return buffer; // Return original buffer on error
+    }
+  }
+
+  /**
+   * Basic image optimization fallback
+   */
+  private basicImageOptimization(buffer: Buffer, options: ImageProcessingOptions): Buffer {
+    // For now, return original buffer
+    // In a more complete implementation, you could implement basic compression
     return buffer;
   }
 

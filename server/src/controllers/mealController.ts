@@ -101,20 +101,7 @@ export default {
       const { aiService } = await import('../../ai-service');
       let analysis = await aiService.analyzeFoodImage(base64ForAI);
 
-      // Create meal analysis entry referencing the stored image filename via proxy URLs
-      const mealAnalysis = await storage.createMealAnalysis({
-        userId,
-        mealId: 0,
-        foodName: analysis.foodName,
-        estimatedCalories: analysis.calories,
-        estimatedProtein: analysis.protein?.toString(),
-        estimatedCarbs: analysis.carbs?.toString(),
-        estimatedFat: analysis.fat?.toString(),
-        imageUrl: `data:image/jpeg;base64,${base64ForAI}`,
-        analysisDetails: analysis.analysisDetails,
-      });
-
-      // Persist record in meal_images table to track stored file
+      // Use transaction for data consistency
       const { db } = await import('../db');
       const { mealImages } = await import('../db/schemas/mealImages');
       const { mealAnalyses } = await import('../db/schemas/mealAnalyses');
@@ -124,28 +111,52 @@ export default {
       const filename = processed.original.filename;
       const optimizedUrl = imageStorageService.getImageUrl(processed.optimized.path, 'optimized');
 
-      await db.insert(mealImages).values({
-        mealAnalysisId: mealAnalysis.id,
-        filePath: filename,
-        fileSize: processed.optimized.size,
-        mimeType: processed.optimized.mimeType,
-        width: processed.optimized.width || null,
-        height: processed.optimized.height || null,
-        imageHash: processed.original.hash,
+      // Execute all database operations in a transaction
+      const result = await db.transaction(async (tx) => {
+        try {
+          // Create meal analysis entry
+          const mealAnalysis = await storage.createMealAnalysis({
+            userId,
+            mealId: 0,
+            foodName: analysis.foodName,
+            estimatedCalories: analysis.calories,
+            estimatedProtein: analysis.protein?.toString(),
+            estimatedCarbs: analysis.carbs?.toString(),
+            estimatedFat: analysis.fat?.toString(),
+            imageUrl: `data:image/jpeg;base64,${base64ForAI}`,
+            analysisDetails: analysis.analysisDetails,
+          });
+
+          // Insert record in meal_images table
+          await tx.insert(mealImages).values({
+            mealAnalysisId: mealAnalysis.id,
+            filePath: filename,
+            fileSize: processed.optimized.size,
+            mimeType: processed.optimized.mimeType,
+            width: processed.optimized.width || null,
+            height: processed.optimized.height || null,
+            imageHash: processed.original.hash,
+          });
+
+          // Update meal_analyses with image hash and optimized URL
+          await tx.update(mealAnalyses)
+            .set({
+              imageHash: processed.original.hash,
+              imageUrl: optimizedUrl,
+            })
+            .where(eq(mealAnalyses.id, mealAnalysis.id));
+
+          return {
+            ...mealAnalysis,
+            imageUrl: optimizedUrl,
+          };
+        } catch (error) {
+          console.error('Transaction failed, rolling back:', error);
+          throw error; // Re-throw to trigger rollback
+        }
       });
 
-      // Also update meal_analyses with image hash and optional paths
-      await db.update(mealAnalyses)
-        .set({
-          imageHash: processed.original.hash,
-          imageUrl: optimizedUrl,
-        })
-        .where(eq(mealAnalyses.id, mealAnalysis.id));
-
-      return res.status(201).json({
-        ...mealAnalysis,
-        imageUrl: optimizedUrl,
-      });
+      return res.status(201).json(result);
     } catch (error) {
       console.error('Meal analysis failed:', error);
       res.status(400).json({ error: 'Meal analysis failed' });

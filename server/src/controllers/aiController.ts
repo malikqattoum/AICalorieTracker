@@ -3,11 +3,7 @@ import { aiService, AIConfigService } from '../../ai-service';
 import { log } from '../../vite';
 
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: number;
-    email: string;
-    role: string;
-  };
+  user?: any; // Simplified for compatibility
 }
 
 export class AIController {
@@ -17,11 +13,31 @@ export class AIController {
   static async analyzeFoodImage(req: AuthenticatedRequest, res: Response) {
     try {
       const { imageData, prompt } = req.body;
+      const userId = req.user?.id;
 
+      // Input validation
       if (!imageData) {
         return res.status(400).json({
           success: false,
-          error: 'Image data is required'
+          error: 'Image data is required',
+          code: 'MISSING_IMAGE_DATA'
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'User authentication required',
+          code: 'UNAUTHENTICATED'
+        });
+      }
+
+      // Validate image data format
+      if (typeof imageData !== 'string' || imageData.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid image data format',
+          code: 'INVALID_IMAGE_FORMAT'
         });
       }
 
@@ -29,22 +45,60 @@ export class AIController {
       if (!aiService.isConfigured()) {
         return res.status(503).json({
           success: false,
-          error: 'AI service is not configured. Please contact administrator.'
+          error: 'AI service is not configured. Please contact administrator.',
+          code: 'SERVICE_UNAVAILABLE'
         });
       }
 
-      const result = await aiService.analyzeFoodImage(imageData, prompt);
+      // Add timeout handling
+      const timeoutMs = 30000; // 30 seconds
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Analysis timeout')), timeoutMs);
+      });
+
+      const analysisPromise = aiService.analyzeFoodImage(imageData, prompt);
+      const result = await Promise.race([analysisPromise, timeoutPromise]);
+
+      // Validate result structure
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid analysis result structure');
+      }
 
       res.json({
         success: true,
         data: result,
-        provider: aiService.getCurrentProvider()
+        provider: aiService.getCurrentProvider(),
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error('Error analyzing food image:', error);
-      res.status(500).json({
+
+      // Determine appropriate error response based on error type
+      let statusCode = 500;
+      let errorCode = 'INTERNAL_ERROR';
+      let errorMessage = 'Failed to analyze food image';
+
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          statusCode = 408;
+          errorCode = 'TIMEOUT';
+          errorMessage = 'Analysis request timed out';
+        } else if (error.message.includes('rate limit')) {
+          statusCode = 429;
+          errorCode = 'RATE_LIMITED';
+          errorMessage = 'Too many requests, please try again later';
+        } else if (error.message.includes('quota')) {
+          statusCode = 429;
+          errorCode = 'QUOTA_EXCEEDED';
+          errorMessage = 'Service quota exceeded';
+        }
+      }
+
+      res.status(statusCode).json({
         success: false,
-        error: 'Failed to analyze food image'
+        error: errorMessage,
+        code: errorCode,
+        timestamp: new Date().toISOString()
       });
     }
   }
@@ -126,8 +180,6 @@ export class AIController {
         modelName: config.modelName,
         isActive: config.isActive,
         promptTemplate: config.promptTemplate,
-        maxTokens: config.maxTokens,
-        temperature: config.temperature,
         createdAt: config.createdAt,
         updatedAt: config.updatedAt
       }));

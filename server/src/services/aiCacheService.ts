@@ -8,6 +8,7 @@ export interface CacheEntry<T = any> {
   accessCount: number;
   lastAccessed: number;
   size: number;
+  imageHash?: string; // For image content validation
 }
 
 export interface CacheOptions {
@@ -32,7 +33,7 @@ export interface CacheStats {
 class AICacheService {
   private cache = new Map<string, CacheEntry>();
   private options: Required<CacheOptions>;
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
@@ -91,8 +92,20 @@ class AICacheService {
    * Set data in cache
    */
   async set<T>(key: string, data: T, options?: Partial<CacheOptions>): Promise<void> {
-    const entrySize = this.calculateSize(data);
-    
+    // Validate key
+    if (key == null) {
+      log(`Invalid cache key: ${key}`);
+      return;
+    }
+
+    let entrySize: number;
+    try {
+      entrySize = this.calculateSize(data);
+    } catch (error) {
+      log(`Failed to calculate size for cache entry:`, error instanceof Error ? error.message : String(error));
+      return;
+    }
+
     // Check if we need to evict entries
     this.ensureCapacity(entrySize);
 
@@ -105,6 +118,13 @@ class AICacheService {
       lastAccessed: Date.now(),
       size: entrySize,
     };
+
+    // Store image hash for image-based cache keys
+    if (key.includes(':image:')) {
+      // For image-based keys, we'll store a placeholder that can be used for validation
+      // The actual image hash will be computed during getWithImageValidation
+      entry.imageHash = 'placeholder';
+    }
 
     // Compress large entries if enabled
     if (this.options.compression && entrySize > this.options.compressionThreshold!) {
@@ -129,6 +149,12 @@ class AICacheService {
    * Delete data from cache
    */
   async delete(key: string): Promise<boolean> {
+    // Validate key
+    if (key == null) {
+      log(`Invalid cache key for deletion: ${key}`);
+      return false;
+    }
+
     const entry = this.cache.get(key);
     if (!entry) {
       return false;
@@ -221,6 +247,204 @@ class AICacheService {
     const paramString = JSON.stringify(params);
     const hash = createHash('sha256').update(paramString).digest('hex');
     return `${service}:${hash}`;
+  }
+
+  /**
+   * Generate content-based cache key using image hash
+   */
+  generateImageCacheKey(service: string, imageBuffer: Buffer, userId: number, additionalParams?: any): string {
+    const imageHash = createHash('sha256').update(imageBuffer).digest('hex');
+    const params = {
+      userId,
+      imageHash,
+      ...additionalParams
+    };
+    const paramString = JSON.stringify(params);
+    const hash = createHash('sha256').update(paramString).digest('hex');
+    return `${service}:image:${hash}`;
+  }
+
+  /**
+   * Set data with image hash for validation
+   */
+  async setWithImageHash<T>(
+    key: string,
+    data: T,
+    imageBuffer: Buffer,
+    options?: Partial<CacheOptions>
+  ): Promise<void> {
+    // Validate key
+    if (key == null) {
+      log(`Invalid cache key: ${key}`);
+      return;
+    }
+
+    let entrySize: number;
+    try {
+      entrySize = this.calculateSize(data);
+    } catch (error) {
+      log(`Failed to calculate size for cache entry:`, error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    // Check if we need to evict entries
+    this.ensureCapacity(entrySize);
+
+    const ttl = options?.ttl ?? this.options.ttl;
+    const imageHash = createHash('sha256').update(imageBuffer).digest('hex');
+    const entry: CacheEntry<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl,
+      accessCount: 0,
+      lastAccessed: Date.now(),
+      size: entrySize,
+      imageHash,
+    };
+
+    // Compress large entries if enabled
+    if (this.options.compression && entrySize > this.options.compressionThreshold!) {
+      try {
+        const compressed = await this.compressData(data);
+        entry.data = compressed;
+        entry.size = this.calculateSize(compressed);
+        this.stats.compressionSavings += entrySize - entry.size;
+      } catch (error) {
+        log(`Failed to compress cache entry:`, error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    this.cache.set(key, entry);
+    this.stats.size += entry.size;
+    this.stats.entries++;
+
+    log(`Cache set with image hash for key: ${key}, hash: ${imageHash.substring(0, 8)}...`);
+  }
+
+  /**
+   * Get cached result with image content validation
+   */
+  async getWithImageValidation<T>(
+    key: string,
+    imageBuffer: Buffer,
+    userId: number
+  ): Promise<T | null> {
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      this.stats.misses++;
+      this.updateHitRate();
+      return null;
+    }
+
+    // Check if entry has expired
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      this.stats.misses++;
+      this.updateHitRate();
+      return null;
+    }
+
+    // Validate image content by comparing hashes
+    const currentImageHash = createHash('sha256').update(imageBuffer).digest('hex');
+    const cachedImageHash = entry.imageHash;
+
+    if (cachedImageHash && currentImageHash !== cachedImageHash) {
+      // Image content has changed, invalidate cache
+      this.cache.delete(key);
+      this.stats.misses++;
+      this.updateHitRate();
+      log(`Cache invalidated due to image content change for key: ${key}`);
+      return null;
+    }
+
+    // Update access stats
+    entry.accessCount++;
+    entry.lastAccessed = Date.now();
+    this.stats.hits++;
+    this.updateHitRate();
+
+    log(`Cache hit with image validation for key: ${key}`);
+    return entry.data;
+  }
+
+  /**
+   * Extract image hash from cache key
+   */
+  private extractImageHashFromKey(key: string): string | null {
+    try {
+      // Key format: service:image:hash where hash is derived from params
+      const parts = key.split(':');
+      if (parts.length >= 3 && parts[1] === 'image') {
+        // The hash is the last part, but we need the original image hash
+        // For now, we'll store the image hash in the cache entry metadata
+        const entry = this.cache.get(key);
+        if (entry && (entry as any).imageHash) {
+          return (entry as any).imageHash;
+        }
+        // If no image hash stored, return null to force revalidation
+        return null;
+      }
+    } catch (error) {
+      log(`Error extracting image hash from key: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return null;
+  }
+
+  /**
+   * Invalidate cache entries by image hash pattern
+   */
+  async invalidateByImageHash(imageHash: string): Promise<number> {
+    let invalidatedCount = 0;
+    const keysToDelete: string[] = [];
+
+    // Use Array.from to avoid iterator issues
+    const entries = Array.from(this.cache.entries());
+    for (const [key, entry] of entries) {
+      if (key.includes(imageHash)) {
+        keysToDelete.push(key);
+      }
+    }
+
+    for (const key of keysToDelete) {
+      if (await this.delete(key)) {
+        invalidatedCount++;
+      }
+    }
+
+    if (invalidatedCount > 0) {
+      log(`Invalidated ${invalidatedCount} cache entries for image hash: ${imageHash}`);
+    }
+
+    return invalidatedCount;
+  }
+
+  /**
+   * Enhanced cache invalidation with pattern matching
+   */
+  async invalidateByPattern(pattern: string): Promise<number> {
+    let invalidatedCount = 0;
+    const keysToDelete: string[] = [];
+
+    // Use Array.from to avoid iterator issues
+    const keys = Array.from(this.cache.keys());
+    for (const key of keys) {
+      if (key.includes(pattern)) {
+        keysToDelete.push(key);
+      }
+    }
+
+    for (const key of keysToDelete) {
+      if (await this.delete(key)) {
+        invalidatedCount++;
+      }
+    }
+
+    if (invalidatedCount > 0) {
+      log(`Invalidated ${invalidatedCount} cache entries matching pattern: ${pattern}`);
+    }
+
+    return invalidatedCount;
   }
 
   /**
@@ -327,7 +551,7 @@ class AICacheService {
   /**
    * Clean up expired entries
    */
-  private cleanupExpiredEntries(): void {
+  cleanupExpiredEntries(): void {
     const now = Date.now();
     let cleanedCount = 0;
     let cleanedSize = 0;
@@ -351,6 +575,21 @@ class AICacheService {
   }
 
   /**
+   * Reset statistics (for testing purposes)
+   */
+  resetStats(): void {
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      evictions: 0,
+      size: 0,
+      entries: 0,
+      hitRate: 0,
+      compressionSavings: 0,
+    };
+  }
+
+  /**
    * Cleanup service
    */
   cleanup(): void {
@@ -367,3 +606,6 @@ class AICacheService {
 // Export singleton instance
 export const aiCacheService = new AICacheService();
 export default aiCacheService;
+
+// Export class for testing purposes
+export { AICacheService };

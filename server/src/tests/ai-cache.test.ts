@@ -1,5 +1,5 @@
 import { describe, it, beforeAll, afterAll, expect, beforeEach } from '@jest/globals';
-import { aiCacheService } from '../services/aiCacheService';
+import { aiCacheService, AICacheService } from '../services/aiCacheService';
 
 describe('AI Cache Service', () => {
   let testKey: string;
@@ -17,8 +17,9 @@ describe('AI Cache Service', () => {
   });
 
   beforeEach(() => {
-    // Clear cache before each test
+    // Clear cache and reset stats before each test
     aiCacheService.clear();
+    (aiCacheService as any).resetStats();
   });
 
   afterAll(() => {
@@ -229,7 +230,7 @@ describe('AI Cache Service', () => {
   describe('Cache Eviction', () => {
     it('should evict entries when max size is reached', async () => {
       // Create a cache with small max size
-      const smallCache = aiCacheService.constructor({ maxSize: 1000 }); // 1KB
+      const smallCache = new AICacheService({ maxSize: 1000 }); // 1KB
 
       // Set multiple entries that exceed max size
       for (let i = 0; i < 10; i++) {
@@ -242,7 +243,7 @@ describe('AI Cache Service', () => {
 
     it('should evict least recently used entries first', async () => {
       // Create a cache with small entry limit
-      const smallCache = aiCacheService.constructor({ maxEntries: 3 });
+      const smallCache = new AICacheService({ maxEntries: 3 });
 
       // Set 4 entries (should evict the first one)
       await smallCache.set('key1', { data: 'value1' });
@@ -263,7 +264,7 @@ describe('AI Cache Service', () => {
     });
 
     it('should update statistics on eviction', async () => {
-      const smallCache = aiCacheService.constructor({ maxEntries: 2 });
+      const smallCache = new AICacheService({ maxEntries: 2 });
 
       await smallCache.set('key1', { data: 'value1' });
       await smallCache.set('key2', { data: 'value2' });
@@ -316,25 +317,34 @@ describe('AI Cache Service', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid keys gracefully', async () => {
-      // Test with null/undefined keys
-      await expect(aiCacheService.get(null as any)).rejects.toThrow();
-      await expect(aiCacheService.set(null as any, testData)).rejects.toThrow();
-      await expect(aiCacheService.delete(null as any)).rejects.toThrow();
+      // Test with null/undefined keys - service handles gracefully without throwing
+      const result1 = await aiCacheService.get(null as any);
+      const result2 = await aiCacheService.set(null as any, testData);
+      const result3 = await aiCacheService.delete(null as any);
+
+      expect(result1).toBeNull();
+      expect(result2).toBeUndefined(); // set returns void and should not store null keys
+      expect(result3).toBe(false); // delete returns false for invalid keys
     });
 
     it('should handle invalid data gracefully', async () => {
-      // Test with circular references
+      // Test with circular references - should handle without throwing
       const circularData: any = { data: 'test' };
       circularData.self = circularData;
 
-      // Should not throw, but may not store correctly
+      // Should not throw, but may not store correctly due to JSON serialization
       await expect(aiCacheService.set('circular', circularData)).resolves.not.toThrow();
+
+      // Verify it can still retrieve other data
+      await aiCacheService.set('normal', { data: 'normal' });
+      const result = await aiCacheService.get('normal');
+      expect(result).toEqual({ data: 'normal' });
     });
   });
 
   describe('Cleanup', () => {
     it('should clean up expired entries', async () => {
-      const shortCache = aiCacheService.constructor({ ttl: 100 }); // 100ms
+      const shortCache = new AICacheService({ ttl: 100 }); // 100ms
 
       await shortCache.set('expire1', { data: 'value1' });
       await shortCache.set('expire2', { data: 'value2' });
