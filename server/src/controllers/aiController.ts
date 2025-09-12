@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { aiService, AIConfigService } from '../../ai-service';
+import { aiCacheService } from '../services/aiCacheService';
 import { log } from '../../vite';
 
 export interface AuthenticatedRequest extends Request {
@@ -41,6 +42,30 @@ export class AIController {
         });
       }
 
+      // Convert base64 to buffer for caching
+      const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      // Generate cache key
+      const cacheKey = aiCacheService.generateImageCacheKey('ai-analyze', imageBuffer, userId, { prompt });
+
+      // Check cache first
+      log(`Checking cache for AI analysis, userId: ${userId}`);
+      const cachedResult = await aiCacheService.getWithImageValidation(cacheKey, imageBuffer, userId);
+
+      if (cachedResult) {
+        log(`Cache hit for AI analysis, userId: ${userId}`);
+        return res.json({
+          success: true,
+          data: cachedResult,
+          cached: true,
+          provider: aiService.getCurrentProvider(),
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      log(`Cache miss for AI analysis, userId: ${userId}, performing analysis`);
+
       // Check if AI service is configured
       if (!aiService.isConfigured()) {
         return res.status(503).json({
@@ -59,6 +84,10 @@ export class AIController {
       const analysisPromise = aiService.analyzeFoodImage(imageData, prompt);
       const result = await Promise.race([analysisPromise, timeoutPromise]);
 
+      // Cache the result
+      await aiCacheService.setWithImageHash(cacheKey, result, imageBuffer);
+      log(`Cached AI analysis result for key: ${cacheKey}`);
+
       // Validate result structure
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid analysis result structure');
@@ -67,6 +96,7 @@ export class AIController {
       res.json({
         success: true,
         data: result,
+        cached: false,
         provider: aiService.getCurrentProvider(),
         timestamp: new Date().toISOString()
       });
@@ -109,6 +139,7 @@ export class AIController {
   static async analyzeMultiFoodImage(req: AuthenticatedRequest, res: Response) {
     try {
       const { imageData, prompt } = req.body;
+      const userId = req.user?.id;
 
       if (!imageData) {
         return res.status(400).json({
@@ -116,6 +147,29 @@ export class AIController {
           error: 'Image data is required'
         });
       }
+
+      // Convert base64 to buffer for caching
+      const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
+      const imageBuffer = Buffer.from(base64Data, 'base64');
+
+      // Generate cache key
+      const cacheKey = aiCacheService.generateImageCacheKey('ai-analyze-multi', imageBuffer, userId || 0, { prompt });
+
+      // Check cache first
+      log(`Checking cache for AI multi-analysis, userId: ${userId}`);
+      const cachedResult = await aiCacheService.getWithImageValidation(cacheKey, imageBuffer, userId || 0);
+
+      if (cachedResult) {
+        log(`Cache hit for AI multi-analysis, userId: ${userId}`);
+        return res.json({
+          success: true,
+          data: cachedResult,
+          cached: true,
+          provider: aiService.getCurrentProvider()
+        });
+      }
+
+      log(`Cache miss for AI multi-analysis, userId: ${userId}, performing analysis`);
 
       // Check if AI service is configured
       if (!aiService.isConfigured()) {
@@ -127,9 +181,14 @@ export class AIController {
 
       const result = await aiService.analyzeMultiFoodImage(imageData, prompt);
 
+      // Cache the result
+      await aiCacheService.setWithImageHash(cacheKey, result, imageBuffer);
+      log(`Cached AI multi-analysis result for key: ${cacheKey}`);
+
       res.json({
         success: true,
         data: result,
+        cached: false,
         provider: aiService.getCurrentProvider()
       });
     } catch (error) {

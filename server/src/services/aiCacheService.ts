@@ -62,11 +62,13 @@ class AICacheService {
    * Get data from cache
    */
   async get<T>(key: string): Promise<T | null> {
+    log(`Cache get request for key: ${key}`);
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       this.stats.misses++;
       this.updateHitRate();
+      log(`Cache miss - key not found: ${key}`);
       return null;
     }
 
@@ -75,6 +77,7 @@ class AICacheService {
       this.cache.delete(key);
       this.stats.misses++;
       this.updateHitRate();
+      log(`Cache miss - entry expired for key: ${key}, age: ${(Date.now() - entry.timestamp) / 1000}s, ttl: ${entry.ttl / 1000}s`);
       return null;
     }
 
@@ -84,7 +87,7 @@ class AICacheService {
     this.stats.hits++;
     this.updateHitRate();
 
-    log(`Cache hit for key: ${key}`);
+    log(`Cache hit for key: ${key}, access count: ${entry.accessCount}, age: ${(Date.now() - entry.timestamp) / 1000}s`);
     return entry.data;
   }
 
@@ -246,7 +249,9 @@ class AICacheService {
   generateCacheKey(service: string, params: any): string {
     const paramString = JSON.stringify(params);
     const hash = createHash('sha256').update(paramString).digest('hex');
-    return `${service}:${hash}`;
+    const key = `${service}:${hash}`;
+    log(`Generated cache key: ${key} for service: ${service} with params:`, params);
+    return key;
   }
 
   /**
@@ -261,7 +266,9 @@ class AICacheService {
     };
     const paramString = JSON.stringify(params);
     const hash = createHash('sha256').update(paramString).digest('hex');
-    return `${service}:image:${hash}`;
+    const key = `${service}:image:${hash}`;
+    log(`Generated image cache key: ${key} for service: ${service}, userId: ${userId}, imageHash: ${imageHash.substring(0, 8)}..., additionalParams:`, additionalParams);
+    return key;
   }
 
   /**
@@ -349,13 +356,24 @@ class AICacheService {
     const currentImageHash = createHash('sha256').update(imageBuffer).digest('hex');
     const cachedImageHash = entry.imageHash;
 
+    log(`Image validation for key: ${key}`);
+    log(`Current image hash: ${currentImageHash.substring(0, 8)}...`);
+    log(`Cached image hash: ${cachedImageHash ? cachedImageHash.substring(0, 8) + '...' : 'null'}`);
+
     if (cachedImageHash && currentImageHash !== cachedImageHash) {
       // Image content has changed, invalidate cache
       this.cache.delete(key);
       this.stats.misses++;
       this.updateHitRate();
       log(`Cache invalidated due to image content change for key: ${key}`);
+      log(`Hash mismatch - current: ${currentImageHash}, cached: ${cachedImageHash}`);
       return null;
+    }
+
+    if (!cachedImageHash) {
+      log(`No cached image hash found for key: ${key}, treating as cache miss`);
+    } else {
+      log(`Image hash validation passed for key: ${key}`);
     }
 
     // Update access stats

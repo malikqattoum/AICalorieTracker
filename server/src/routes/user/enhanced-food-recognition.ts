@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { enhancedFoodRecognitionService } from '../../services/enhancedFoodRecognitionService';
+import { aiCacheService } from '../../services/aiCacheService';
 import { log } from '../../../vite';
 import ValidationService from '../../services/validation';
 
@@ -35,6 +36,25 @@ router.post('/analyze-single',
       const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
       const imageBuffer = Buffer.from(base64Data, 'base64');
 
+      // Generate cache key for this analysis
+      const cacheKey = aiCacheService.generateImageCacheKey('enhanced-food-recognition', imageBuffer, userId, options);
+
+      // Check cache first
+      log(`Checking cache for key: ${cacheKey}`);
+      const cachedResult = await aiCacheService.getWithImageValidation(cacheKey, imageBuffer, userId);
+
+      if (cachedResult) {
+        log(`Cache hit for enhanced food recognition, userId: ${userId}`);
+        return res.json({
+          success: true,
+          data: cachedResult,
+          cached: true,
+          message: 'Food analysis retrieved from cache'
+        });
+      }
+
+      log(`Cache miss for enhanced food recognition, userId: ${userId}, performing analysis`);
+
       // Analyze the food image
       const result = await enhancedFoodRecognitionService.analyzeFoodImage({
         imageBuffer,
@@ -42,9 +62,14 @@ router.post('/analyze-single',
         ...options
       });
 
+      // Cache the result
+      await aiCacheService.setWithImageHash(cacheKey, result, imageBuffer);
+      log(`Cached analysis result for key: ${cacheKey}`);
+
       res.json({
         success: true,
         data: result,
+        cached: false,
         message: 'Food analysis completed successfully'
       });
     } catch (error) {
@@ -75,6 +100,25 @@ router.post('/analyze-multi',
       const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '');
       const imageBuffer = Buffer.from(base64Data, 'base64');
 
+      // Generate cache key for this analysis
+      const cacheKey = aiCacheService.generateImageCacheKey('enhanced-food-recognition-multi', imageBuffer, userId, options);
+
+      // Check cache first
+      log(`Checking cache for multi-analysis key: ${cacheKey}`);
+      const cachedResult = await aiCacheService.getWithImageValidation(cacheKey, imageBuffer, userId);
+
+      if (cachedResult) {
+        log(`Cache hit for enhanced multi-food recognition, userId: ${userId}`);
+        return res.json({
+          success: true,
+          data: cachedResult,
+          cached: true,
+          message: 'Multi-food analysis retrieved from cache'
+        });
+      }
+
+      log(`Cache miss for enhanced multi-food recognition, userId: ${userId}, performing analysis`);
+
       // Analyze multiple food items (for now, treat as single analysis)
       const result = await enhancedFoodRecognitionService.analyzeFoodImage({
         imageBuffer,
@@ -82,9 +126,14 @@ router.post('/analyze-multi',
         ...options
       });
 
+      // Cache the result
+      await aiCacheService.setWithImageHash(cacheKey, result, imageBuffer);
+      log(`Cached multi-analysis result for key: ${cacheKey}`);
+
       res.json({
         success: true,
         data: result,
+        cached: false,
         message: 'Multi-food analysis completed successfully'
       });
     } catch (error) {
