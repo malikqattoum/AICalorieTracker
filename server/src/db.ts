@@ -34,6 +34,9 @@ export const db = drizzle(pool, {
   mode: 'default'
 });
 
+// Export the pool for direct database operations
+export { pool };
+
 // Legacy execute method for backward compatibility
 export default {
   async execute(sql: string, params?: any[]): Promise<RowDataPacket[]> {

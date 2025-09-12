@@ -1,7 +1,7 @@
 import db from '../db';
 
 export class UserService {
-  static async getUserById(userId: string): Promise<any> {
+  static async getUserById(userId: string | number): Promise<any> {
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [userId]);
     return users[0] || null;
   }

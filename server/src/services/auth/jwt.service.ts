@@ -22,7 +22,15 @@ export class JWTService {
       throw new Error(`Invalid user payload provided to generateTokens: ${JSON.stringify(payload)}`);
     }
 
-    const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
+    // Create a simplified payload for access tokens to avoid issues with large payloads
+    const accessTokenPayload = {
+      userId: payload.id,
+      email: payload.email,
+      username: payload.username,
+      tokenVersion: payload.tokenVersion || 1
+    };
+
+    const accessToken = jwt.sign(accessTokenPayload, process.env.JWT_SECRET!, {
       expiresIn: this.ACCESS_TOKEN_EXPIRY
     });
 
@@ -43,23 +51,42 @@ export class JWTService {
     return { accessToken, refreshToken };
   }
 
-  static async refreshAccessToken(refreshToken: string): Promise<string | null> {
+  static async refreshAccessToken(refreshToken: string): Promise<string> {
     try {
+      if (!refreshToken || typeof refreshToken !== 'string') {
+        throw new Error('Invalid refresh token format');
+      }
+
       const decoded = jwt.verify(refreshToken, this.REFRESH_TOKEN_SECRET) as any;
+
+      if (!decoded || !decoded.userId) {
+        throw new Error('Invalid refresh token payload');
+      }
+
       const isValid = await this.verifyRefreshToken(decoded.userId, refreshToken);
 
-      if (!isValid) return null;
+      if (!isValid) {
+        throw new Error('Invalid or expired refresh token');
+      }
 
       const user = await UserService.getUserById(decoded.userId);
-      if (!user) return null;
+      if (!user) {
+        throw new Error('User not found');
+      }
 
       return jwt.sign(
-        { userId: user.id, email: user.email, tokenVersion: user.token_version },
+        { userId: user.id, email: user.email, tokenVersion: user.token_version || 1 },
         process.env.JWT_SECRET!,
         { expiresIn: this.ACCESS_TOKEN_EXPIRY }
       );
     } catch (error) {
-      return null;
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new Error('Invalid refresh token');
+      }
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new Error('Refresh token expired');
+      }
+      throw error;
     }
   }
 

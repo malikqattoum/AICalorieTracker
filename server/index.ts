@@ -16,6 +16,13 @@ for (const envPath of envCandidates) {
   dotenv.config({ path: envPath });
 }
 
+// Debug logging for environment variables
+console.log('[ENV-DEBUG] Environment variables loaded:');
+console.log('[ENV-DEBUG] JWT_SECRET:', process.env.JWT_SECRET ? '✓ Loaded' : '✗ Missing');
+console.log('[ENV-DEBUG] REFRESH_TOKEN_SECRET:', process.env.REFRESH_TOKEN_SECRET ? '✓ Loaded' : '✗ Missing');
+console.log('[ENV-DEBUG] SESSION_SECRET:', process.env.SESSION_SECRET ? '✓ Loaded' : '✗ Missing');
+console.log('[ENV-DEBUG] NODE_ENV:', process.env.NODE_ENV || 'Not set');
+
 // Local log function to avoid importing Vite dependencies
 function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -46,12 +53,55 @@ import { createServer, type Server } from "http";
 import jwt from "jsonwebtoken";
 // Import image storage service
 import { imageStorageService } from "./src/services/imageStorageService";
+// Import session management
+import session from 'express-session';
+import MySQLStore from 'express-mysql-session';
+import { pool } from './src/db';
+
+// Fix for TypeScript compatibility
+const MySQLStoreConstructor = MySQLStore(session);
 
 export const app = express();
 
 // Trust proxy configuration - must be set before any middleware that uses req.ip
 // Use a numeric hop count to avoid permissive trust proxy issues with rate limiters
 app.set('trust proxy', 1);
+
+// Configure MySQL session store
+const MySQLStoreSession = MySQLStore(session);
+const sessionStore = new MySQLStoreSession({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'calorie_tracker',
+  checkExpirationInterval: 900000, // Clean up expired sessions every 15 minutes
+  expiration: 86400000, // Sessions expire after 24 hours
+  createDatabaseTable: true, // Create the sessions table if it doesn't exist
+  schema: {
+    tableName: 'sessions',
+    columnNames: {
+      session_id: 'session_id',
+      expires: 'expires',
+      data: 'data'
+    }
+  }
+}, pool);
+
+// Configure session middleware
+app.use(session({
+  store: sessionStore,
+  secret: process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'strict'
+  },
+  name: 'sessionId' // Use a custom name to avoid default connect.sid
+}));
 
 // Apply CORS middleware first
 app.use(corsMiddleware);
