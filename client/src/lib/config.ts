@@ -4,10 +4,23 @@ const API_CONFIG = {
   development: import.meta.env.VITE_API_URL_DEV || 'http://localhost:3000',
 
   // Production API URL
-  production: import.meta.env.VITE_API_URL_PROD || 'https://aical.scanitix.com',
+  production: import.meta.env.VITE_API_URL_PROD || 'http://146.190.120.35:3002',
 
   // Staging API URL
   staging: import.meta.env.VITE_API_URL_STAGING || 'https://staging-api.aicalorietracker.com',
+};
+
+// Domain Configuration for Web App
+const DOMAINS_CONFIG = {
+  // Support email
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || 'support@aical.scanitix.com',
+
+  // Privacy and terms URLs
+  privacyUrl: import.meta.env.VITE_PRIVACY_URL || 'https://aicalorietracker.com/privacy',
+  termsUrl: import.meta.env.VITE_TERMS_URL || 'https://aicalorietracker.com/terms',
+
+  // Main application URL
+  appUrl: import.meta.env.VITE_APP_URL || 'https://aicalorietracker.com',
 };
 
 // Get current environment
@@ -28,6 +41,9 @@ const currentEnv = getEnvironment();
 
 // Export API URL based on environment
 export const API_URL = API_CONFIG[currentEnv as keyof typeof API_CONFIG];
+
+// Export domain configuration
+export const DOMAINS = DOMAINS_CONFIG;
 
 // Feature flags for enhanced food recognition
 export const FEATURES = {
@@ -265,7 +281,7 @@ export const SECURITY_CONFIG = {
       ...(currentEnv === 'production' ? [
         'https://aicalorietracker.com',
         'https://www.aicalorietracker.com',
-        'https://aical.scanitix.com',
+        'http://146.190.120.35:3002',
         'https://www.aical.scanitix.com'
       ] : []),
       // Staging origins
@@ -308,6 +324,7 @@ export const SECURITY_CONFIG = {
 // Export all configurations
 export const CONFIG = {
   api: API_URL,
+  domains: DOMAINS,
   features: FEATURES,
   camera: CAMERA_CONFIG,
   enhancedFoodRecognition: ENHANCED_FOOD_RECOGNITION_CONFIG,

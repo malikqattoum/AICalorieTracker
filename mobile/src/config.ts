@@ -9,14 +9,14 @@ const ENV = {
     testApiUrl: 'http://localhost:3003', // Test server for connectivity checks
   },
   staging: {
-    apiUrl: 'https://aical.scanitix.com',
-    testApiUrl: 'https://aical.scanitix.com',
+    apiUrl: 'http://146.190.120.35:3002',
+    testApiUrl: 'http://146.190.120.35:3002',
     enableLogging: true,
     useMockData: false,
   },
   production: {
-    apiUrl: 'https://aical.scanitix.com',
-    testApiUrl: 'https://aical.scanitix.com',
+    apiUrl: 'http://146.190.120.35:3002',
+    testApiUrl: 'http://146.190.120.35:3002',
     enableLogging: false,
     useMockData: false,
   },
@@ -47,6 +47,14 @@ export const APP_CONFIG = {
   version: Constants.expoConfig?.extra?.version || '1.0.0',
   supportEmail: Constants.expoConfig?.extra?.supportEmail || 'support@aical.scanitix.com',
   environment: Constants.expoConfig?.extra?.environment || currentEnv,
+};
+
+// Domain configuration
+export const DOMAINS_CONFIG = {
+  supportEmail: Constants.expoConfig?.extra?.supportEmail || 'support@aical.scanitix.com',
+  privacyUrl: Constants.expoConfig?.extra?.privacyUrl || 'https://aicalorietracker.com/privacy',
+  termsUrl: Constants.expoConfig?.extra?.termsUrl || 'https://aicalorietracker.com/terms',
+  appUrl: Constants.expoConfig?.extra?.appUrl || 'https://aicalorietracker.com',
 };
 
 // Feature flags

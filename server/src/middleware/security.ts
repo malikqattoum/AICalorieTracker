@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { getCurrentCorsOrigins } from '../config/domains';
 
 // Rate limiting configuration (without external dependencies)
 interface RateLimitEntry {
@@ -86,32 +87,8 @@ export const aiRateLimiter = createRateLimiter(
 // CORS configuration - environment-aware
 export const corsOptions = {
   origin: function (origin: string | undefined, callback: Function) {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isStaging = process.env.NODE_ENV === 'staging';
+    const allowedOrigins = getCurrentCorsOrigins();
 
-    const allowedOrigins = [
-      // Environment variable override
-      ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
-      // Development origins
-      ...(isDevelopment ? [
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://localhost:4173'
-      ] : []),
-      // Production origins
-      ...(isProduction ? [
-        'https://aicalorietracker.com',
-        'https://www.aicalorietracker.com',
-        'https://aical.scanitix.com',
-        'https://www.aical.scanitix.com'
-      ] : []),
-      // Staging origins
-      ...(isStaging ? [
-        'https://staging.aicalorietracker.com'
-      ] : [])
-    ];
-    
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {

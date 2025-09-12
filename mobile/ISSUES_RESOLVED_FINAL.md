@@ -143,14 +143,18 @@ All remaining issues have been successfully resolved. The AI Calorie Tracker mob
       "eas": {
         "projectId": "ai-calorie-tracker-2024"
       },
-      "apiUrl": "http://localhost:5001",
-      "enableLogging": true,
-      "useMockData": true,
+      "apiUrl": "${EXPO_PUBLIC_API_URL}",
+      "testApiUrl": "${EXPO_PUBLIC_TEST_API_URL}",
+      "enableLogging": "${EXPO_PUBLIC_ENABLE_LOGGING}",
+      "useMockData": "${EXPO_PUBLIC_USE_MOCK_DATA}",
       "releaseChannel": "development",
-      "supportEmail": "support@aicalorietracker.com",
+      "supportEmail": "${EXPO_PUBLIC_SUPPORT_EMAIL}",
+      "privacyUrl": "${EXPO_PUBLIC_PRIVACY_URL}",
+      "termsUrl": "${EXPO_PUBLIC_TERMS_URL}",
+      "appUrl": "${EXPO_PUBLIC_APP_URL}",
       "appName": "AI Calorie Tracker",
       "version": "1.0.0",
-      "environment": "development"
+      "environment": "${EXPO_PUBLIC_ENVIRONMENT}"
     }
   }
 }
@@ -173,24 +177,36 @@ All remaining issues have been successfully resolved. The AI Calorie Tracker mob
 ## 🚀 PRODUCTION DEPLOYMENT READY
 
 ### Environment Configuration ✅
-```typescript
-// Development (current default)
-useMockData: true
-apiUrl: "http://localhost:5001"  
-enableLogging: true
-environment: "development"
+```bash
+# Development Environment Variables
+EXPO_PUBLIC_API_URL=http://localhost:5001
+EXPO_PUBLIC_TEST_API_URL=http://localhost:5001
+EXPO_PUBLIC_SUPPORT_EMAIL=support@aical.scanitix.com
+EXPO_PUBLIC_ENVIRONMENT=development
+EXPO_PUBLIC_ENABLE_LOGGING=true
+EXPO_PUBLIC_USE_MOCK_DATA=true
 
-// Production (when deployed)
-useMockData: false
-apiUrl: "https://api.aicalorietracker.com"
-enableLogging: false
-environment: "production"
+# Production Environment Variables
+EXPO_PUBLIC_API_URL=http://146.190.120.35:3002
+EXPO_PUBLIC_TEST_API_URL=http://146.190.120.35:3002
+EXPO_PUBLIC_SUPPORT_EMAIL=support@aical.scanitix.com
+EXPO_PUBLIC_ENVIRONMENT=production
+EXPO_PUBLIC_ENABLE_LOGGING=false
+EXPO_PUBLIC_USE_MOCK_DATA=false
 ```
 
 ### Deployment Commands ✅
 ```bash
 # Install dependencies
 cd mobile && npm install
+
+# Set environment variables for production
+export EXPO_PUBLIC_API_URL=http://146.190.120.35:3002
+export EXPO_PUBLIC_TEST_API_URL=http://146.190.120.35:3002
+export EXPO_PUBLIC_SUPPORT_EMAIL=support@aical.scanitix.com
+export EXPO_PUBLIC_ENVIRONMENT=production
+export EXPO_PUBLIC_ENABLE_LOGGING=false
+export EXPO_PUBLIC_USE_MOCK_DATA=false
 
 # Development testing
 npx expo start
@@ -295,9 +311,9 @@ The mobile application is **100% production-ready** with:
    - Add marketing assets for app stores
 
 3. **Production Deployment**
-   - Update app.json with production API URL
-   - Build with EAS: `eas build --platform all --profile production`
-   - Submit to App Store and Google Play Store
+    - Set production environment variables (EXPO_PUBLIC_*)
+    - Build with EAS: `eas build --platform all --profile production`
+    - Submit to App Store and Google Play Store
 
 4. **Monitoring & Analytics**
    - Set up crash reporting (Sentry/Bugsnag)

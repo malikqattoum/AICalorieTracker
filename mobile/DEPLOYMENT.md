@@ -30,9 +30,17 @@ This guide provides comprehensive instructions for deploying the AI Calorie Trac
 Create a `.env.production` file in the root directory:
 
 ```env
-# API Configuration
-API_URL=https://api.aicalorietracker.com
-SENTRY_DSN=your-sentry-dsn-here
+# Mobile App Environment Variables (EXPO_PUBLIC_ prefix for runtime access)
+EXPO_PUBLIC_API_URL=http://146.190.120.35:3002
+EXPO_PUBLIC_TEST_API_URL=http://146.190.120.35:3002
+EXPO_PUBLIC_SUPPORT_EMAIL=support@aical.scanitix.com
+EXPO_PUBLIC_PRIVACY_URL=https://aicalorietracker.com/privacy
+EXPO_PUBLIC_TERMS_URL=https://aicalorietracker.com/terms
+EXPO_PUBLIC_APP_URL=https://aicalorietracker.com
+EXPO_PUBLIC_SENTRY_DSN=your-sentry-dsn-here
+EXPO_PUBLIC_ENVIRONMENT=production
+EXPO_PUBLIC_ENABLE_LOGGING=false
+EXPO_PUBLIC_USE_MOCK_DATA=false
 
 # Apple Developer Credentials
 APPLE_ID=your-apple-id@icloud.com
@@ -107,14 +115,18 @@ Update `mobile/app.json` for production:
       "eas": {
         "projectId": "your-project-id"
       },
-      "apiUrl": "https://api.aicalorietracker.com",
-      "useMockData": false,
-      "enableLogging": false,
-      "sentryDsn": "your-sentry-dsn-here",
+      "apiUrl": "${EXPO_PUBLIC_API_URL}",
+      "testApiUrl": "${EXPO_PUBLIC_TEST_API_URL}",
+      "useMockData": "${EXPO_PUBLIC_USE_MOCK_DATA}",
+      "enableLogging": "${EXPO_PUBLIC_ENABLE_LOGGING}",
+      "sentryDsn": "${EXPO_PUBLIC_SENTRY_DSN}",
       "appName": "AI Calorie Tracker",
       "version": "1.0.0",
-      "supportEmail": "support@aicalorietracker.com",
-      "environment": "production"
+      "supportEmail": "${EXPO_PUBLIC_SUPPORT_EMAIL}",
+      "privacyUrl": "${EXPO_PUBLIC_PRIVACY_URL}",
+      "termsUrl": "${EXPO_PUBLIC_TERMS_URL}",
+      "appUrl": "${EXPO_PUBLIC_APP_URL}",
+      "environment": "${EXPO_PUBLIC_ENVIRONMENT}"
     }
   }
 }
@@ -235,11 +247,18 @@ Use the provided deployment script for automated deployment:
    ```
 
 2. **Update Configuration**
-   ```bash
-   # Update app.json for production
-   sed -i.bak 's/"useMockData": true/"useMockData": false/' app.json
-   sed -i.bak 's/"apiUrl": ".*"/"apiUrl": "https://api.aicalorietracker.com"/' app.json
-   ```
+    ```bash
+    # Set environment variables for production
+    export EXPO_PUBLIC_API_URL=http://146.190.120.35:3002
+    export EXPO_PUBLIC_TEST_API_URL=http://146.190.120.35:3002
+    export EXPO_PUBLIC_SUPPORT_EMAIL=support@aical.scanitix.com
+    export EXPO_PUBLIC_ENVIRONMENT=production
+    export EXPO_PUBLIC_ENABLE_LOGGING=false
+    export EXPO_PUBLIC_USE_MOCK_DATA=false
+
+    # Update app.json for production (optional - environment variables will override)
+    sed -i.bak 's/"useMockData": true/"useMockData": false/' app.json
+    ```
 
 3. **Run Tests**
    ```bash
@@ -321,7 +340,7 @@ Create monitoring scripts for critical metrics:
 ```bash
 # Health check script
 #!/bin/bash
-API_URL="https://api.aicalorietracker.com"
+API_URL="${EXPO_PUBLIC_API_URL:-http://146.190.120.35:3002}"
 RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $API_URL/health)
 if [ "$RESPONSE" -eq 200 ]; then
     echo "API is healthy"
@@ -367,13 +386,13 @@ eas build:logs --platform ios --profile production
 eas submit:list --platform ios
 
 # Test API connectivity
-curl -v https://api.aicalorietracker.com/health
+curl -v ${EXPO_PUBLIC_API_URL:-http://146.190.120.35:3002}/health
 ```
 
 ### Support Contacts
-- **Development Team**: dev@aicalorietracker.com
-- **Support Team**: support@aicalorietracker.com
-- **Emergency Contact**: emergency@aicalorietracker.com
+- **Development Team**: dev@aical.scanitix.com
+- **Support Team**: ${EXPO_PUBLIC_SUPPORT_EMAIL:-support@aical.scanitix.com}
+- **Emergency Contact**: emergency@aical.scanitix.com
 
 ## Version Control and Updates
 

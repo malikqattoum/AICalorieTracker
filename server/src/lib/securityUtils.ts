@@ -3,6 +3,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { Logger } from '../utils/logger';
 import { securityConfig } from '../config/security';
+import { getCurrentCorsOrigins } from '../config/domains';
 
 const logger = new Logger('SecurityUtils');
 
@@ -39,37 +40,15 @@ export const getDetailedIpInfo = (req: Request): {
  * Enhanced CORS validation - environment-aware
  */
 export const validateCORS = (origin: string): boolean => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isStaging = process.env.NODE_ENV === 'staging';
+  const allowedOrigins = getCurrentCorsOrigins();
 
-  const allowedOrigins = [
-    // Development origins
-    ...(isDevelopment ? [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:4173'
-    ] : []),
-    // Production origins
-    ...(isProduction ? [
-      'https://aicalorietracker.com',
-      'https://www.aicalorietracker.com',
-      'https://aical.scanitix.com',
-      'https://www.aical.scanitix.com'
-    ] : []),
-    // Staging origins
-    ...(isStaging ? [
-      'https://staging.aicalorietracker.com'
-    ] : [])
-  ];
-  
   if (!origin) return false;
-  
+
   // Check exact match
   if (allowedOrigins.includes(origin)) {
     return true;
   }
-  
+
   // Check for wildcard subdomains (e.g., *.example.com)
   const wildcardDomains = allowedOrigins.filter((origin: string) => origin.startsWith('*.'));
   for (const wildcardDomain of wildcardDomains) {
@@ -78,7 +57,7 @@ export const validateCORS = (origin: string): boolean => {
       return true;
     }
   }
-  
+
   return false;
 };
 

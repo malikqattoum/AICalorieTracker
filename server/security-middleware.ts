@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { getCurrentCorsOrigins } from './src/config/domains';
 
 /**
  * Security middleware to add comprehensive security headers
@@ -77,13 +78,7 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
  * CORS middleware with secure configuration
  */
 export const corsMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const allowedOrigins = process.env.NODE_ENV === 'production'
-    ? ['https://aical.scanitix.com']
-    : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'];
-
-  // Also check ALLOWED_ORIGINS environment variable
-  const envOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
-  const allAllowedOrigins = [...allowedOrigins, ...envOrigins];
+  const allAllowedOrigins = getCurrentCorsOrigins();
 
   const origin = req.headers.origin;
 

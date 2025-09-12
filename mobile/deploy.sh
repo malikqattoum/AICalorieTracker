@@ -7,7 +7,8 @@ set -e
 
 # Configuration
 APP_NAME="AI-Calorie-Tracker"
-API_BASE_URL="https://api.aicalorietracker.com"
+API_BASE_URL="${EXPO_PUBLIC_API_URL:-http://146.190.120.35:3002}"
+SUPPORT_EMAIL="${EXPO_PUBLIC_SUPPORT_EMAIL:-support@aical.scanitix.com}"
 EAS_BUILD_PROFILE="production"
 PLATFORMS="ios,android"
 
@@ -81,18 +82,25 @@ run_tests() {
 # Update app configuration for production
 update_config() {
     log "Updating configuration for production..."
-    
-    # Update app.json with production settings
+
+    # Set environment variables for production
+    export EXPO_PUBLIC_API_URL="${EXPO_PUBLIC_API_URL:-$API_BASE_URL}"
+    export EXPO_PUBLIC_TEST_API_URL="${EXPO_PUBLIC_TEST_API_URL:-$API_BASE_URL}"
+    export EXPO_PUBLIC_SUPPORT_EMAIL="${EXPO_PUBLIC_SUPPORT_EMAIL:-$SUPPORT_EMAIL}"
+    export EXPO_PUBLIC_ENVIRONMENT="${EXPO_PUBLIC_ENVIRONMENT:-production}"
+    export EXPO_PUBLIC_ENABLE_LOGGING="${EXPO_PUBLIC_ENABLE_LOGGING:-false}"
+    export EXPO_PUBLIC_USE_MOCK_DATA="${EXPO_PUBLIC_USE_MOCK_DATA:-false}"
+
+    # Update app.json with production settings (optional - environment variables will override)
     sed -i.bak 's/"useMockData": true/"useMockData": false/' mobile/app.json
-    sed -i.bak 's/"apiUrl": ".*"/"apiUrl": "'"$API_BASE_URL"'"/' mobile/app.json
-    
+
     # Update version number
     NEW_VERSION=$(node -p "require('./package.json').version")
     NEW_VERSION="${NEW_VERSION%.*}.$((${NEW_VERSION##*.} + 1))"
-    
+
     # Update package.json version
     npm version --no-git-tag-version "$NEW_VERSION"
-    
+
     log "Configuration updated for production version $NEW_VERSION"
 }
 
@@ -159,8 +167,8 @@ generate_report() {
 4. Monitor API health
 
 ## Contact Information
-- **Support:** support@aicalorietracker.com
-- **Development Team:** dev@aicalorietracker.com
+- **Support:** $SUPPORT_EMAIL
+- **Development Team:** dev@aical.scanitix.com
 
 ---
 *This report was generated automatically by the deployment script.*

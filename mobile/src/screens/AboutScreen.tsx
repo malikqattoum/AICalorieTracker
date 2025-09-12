@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { RootStackParamList } from '../navigation';
+import { DOMAINS_CONFIG } from '../config';
 
 type AboutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,15 +26,15 @@ export default function AboutScreen() {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@aical.scanitix.com');
+    Linking.openURL(`mailto:${DOMAINS_CONFIG.supportEmail}`);
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://aical.scanitix.com/privacy');
+    Linking.openURL(DOMAINS_CONFIG.privacyUrl);
   };
 
   const handleTermsOfService = () => {
-    Linking.openURL('https://aical.scanitix.com/terms');
+    Linking.openURL(DOMAINS_CONFIG.termsUrl);
   };
 
   const handleRateApp = () => {
@@ -48,7 +49,7 @@ export default function AboutScreen() {
   };
 
   const handleShareApp = () => {
-    Linking.openURL('https://aical.scanitix.com');
+    Linking.openURL(DOMAINS_CONFIG.appUrl);
   };
 
   return (
